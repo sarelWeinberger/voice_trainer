@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Training - GRBAS Analysis</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Voice Training</h1>
+        <p class="subtitle">GRBAS Voice Quality Analysis</p>
+    </header>
+
+    <main>
+        <div class="grid">
+            <!-- Camera / Face Mesh Panel -->
+            <section class="panel camera-panel">
+                <h2>Camera Feed</h2>
+                <div class="video-container">
+                    <video id="video" autoplay playsinline muted></video>
+                    <canvas id="face-canvas"></canvas>
+                    <div id="face-metrics" class="face-metrics"></div>
+                </div>
+            </section>
+
+            <!-- Recording Panel -->
+            <section class="panel recording-panel">
+                <h2>Voice Recording</h2>
+                <p class="instruction">Record a sustained /a/ vowel for 3+ seconds</p>
+                <button id="record-btn" class="record-btn">
+                    <span class="record-icon"></span>
+                    <span class="record-label">Start Recording</span>
+                </button>
+                <div id="recording-timer" class="timer" hidden>0.0s</div>
+                <div id="status" class="status"></div>
+            </section>
+
+            <!-- GRBAS Results Panel -->
+            <section class="panel results-panel" id="results-panel" hidden>
+                <h2>GRBAS Scores</h2>
+                <div class="results-grid">
+                    <div class="radar-container">
+                        <canvas id="radar-chart" width="280" height="280"></canvas>
+                    </div>
+                    <div class="scores-list" id="scores-list"></div>
+                </div>
+                <div class="model-badge" id="model-badge"></div>
+            </section>
+
+            <!-- Feature Details Panel -->
+            <section class="panel features-panel" id="features-panel" hidden>
+                <h2>Acoustic Features</h2>
+                <div class="features-grid" id="features-grid"></div>
+            </section>
+        </div>
+
+        <!-- Session History -->
+        <section class="panel history-panel">
+            <h2>Session History</h2>
+            <div id="history-list" class="history-list">
+                <p class="empty-state">No recordings yet. Start by recording your voice above.</p>
+            </div>
+            <button id="clear-history-btn" class="secondary-btn" hidden>Clear History</button>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="app.js"></script>
+</body>
+</html>
