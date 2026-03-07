@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Voice Training</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Admin Dashboard</h1>
+        <p class="subtitle">Voice Training - User Management</p>
+    </header>
+
+    <main>
+        <!-- Auth Bar -->
+        <div id="auth-bar" class="panel auth-bar">
+            <div id="auth-forms" class="auth-forms">
+                <input type="email" id="auth-email" placeholder="Email" class="auth-input" />
+                <input type="password" id="auth-password" placeholder="Password" class="auth-input" />
+                <button id="login-btn" class="secondary-btn">Log In</button>
+                <button id="register-btn" class="secondary-btn">Register</button>
+                <span id="auth-error" class="auth-error"></span>
+            </div>
+            <div id="user-bar" class="user-bar" hidden>
+                <span id="user-email" class="user-email"></span>
+                <button id="logout-btn" class="secondary-btn">Log Out</button>
+                <a href="/" class="secondary-btn">Back to App</a>
+                <a href="/admin" id="admin-link" class="secondary-btn" hidden>Admin Dashboard</a>
+            </div>
+        </div>
+
+        <!-- Admin Content -->
+        <section class="panel" id="admin-content" hidden>
+            <h2>All Users</h2>
+            <div class="table-wrapper">
+                <table class="admin-table" id="users-table">
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Registered</th>
+                            <th>G</th>
+                            <th>R</th>
+                            <th>B</th>
+                            <th>A</th>
+                            <th>S</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-tbody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- User Detail Panel -->
+        <section class="panel" id="user-detail-panel" hidden>
+            <h2 id="detail-title">User Analysis History</h2>
+            <div id="user-detail-content"></div>
+        </section>
+
+        <!-- Access Denied -->
+        <section class="panel" id="admin-denied" hidden>
+            <p>You do not have admin access. Please log in with an admin account.</p>
+            <a href="/" class="secondary-btn">Back to App</a>
+        </section>
+    </main>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="firebase_config.js"></script>
+    <script src="auth.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>

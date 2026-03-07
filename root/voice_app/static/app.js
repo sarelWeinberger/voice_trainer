@@ -8,6 +8,7 @@ const GRBAS_LABELS = {
     S: "Strain",
 };
 
+// Index = score: 0=normal(green), 1=slight(yellow), 2=moderate(orange), 3=severe(red)
 const GRADE_COLORS = ["#3ddc84", "#ffb74d", "#ff8a50", "#ff4f5e"];
 
 // ---- State ----
@@ -283,7 +284,12 @@ async function sendAudio(blob) {
     formData.append("audio", blob, "recording.wav");
 
     try {
-        const resp = await fetch("/api/analyze", { method: "POST", body: formData });
+        const headers = typeof getAuthHeaders === "function" ? getAuthHeaders() : {};
+        const resp = await fetch("/api/analyze", {
+            method: "POST",
+            body: formData,
+            headers: headers,
+        });
         const data = await resp.json();
 
         if (data.error) {
@@ -369,7 +375,7 @@ function drawRadarChart(scores) {
 
     ctx.clearRect(0, 0, w, h);
 
-    // Draw grid rings
+    // Draw grid rings (levels 1, 2, 3)
     for (let level = 1; level <= 3; level++) {
         const r = (level / 3) * maxR;
         ctx.beginPath();
@@ -495,6 +501,66 @@ clearHistoryBtn.addEventListener("click", () => {
 function setStatus(msg, isError = false) {
     statusEl.textContent = msg;
     statusEl.className = "status" + (isError ? " error" : "");
+}
+
+// ---- Cloud History (when authenticated) ----
+async function loadCloudHistory() {
+    if (typeof getAuthHeaders !== "function") return;
+    const headers = getAuthHeaders();
+    if (!headers.Authorization) return;
+
+    try {
+        const resp = await fetch("/api/history", { headers });
+        if (!resp.ok) return;
+        const data = await resp.json();
+
+        if (data.history && data.history.length > 0) {
+            renderHistory(data.history);
+        }
+    } catch (err) {
+        console.warn("Cloud history load failed:", err);
+    }
+}
+
+function renderHistory(entries) {
+    if (!entries || entries.length === 0) {
+        historyList.innerHTML =
+            '<p class="empty-state">No recordings yet. Start by recording your voice above.</p>';
+        clearHistoryBtn.hidden = true;
+        return;
+    }
+
+    clearHistoryBtn.hidden = false;
+    historyList.innerHTML = "";
+
+    for (const entry of entries) {
+        const item = document.createElement("div");
+        item.className = "history-item";
+
+        const time = new Date(entry.timestamp);
+        const timeStr = time.toLocaleDateString() + " " + time.toLocaleTimeString();
+
+        let scoresHtml = "";
+        for (const dim of "GRBAS") {
+            const s = entry.scores[dim];
+            scoresHtml += `<span class="history-score grade-${s}">${dim}:${s}</span>`;
+        }
+
+        item.innerHTML = `
+            <span class="history-time">${timeStr}</span>
+            <div class="history-scores">${scoresHtml}</div>
+        `;
+        historyList.appendChild(item);
+    }
+}
+
+// Auth hooks called by auth.js
+function onAuthReady(user) {
+    loadCloudHistory();
+}
+
+function onAuthSignedOut() {
+    loadHistory();
 }
 
 // ---- Start ----
