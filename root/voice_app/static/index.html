@@ -17,7 +17,7 @@
         <div id="auth-bar" class="panel auth-bar">
             <div id="auth-forms" class="auth-forms">
                 <input type="email" id="auth-email" placeholder="Email" class="auth-input" />
-                <input type="password" id="auth-password" placeholder="Password" class="auth-input" />
+                <input type="password" id="auth-password" placeholder="Password (8+ chars)" class="auth-input" />
                 <button id="login-btn" class="secondary-btn">Log In</button>
                 <button id="register-btn" class="secondary-btn">Register</button>
                 <span id="auth-error" class="auth-error"></span>
@@ -71,6 +71,13 @@
             </section>
         </div>
 
+        <!-- Practice Recommendations -->
+        <section class="panel recommendations-panel" id="recommendations-panel" hidden>
+            <h2>Practice Recommendations</h2>
+            <p class="rec-subtitle">YouTube exercises based on your GRBAS results</p>
+            <div id="recommendations-list" class="recommendations-list"></div>
+        </section>
+
         <!-- Session History -->
         <section class="panel history-panel">
             <h2>Session History</h2>
@@ -84,9 +91,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-    <script src="firebase_config.js"></script>
+    <!-- No Firebase SDK – auth is handled by our own JWT layer in auth.js -->
     <script src="auth.js"></script>
     <script src="app.js"></script>
 </body>

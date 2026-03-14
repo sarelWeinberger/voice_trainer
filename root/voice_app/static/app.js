@@ -39,6 +39,8 @@ const featuresPanel = document.getElementById("features-panel");
 const featuresGrid = document.getElementById("features-grid");
 const historyList = document.getElementById("history-list");
 const clearHistoryBtn = document.getElementById("clear-history-btn");
+const recommendationsPanel = document.getElementById("recommendations-panel");
+const recommendationsList = document.getElementById("recommendations-list");
 
 // ---- Initialize Camera + Mic ----
 async function init() {
@@ -357,6 +359,56 @@ function displayResults(data) {
         item.className = "feature-item";
         item.innerHTML = `<span class="feature-name">${label}</span><span class="feature-value">${val}</span>`;
         featuresGrid.appendChild(item);
+    }
+
+    // Recommendations
+    displayRecommendations(data.recommendations);
+}
+
+// ---- Display Recommendations ----
+const MEASURE_NAMES = { G: "Grade", R: "Roughness", B: "Breathiness", A: "Asthenia", S: "Strain" };
+
+function displayRecommendations(recommendations) {
+    if (!recommendations || recommendations.length === 0) {
+        recommendationsPanel.hidden = true;
+        return;
+    }
+
+    recommendationsPanel.hidden = false;
+    recommendationsList.innerHTML = "";
+
+    for (const rec of recommendations) {
+        const group = document.createElement("div");
+        group.className = "rec-group";
+
+        const header = document.createElement("div");
+        header.className = "rec-header";
+        header.innerHTML = `
+            <span class="rec-measure grade-${rec.score}">${rec.measure} – ${MEASURE_NAMES[rec.measure] || rec.measure}</span>
+            <span class="rec-score">Score: ${rec.score}/3</span>
+            <span class="rec-priority">Priority #${rec.priority_rank}</span>
+        `;
+        group.appendChild(header);
+
+        const list = document.createElement("div");
+        list.className = "rec-resources";
+
+        for (const res of rec.resources) {
+            const card = document.createElement("a");
+            card.className = "rec-card";
+            card.href = res.url;
+            card.target = "_blank";
+            card.rel = "noopener noreferrer";
+            card.innerHTML = `
+                <span class="rec-card-course">${res.course}</span>
+                <span class="rec-card-section">${res.section}</span>
+                <span class="rec-card-why">${res.why}</span>
+            `;
+            list.appendChild(card);
+        }
+
+        group.appendChild(list);
+        recommendationsList.appendChild(group);
     }
 }
 

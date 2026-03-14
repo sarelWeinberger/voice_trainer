@@ -283,6 +283,91 @@ main {
     margin-top: 1rem;
 }
 
+/* Recommendations Panel */
+.recommendations-panel {
+    margin-top: 1rem;
+}
+
+.rec-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    margin-bottom: 1.25rem;
+}
+
+.rec-group {
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.rec-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1.25rem;
+    background: var(--bg-secondary);
+    font-size: 1rem;
+}
+
+.rec-measure {
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.rec-score {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.rec-priority {
+    margin-left: auto;
+    color: var(--accent);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.rec-resources {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+}
+
+.rec-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.rec-card:hover {
+    border-color: var(--accent);
+    background: rgba(79, 140, 255, 0.08);
+}
+
+.rec-card-course {
+    font-size: 0.7rem;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.rec-card-section {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.rec-card-why {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
 .history-list {
     max-height: 400px;
     overflow-y: auto;
@@ -467,6 +552,89 @@ main {
 .grade-1 { background: rgba(255,183,77,0.2);  color: var(--grade-3); }
 .grade-2 { background: rgba(255,138,80,0.2);  color: var(--grade-4); }
 .grade-3 { background: rgba(255,79,94,0.2);   color: var(--grade-5); }
+
+/* ---- Admin Tabs ---- */
+.tab-bar {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    padding: 0.5rem 1.25rem;
+    cursor: pointer;
+    border-radius: 6px 6px 0 0;
+    transition: color 0.15s;
+}
+
+.tab-btn:hover { color: var(--text-primary); }
+
+.tab-btn.active {
+    color: var(--accent);
+    border-bottom: 2px solid var(--accent);
+}
+
+/* ---- Activity Log ---- */
+.activity-filters {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.activity-pagination {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 0.75rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.details-cell {
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.75rem;
+}
+
+.details-cell code {
+    background: var(--bg-secondary);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 0.72rem;
+}
+
+/* Action badge colours – grouped by severity/type */
+.action-badge {
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.action-login            { background: rgba(61,220,132,0.15); color: var(--success); }
+.action-register         { background: rgba(79,140,255,0.15); color: var(--accent); }
+.action-login_failed     { background: rgba(255,79,94,0.15);  color: var(--danger); }
+.action-analyze          { background: rgba(168,224,99,0.15); color: #a8e063; }
+.action-view_history     { background: rgba(79,140,255,0.1);  color: var(--text-secondary); }
+.action-view_role        { background: rgba(79,140,255,0.1);  color: var(--text-secondary); }
+.action-admin_list_users      { background: rgba(255,183,77,0.15); color: var(--warning); }
+.action-admin_view_user_analyses { background: rgba(255,183,77,0.15); color: var(--warning); }
+.action-admin_set_role        { background: rgba(255,138,80,0.2);  color: var(--grade-4); }
+.action-admin_view_activity_log { background: rgba(255,183,77,0.1); color: var(--text-secondary); }
+
+.text-muted { color: var(--text-secondary); font-size: 0.8em; }
 
 /* Responsive */
 @media (max-width: 700px) {

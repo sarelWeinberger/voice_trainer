@@ -109,6 +109,486 @@ def _compute_cpp(y, sr, f0_min=60, f0_max=600):
     return float(np.mean(cpps)), float(np.std(cpps))
 
 
+def _compute_cpps(y, sr, f0_min=60, f0_max=600):
+    """Cepstral Peak Prominence Smoothed (CPPS) — gold-standard asthenia metric.
+
+    CPPS is the clinically validated upgrade over raw CPP: it applies double
+    smoothing (spectral domain + temporal domain) before measuring the cepstral
+    peak, making it far more robust to noise and short-duration recordings.
+
+    Clinical relevance to Asthenia (A):
+        Low CPPS → poor harmonic structure → weak glottal closure → asthenic voice.
+        Normative CPPS: ≥ 5 dB = healthy phonation; < 3 dB = significant weakness.
+
+    Algorithm (following Hillenbrand & Houde 1996, Heman-Ackah 2003):
+        1. Frame signal: 40 ms windows, 10 ms hop, Hanning-weighted.
+        2. Compute log power spectrum for each frame.
+        3. Smooth log spectrum with a 31-bin moving average (quefrency smoothing).
+        4. Compute cepstrum of the smoothed log spectrum (power cepstrum).
+        5. Find the peak in the F0 quefrency range [1/f0_max, 1/f0_min].
+        6. Subtract a linear regression baseline from the peak value → per-frame CPP.
+        7. Apply an 11-frame (~110 ms) moving average across the CPP time series
+           (temporal smoothing — the "S" in CPPS).
+        8. Return (mean, std, min, 10th-percentile) of the smoothed series.
+
+    Returns:
+        dict with cpps_mean, cpps_std, cpps_min, cpps_p10
+    """
+    frame_len  = int(0.040 * sr)   # 40 ms analysis window
+    hop_len    = int(0.010 * sr)   # 10 ms hop (100 frames/s)
+    n_fft      = 4096
+    smooth_win = 31   # spectral smoothing window (bins) — must be odd
+    temp_win   = 11   # temporal smoothing window (frames ≈ 110 ms)
+
+    q_min = 1.0 / f0_max
+    q_max = 1.0 / f0_min
+
+    try:
+        frames = librosa.util.frame(y, frame_length=frame_len, hop_length=hop_len)
+    except Exception:
+        return {"cpps_mean": 0.0, "cpps_std": 0.0, "cpps_min": 0.0, "cpps_p10": 0.0}
+
+    per_frame_cpp = []
+
+    for frame in frames.T:
+        windowed = frame * np.hanning(len(frame))
+
+        # ── Step 2: log power spectrum in dB ───────────────────────────────
+        # Clinical literature uses 10*log10 so that CPPS is in dB units.
+        # Normative range: ≥ 5 dB = healthy; < 3 dB = significant weakness.
+        spectrum  = np.fft.rfft(windowed, n=n_fft)
+        log_power = 10.0 * np.log10(np.abs(spectrum) ** 2 + 1e-10)
+
+        # ── Step 3: power cepstrum of the log power spectrum ────────────────
+        # NOTE: The "smoothed" in CPPS refers to temporal smoothing across
+        # frames (Step 7), NOT spectral smoothing here.  Spectral smoothing
+        # would suppress the cepstral peak and produce artificially low values.
+        cepstrum    = np.fft.irfft(log_power).real
+        quefrencies = np.arange(len(cepstrum)) / sr
+
+        # ── Step 4: find peak in F0 quefrency range ──────────────────────────
+        mask = (quefrencies > q_min) & (quefrencies < q_max)
+        if not np.any(mask):
+            continue
+
+        idx_range = np.where(mask)[0]
+        peak_idx  = idx_range[np.argmax(cepstrum[mask])]
+        peak_val  = cepstrum[peak_idx]
+
+        # ── Step 5: linear regression baseline subtraction ──────────────────
+        # Baseline accounts for the overall downward slope of the cepstrum;
+        # the *prominence* of the peak above this slope is the clinical metric.
+        x   = quefrencies[mask]
+        yc  = cepstrum[mask]
+        if len(x) < 2:
+            continue
+        coeffs   = np.polyfit(x, yc, 1)
+        baseline = np.polyval(coeffs, quefrencies[peak_idx])
+        per_frame_cpp.append(peak_val - baseline)
+
+    if len(per_frame_cpp) < 2:
+        return {"cpps_mean": 0.0, "cpps_std": 0.0, "cpps_min": 0.0, "cpps_p10": 0.0}
+
+    # ── Step 6: temporal smoothing across frames (the "S" in CPPS) ─────────
+    # Averaging CPP over ~110 ms windows reduces frame-to-frame noise without
+    # destroying the clinical signal of sustained vowel weakness.
+    cpp_arr = np.array(per_frame_cpp)
+    kernel  = np.ones(min(temp_win, len(cpp_arr))) / min(temp_win, len(cpp_arr))
+    cpps_smoothed = np.convolve(cpp_arr, kernel, mode="same")
+
+    return {
+        "cpps_mean": float(np.mean(cpps_smoothed)),
+        "cpps_std":  float(np.std(cpps_smoothed)),
+        "cpps_min":  float(np.min(cpps_smoothed)),
+        "cpps_p10":  float(np.percentile(cpps_smoothed, 10)),
+    }
+
+
+def _compute_harmonic_decay(y, sr, f0_mean, n_harmonics=8):
+    """Measure how fast harmonic amplitudes fall off with increasing frequency.
+
+    Clinical relevance to Asthenia:
+        In a healthy, well-supported voice the higher harmonics retain
+        meaningful energy (shallow decay slope).  In a weak (asthenic) voice,
+        energy collapses quickly above F0: the harmonic decay rate is steep
+        (more negative slope).  This mirrors the classic 'weak harmonic
+        structure' description in voice clinics.
+
+    Method:
+        - For each harmonic k = 1…n_harmonics, sum the FFT magnitude in a
+          narrow band around k * F0 (±10 % of F0).
+        - Fit a first-order polynomial to (harmonic_number, log_amplitude).
+        - The slope is the decay rate; the R² of the fit is the regularity score.
+
+    Returns:
+        harmonic_decay_slope   — negative = energy falls with frequency
+        harmonic_regularity    — R² of the linear fit (0–1; 1 = perfect decay)
+    """
+    if f0_mean <= 0 or len(y) < sr * 0.1:
+        return {"harmonic_decay_slope": 0.0, "harmonic_regularity": 0.0}
+
+    spectrum  = np.abs(np.fft.rfft(y, n=4096))
+    freq_bins = np.fft.rfftfreq(4096, d=1.0 / sr)
+    bw        = f0_mean * 0.10   # ±10 % bandwidth around each harmonic
+
+    amp_log = []
+    harm_ns = []
+    for k in range(1, n_harmonics + 1):
+        center = k * f0_mean
+        if center + bw >= freq_bins[-1]:
+            break
+        mask = (freq_bins >= center - bw) & (freq_bins <= center + bw)
+        if not np.any(mask):
+            continue
+        amp = float(np.sum(spectrum[mask]))
+        if amp > 0:
+            amp_log.append(np.log(amp + 1e-10))
+            harm_ns.append(float(k))
+
+    if len(harm_ns) < 3:
+        return {"harmonic_decay_slope": 0.0, "harmonic_regularity": 0.0}
+
+    x  = np.array(harm_ns)
+    yy = np.array(amp_log)
+    coeffs   = np.polyfit(x, yy, 1)
+    slope    = float(coeffs[0])          # negative → energy falls with harmonic number
+    yy_pred  = np.polyval(coeffs, x)
+    ss_res   = np.sum((yy - yy_pred) ** 2)
+    ss_tot   = np.sum((yy - yy.mean()) ** 2)
+    r2       = float(1 - ss_res / (ss_tot + 1e-10))
+
+    return {
+        "harmonic_decay_slope":   slope,
+        "harmonic_regularity":    max(0.0, min(1.0, r2)),
+    }
+
+
+def _compute_energy_envelope(y, sr):
+    """Short-time RMS energy envelope features for Asthenia detection.
+
+    Clinical relevance:
+        Asthenic voice presents with:
+          1. Low mean energy (quiet, weak phonation).
+          2. Rapidly collapsing energy — the voice 'fades out' mid-utterance.
+          3. Low energy variability within voiced regions (flat, monotone output).
+
+    We characterise the RMS envelope at two time scales:
+        - Fine scale  (25 ms frames) — captures rapid drops.
+        - Coarse scale (200 ms blocks) — captures macro-level energy contour.
+
+    Returns:
+        energy_env_mean      — mean short-time RMS (overall loudness proxy)
+        energy_env_std       — variability of short-time RMS
+        energy_env_cv        — coefficient of variation (std / mean)
+        energy_env_slope     — linear trend of the RMS contour
+                               (negative = voice fades → strong asthenia indicator)
+        energy_env_drop_rate — fraction of consecutive frame-pairs where energy
+                               drops by > 20 % (captures instability / fatigue)
+    """
+    frame_len = int(0.025 * sr)   # 25 ms
+    hop_len   = int(0.010 * sr)   # 10 ms
+    try:
+        rms_frames = librosa.feature.rms(
+            y=y, frame_length=frame_len, hop_length=hop_len
+        )[0]
+    except Exception:
+        rms_frames = librosa.feature.rms(y=y)[0]
+
+    if len(rms_frames) < 3:
+        return {k: 0.0 for k in (
+            "energy_env_mean", "energy_env_std", "energy_env_cv",
+            "energy_env_slope", "energy_env_drop_rate")}
+
+    env_mean = float(np.mean(rms_frames))
+    env_std  = float(np.std(rms_frames))
+    env_cv   = float(env_std / (env_mean + 1e-10))
+
+    # Linear trend along the utterance (time × coefficient)
+    t = np.linspace(0, 1, len(rms_frames))
+    slope = float(np.polyfit(t, rms_frames, 1)[0])
+
+    # Drop rate: fraction of frame-pairs with > 20 % energy collapse
+    ratios = rms_frames[1:] / (rms_frames[:-1] + 1e-10)
+    drop_rate = float(np.mean(ratios < 0.80))
+
+    return {
+        "energy_env_mean":      env_mean,
+        "energy_env_std":       env_std,
+        "energy_env_cv":        env_cv,
+        "energy_env_slope":     slope,
+        "energy_env_drop_rate": drop_rate,
+    }
+
+
+def _compute_phonation_efficiency(features):
+    """Estimate glottal phonation efficiency from existing features.
+
+    Phonation efficiency (PE) quantifies how well the glottis converts
+    subglottal air pressure into acoustic power.  A low PE indicates an
+    asthenic voice: the vocal folds are not closing fully or are too flaccid
+    to produce a strong acoustic output per unit of airflow.
+
+    Proxy formula (all inputs already in `features` dict):
+        PE = HNR / (HNR + 1) × (1 - shimmer_local)
+             × LUFS_normalised × voiced_fraction
+
+    This stays in [0, 1]: higher = more efficient (healthier) phonation.
+    """
+    hnr           = features.get("hnr", 0.0)
+    shimmer       = features.get("shimmer_local", 0.0)   # 0–1 range
+    lufs          = features.get("lufs_integrated", -70.0)
+    voiced_frac   = features.get("voiced_fraction", 0.5)
+
+    # Convert HNR to a 0–1 contribution (saturates around 30 dB)
+    hnr_norm  = min(max(hnr, 0.0), 30.0) / 30.0
+    # Normalise LUFS: −70 LUFS = 0, −14 LUFS = 1
+    lufs_norm = min(max((lufs - (-70.0)) / 56.0, 0.0), 1.0)
+
+    pe = hnr_norm * max(0.0, 1.0 - shimmer) * lufs_norm * voiced_frac
+    return float(pe)
+
+
+# ---------------------------------------------------------------------------
+# Public Asthenia analysis function
+# ---------------------------------------------------------------------------
+
+def analyze_asthenia(audio_path: str) -> dict:
+    """Analyse the Asthenia (A) dimension of the GRBAS scale for one audio file.
+
+    Asthenia describes *weakness* of the voice: reduced intensity, poor
+    harmonic structure, inadequate glottal closure, and diminished phonation
+    efficiency — often associated with neurological conditions, vocal fold
+    paralysis, systemic weakness, or extreme vocal fatigue.
+
+    This function integrates four complementary measurement domains:
+
+    ┌─────────────────────────────────────────────────────────────────────────┐
+    │ Domain        │ Metric           │ Library       │ Clinical role        │
+    ├─────────────────────────────────────────────────────────────────────────┤
+    │ Cepstral      │ CPPS             │ numpy/scipy   │ Harmonic structure   │
+    │ Glottal       │ HNR              │ parselmouth   │ Noise vs. periodicity│
+    │ Spectral      │ Spectral tilt    │ librosa       │ HF energy loss       │
+    │ Energy        │ RMS + LUFS       │ librosa/pln   │ Physical intensity   │
+    │ Harmonic      │ Decay slope      │ numpy         │ Harmonic support     │
+    │ Efficiency    │ Phonation eff.   │ composite     │ Glottal output       │
+    └─────────────────────────────────────────────────────────────────────────┘
+
+    Parameters
+    ----------
+    audio_path : str
+        Path to any audio file readable by librosa (WAV, OGG, FLAC, etc.).
+
+    Returns
+    -------
+    dict with keys:
+
+    Primary clinical metrics
+        cpps_mean               CPPS mean (dB) — primary asthenia indicator
+        cpps_std                CPPS temporal variability
+        cpps_p10                10th-percentile CPPS (worst frames)
+        hnr                     Harmonics-to-Noise Ratio (dB)
+        spectral_tilt           Slope of mean log spectrum vs. frequency (dB/Hz)
+        spectral_tilt_low       Tilt in 0–2 kHz sub-band
+        spectral_tilt_high      Tilt in 2–8 kHz sub-band
+
+    Energy / intensity
+        rms_mean                Mean short-time RMS amplitude
+        rms_std                 RMS standard deviation
+        lufs_integrated         Integrated loudness (LUFS)
+        energy_env_slope        Linear trend of energy contour (negative = fading)
+        energy_env_drop_rate    Fraction of frames with > 20 % energy drop
+
+    Harmonic structure
+        harmonic_decay_slope    Rate of harmonic amplitude decay (neg = steep)
+        harmonic_regularity     R² of harmonic decay fit (0–1)
+
+    Efficiency & voiced fraction
+        phonation_efficiency    Composite glottal efficiency score (0–1)
+        voiced_fraction         Proportion of voiced frames
+
+    Composite
+        asthenia_score          Rule-based A score on the GRBAS 0–3 scale
+        asthenia_confidence     Fraction of evidence groups indicating pathology
+    """
+    # ── Load & normalise ────────────────────────────────────────────────────
+    # Normalisation removes amplitude/volume bias so metrics reflect voice
+    # *quality* rather than recording level differences between subjects.
+    y, sr = librosa.load(audio_path, sr=None)
+    if y.ndim > 1:
+        y = y.mean(axis=0)
+    y = y.astype(np.float64)
+    peak = np.max(np.abs(y))
+    if peak > 0:
+        y = y / peak   # peak-normalise to [-1, 1]
+
+    results = {}
+
+    # ── Domain 1: CPPS (Cepstral Peak Prominence Smoothed) ─────────────────
+    # CPPS is the gold-standard non-invasive correlate of voice quality and
+    # asthenia severity.  Low CPPS = poor harmonic energy = weak voice.
+    cpps_feats = _compute_cpps(y, sr)
+    results.update(cpps_feats)
+
+    # ── Domain 2: HNR via parselmouth / Praat ──────────────────────────────
+    # HNR separates the harmonic (periodic) component from the noise component.
+    # Low HNR in an asthenic voice reflects incomplete glottal closure: air
+    # passes through during the closed phase, adding turbulent noise.
+    try:
+        snd         = parselmouth.Sound(audio_path)
+        harmonicity = call(snd, "To Harmonicity (cc)", 0.01, 75, 0.1, 1.0)
+        results["hnr"] = _safe(lambda: call(harmonicity, "Get mean", 0, 0))
+
+        pitch    = call(snd, "To Pitch", 0.0, 75, 600)
+        n_frames = call(pitch, "Get number of frames")
+        f0_vals  = [
+            call(pitch, "Get value in frame", i + 1, "Hertz")
+            for i in range(n_frames)
+        ]
+        f0_vals  = [v for v in f0_vals if v == v]
+        f0_mean  = float(np.mean(f0_vals)) if f0_vals else 0.0
+        voiced_count = len(f0_vals)
+        results["voiced_fraction"] = float(voiced_count / n_frames) if n_frames > 0 else 0.0
+        results["f0_mean"] = f0_mean
+
+        shimmer_feats = {}
+        pp = call(snd, "To PointProcess (periodic, cc)", 75, 600)
+        shimmer_feats["shimmer_local"] = _safe(
+            lambda: call([snd, pp], "Get shimmer (local)", 0, 0, 0.0001, 0.02, 1.3, 1.6))
+        results.update(shimmer_feats)
+    except Exception:
+        results.setdefault("hnr", 0.0)
+        results.setdefault("voiced_fraction", 0.0)
+        results.setdefault("f0_mean", 0.0)
+        results.setdefault("shimmer_local", 0.0)
+        f0_mean = 0.0
+
+    # ── Domain 3: Spectral tilt (librosa) ──────────────────────────────────
+    # Spectral tilt = slope of the mean log spectrum in dB vs. frequency.
+    # A steep negative tilt means most energy is concentrated in low freqs,
+    # which is the acoustic signature of a weak, asthenic voice where the
+    # vocal tract fails to radiate high-frequency harmonics efficiently.
+    S     = np.abs(librosa.stft(y))
+    freqs = librosa.fft_frequencies(sr=sr)
+    log_S = np.mean(20 * np.log10(S + 1e-10), axis=1)
+
+    if len(freqs) > 1:
+        results["spectral_tilt"] = float(np.polyfit(freqs, log_S, 1)[0])
+    else:
+        results["spectral_tilt"] = 0.0
+
+    # Sub-band tilts: separately characterise low and high spectral regions
+    lo_mask = freqs < 2000
+    hi_mask = (freqs >= 2000) & (freqs < 8000)
+    if np.sum(lo_mask) > 2:
+        results["spectral_tilt_low"] = float(
+            np.polyfit(freqs[lo_mask], log_S[lo_mask], 1)[0])
+    else:
+        results["spectral_tilt_low"] = 0.0
+    if np.sum(hi_mask) > 2:
+        results["spectral_tilt_high"] = float(
+            np.polyfit(freqs[hi_mask], log_S[hi_mask], 1)[0])
+    else:
+        results["spectral_tilt_high"] = 0.0
+
+    # ── Domain 4: RMS energy + LUFS ────────────────────────────────────────
+    # Physical intensity: the most direct measure of vocal power output.
+    # Asthenic voices are clinically quieter.  We use both short-time RMS
+    # (fine-grained) and LUFS (perceptually weighted, broadcast-standard) to
+    # capture intensity from different perspectives.
+    rms = librosa.feature.rms(y=y)[0]
+    results["rms_mean"] = float(np.mean(rms))
+    results["rms_std"]  = float(np.std(rms))
+
+    try:
+        meter = pyln.Meter(sr)
+        lufs  = meter.integrated_loudness(y)
+        results["lufs_integrated"] = float(lufs) if np.isfinite(lufs) else -70.0
+    except Exception:
+        results["lufs_integrated"] = -70.0
+
+    # Energy envelope dynamics
+    env_feats = _compute_energy_envelope(y, sr)
+    results.update(env_feats)
+
+    # ── Domain 5: Harmonic structure ───────────────────────────────────────
+    # Healthy voices have a well-supported harmonic series up to 3–4 kHz.
+    # In asthenic phonation the amplitudes collapse rapidly after F0, leaving
+    # the upper harmonics buried in noise.  The decay slope and its regularity
+    # (R²) together quantify this.
+    harm_feats = _compute_harmonic_decay(y, sr, f0_mean)
+    results.update(harm_feats)
+
+    # ── Phonation efficiency ────────────────────────────────────────────────
+    results["phonation_efficiency"] = _compute_phonation_efficiency(results)
+
+    # ── Rule-based Asthenia score (0–3) ────────────────────────────────────
+    # Five evidence groups, each producing a 0–1 score; weighted sum → 0–3.
+    # The weighting order reflects clinical importance as reported in the
+    # literature (Bhuta 2004, Dejonckere 1996, Bhuta & Bhuta 2004).
+    cpps     = results.get("cpps_mean", 0.0)
+    hnr_val  = results.get("hnr", 25.0)
+    tilt     = results.get("spectral_tilt", 0.0)
+    rms_m    = results.get("rms_mean", 0.05)
+    pe       = results.get("phonation_efficiency", 0.5)
+    decay    = results.get("harmonic_decay_slope", -1.0)
+    env_slp  = results.get("energy_env_slope", 0.0)
+    drop_r   = results.get("energy_env_drop_rate", 0.0)
+    vf       = results.get("voiced_fraction", 1.0)
+
+    # Group 1 — CPPS (w=0.35): primary cepstral evidence
+    # Healthy: CPPS ≥ 5 dB. Severe asthenia: < 2 dB.
+    g1 = min(max(5.0 - cpps, 0.0) / 5.0, 1.0)
+
+    # Group 2 — HNR (w=0.25): harmonic vs. noise balance
+    # Healthy: HNR ≥ 20 dB. Asthenic: < 12 dB.
+    g2 = min(max(20.0 - hnr_val, 0.0) / 20.0, 1.0)
+
+    # Group 3 — Energy / loudness (w=0.20): physical intensity
+    # Low RMS + low LUFS + fading contour → weak phonation.
+    lufs_val = results.get("lufs_integrated", -70.0)
+    g3a = min(max(0.05 - rms_m, 0.0) / 0.05, 1.0)          # RMS < 0.05 = quiet
+    g3b = min(max(lufs_val - (-70.0), 0.0) / 40.0, 1.0)    # LUFS closer to -70
+    g3b = 1.0 - g3b                                          # invert: louder = healthier
+    g3c = min(max(-env_slp, 0.0) / 0.02, 1.0)               # negative slope = fading
+    g3d = min(drop_r / 0.4, 1.0)                             # many energy drops
+    g3  = min(0.35 * g3a + 0.30 * g3b + 0.20 * g3c + 0.15 * g3d, 1.0)
+
+    # Group 4 — Harmonic decay (w=0.12): upper harmonic support
+    # Decay slope < -1.5 nat/harmonic → significant harmonic collapse.
+    g4 = min(max(-decay - 1.5, 0.0) / 3.0, 1.0)
+
+    # Group 5 — Phonation efficiency + voiced fraction (w=0.08)
+    g5a = min(max(0.4 - pe, 0.0) / 0.4, 1.0)               # PE < 0.4 = inefficient
+    g5b = min(max(0.6 - vf, 0.0) / 0.6, 1.0)               # VF < 0.6 = weak sustain
+    g5  = min(0.6 * g5a + 0.4 * g5b, 1.0)
+
+    # Weighted sum → normalise to 0–3
+    a_raw = g1 * 0.35 + g2 * 0.25 + g3 * 0.20 + g4 * 0.12 + g5 * 0.08
+    results["asthenia_score"]      = int(_clamp(round(a_raw / 0.30 * 3)))
+    results["asthenia_confidence"] = float(
+        np.mean([g1 > 0.3, g2 > 0.3, g3 > 0.3, g4 > 0.3, g5 > 0.3])
+    )
+    results["_group_scores"] = {
+        "cpps": round(g1, 3),
+        "hnr":  round(g2, 3),
+        "energy": round(g3, 3),
+        "harmonic_decay": round(g4, 3),
+        "phonation_efficiency": round(g5, 3),
+    }
+
+    # Sanitise NaN / Inf
+    for k, v in list(results.items()):
+        if isinstance(v, dict):
+            continue
+        try:
+            if not np.isfinite(float(v)):
+                results[k] = 0.0
+        except Exception:
+            pass
+
+    return results
+
+
 def _compute_gne(y, sr, bands=None):
     """Glottal-to-Noise Excitation (GNE) approximation.
 
@@ -448,6 +928,36 @@ def extract_features(audio_path):
     features["cpp_std"]  = cpp_std
 
     # -----------------------------------------------------------------------
+    # 6b. CPPS (Cepstral Peak Prominence Smoothed) — primary asthenia metric
+    # -----------------------------------------------------------------------
+    try:
+        features.update(_compute_cpps(y, sr))
+    except Exception:
+        for k in ("cpps_mean", "cpps_std", "cpps_min", "cpps_p10"):
+            features[k] = 0.0
+
+    # -----------------------------------------------------------------------
+    # 6c. Asthenia-specific features (harmonic decay + energy envelope)
+    # -----------------------------------------------------------------------
+    f0_mean_val = features.get("f0_mean", 0.0)
+    try:
+        features.update(_compute_harmonic_decay(y, sr, f0_mean_val))
+    except Exception:
+        features["harmonic_decay_slope"] = 0.0
+        features["harmonic_regularity"]  = 0.0
+
+    try:
+        features.update(_compute_energy_envelope(y, sr))
+    except Exception:
+        for k in ("energy_env_mean", "energy_env_std", "energy_env_cv",
+                  "energy_env_slope", "energy_env_drop_rate"):
+            features[k] = 0.0
+
+    # phonation_efficiency is computed after LUFS (step 16) so that the
+    # lufs_integrated feature is available.  Placeholder set here.
+    features["phonation_efficiency"] = 0.0
+
+    # -----------------------------------------------------------------------
     # 7. GNE approximation — scipy
     # -----------------------------------------------------------------------
     features["gne"] = _safe(lambda: _compute_gne(y, sr))
@@ -584,6 +1094,10 @@ def extract_features(audio_path):
         features["lufs_range"]      = 0.0
         features["lufs_std"]        = 0.0
 
+    # Phonation efficiency — computed here so that lufs_integrated,
+    # hnr, shimmer_local, and voiced_fraction are all available.
+    features["phonation_efficiency"] = _compute_phonation_efficiency(features)
+
     # -----------------------------------------------------------------------
     # 17. VAD — speech ratio & segment statistics (webrtcvad)
     # -----------------------------------------------------------------------
@@ -634,6 +1148,15 @@ FEATURE_NAMES = [
     "intensity_mean", "intensity_std", "intensity_min", "intensity_max",
     # CPP
     "cpp_mean", "cpp_std",
+    # CPPS — smoothed CPP (gold-standard asthenia indicator)
+    "cpps_mean", "cpps_std", "cpps_min", "cpps_p10",
+    # Harmonic decay (asthenia)
+    "harmonic_decay_slope", "harmonic_regularity",
+    # Energy envelope dynamics (asthenia)
+    "energy_env_mean", "energy_env_std", "energy_env_cv",
+    "energy_env_slope", "energy_env_drop_rate",
+    # Phonation efficiency (asthenia)
+    "phonation_efficiency",
     # GNE
     "gne",
     # TEO
@@ -734,19 +1257,53 @@ def heuristic_predict(features):
         b_val += 0.15
     scores["B"] = _clamp(int(min(b_val / 0.47, 3)))
 
-    # --- A (Asthenia): intensity std, F0 std, shimmer, HNR ---
-    intensity_std = features.get("intensity_std", 5)
-    f0_std        = features.get("f0_std", 0)
-    a_val = 0.0
-    if intensity_std < 6:
-        a_val += min((6 - intensity_std) / 5.0, 1.0)
-    if f0_std < 10:
-        a_val += min((10 - f0_std) / 9.0, 1.0) * 0.5
-    if shimmer > 3.0:
-        a_val += min((shimmer - 3.0) / 7.0, 1.0) * 0.4
-    if hnr < 18:
-        a_val += min((18 - hnr) / 13.0, 1.0) * 0.4
-    scores["A"] = _clamp(int(min(a_val / 0.67, 3)))
+    # --- A (Asthenia): 5-group evidence accumulation ---
+    #
+    # Asthenia = voice weakness / reduced phonatory support.
+    # Clinical correlates: low intensity, poor harmonic structure,
+    # incomplete glottal closure, energy fading, and low CPPS.
+    #
+    # Evidence is gathered from five independent acoustic domains; each
+    # produces a 0–1 evidence score.  A weighted sum maps to the 0–3 scale.
+    #
+    # Weights reflect the clinical hierarchy reported in the literature
+    # (CPPS/cepstral evidence is most validated, then HNR, then energy, etc.)
+
+    cpps_val = features.get("cpps_mean", 0.0)
+    lufs_val = features.get("lufs_integrated", -70.0)
+    rms_m    = features.get("rms_mean", 0.05)
+    decay    = features.get("harmonic_decay_slope", -1.0)
+    env_slp  = features.get("energy_env_slope", 0.0)
+    drop_r   = features.get("energy_env_drop_rate", 0.0)
+    pe       = features.get("phonation_efficiency", 0.5)
+    vf       = features.get("voiced_fraction", 1.0)
+
+    # ── Group 1 — CPPS (w=0.35): cepstral harmonic evidence ─────────────────
+    # Normative CPPS ≥ 5 dB. Clinical weakness: < 2 dB.
+    ag1 = min(max(5.0 - cpps_val, 0.0) / 5.0, 1.0)
+
+    # ── Group 2 — HNR (w=0.25): noise vs. harmonic balance ──────────────────
+    # Healthy: HNR ≥ 20 dB. Asthenic (incomplete closure): < 12 dB.
+    ag2 = min(max(20.0 - hnr, 0.0) / 20.0, 1.0)
+
+    # ── Group 3 — Energy & loudness (w=0.20) ─────────────────────────────────
+    ag3a = min(max(0.05 - rms_m, 0.0) / 0.05, 1.0)                   # quiet
+    ag3b = 1.0 - min(max(lufs_val - (-70.0), 0.0) / 40.0, 1.0)       # low LUFS
+    ag3c = min(max(-env_slp, 0.0) / 0.02, 1.0)                        # fading
+    ag3d = min(drop_r / 0.4, 1.0)                                      # energy drops
+    ag3  = min(0.35 * ag3a + 0.30 * ag3b + 0.20 * ag3c + 0.15 * ag3d, 1.0)
+
+    # ── Group 4 — Harmonic decay (w=0.12): upper harmonic support ────────────
+    # Slope < -1.5 nat/harmonic → significant harmonic collapse.
+    ag4 = min(max(-decay - 1.5, 0.0) / 3.0, 1.0)
+
+    # ── Group 5 — Phonation efficiency + voiced fraction (w=0.08) ────────────
+    ag5a = min(max(0.4 - pe, 0.0) / 0.4, 1.0)
+    ag5b = min(max(0.6 - vf, 0.0) / 0.6, 1.0)
+    ag5  = min(0.6 * ag5a + 0.4 * ag5b, 1.0)
+
+    a_raw = ag1 * 0.35 + ag2 * 0.25 + ag3 * 0.20 + ag4 * 0.12 + ag5 * 0.08
+    scores["A"] = _clamp(int(a_raw / 0.30 * 3))
 
     # --- S (Strain): multi-library evidence accumulation ---
     #

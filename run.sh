@@ -2,7 +2,7 @@
 # Start the Voice Training App
 
 APP_DIR="$(cd "$(dirname "$0")/root/voice_app" && pwd)"
-VENV="$(cd "$(dirname "$0")/venv" && pwd)"
+VENV="$(cd "$(dirname "$0")/root/voice_app/venv" && pwd)"
 PYTHON="$VENV/bin/python"
 
 # Kill any existing instance on port 5000

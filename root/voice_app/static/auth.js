@@ -1,119 +1,158 @@
-// Firebase Auth - handles login, register, logout, and token management
+/**
+ * auth.js – Custom JWT authentication layer (replaces Firebase Auth).
+ *
+ * The JWT returned by the server is stored in localStorage under "jwt_token".
+ * Every authenticated API call adds an  Authorization: Bearer <token>  header.
+ *
+ * Security notes:
+ *  - Passwords are transmitted over HTTPS (enforce at the server/proxy level).
+ *  - The token is stored in localStorage; for highest security, consider
+ *    httpOnly cookies, but localStorage is acceptable for this use-case.
+ *  - Tokens expire after 24 h; the user must log in again to get a fresh one.
+ */
 
-firebase.initializeApp(firebaseConfig);
-const fbAuth = firebase.auth();
+"use strict";
 
-let currentUser = null;
-let idToken = null;
-let _tokenRefreshInterval = null;
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
 
-// DOM refs (created by index.html / admin.html)
-const authForms = document.getElementById("auth-forms");
-const authEmail = document.getElementById("auth-email");
+let _token = localStorage.getItem("jwt_token") || null;
+let _currentUser = null;   // { email, role }
+
+// ---------------------------------------------------------------------------
+// DOM references (declared as `let` so pages without these elements don't crash)
+// ---------------------------------------------------------------------------
+
+const authForms   = document.getElementById("auth-forms");
+const authEmail   = document.getElementById("auth-email");
 const authPassword = document.getElementById("auth-password");
-const loginBtn = document.getElementById("login-btn");
+const loginBtn    = document.getElementById("login-btn");
 const registerBtn = document.getElementById("register-btn");
-const authError = document.getElementById("auth-error");
-const userBar = document.getElementById("user-bar");
+const authError   = document.getElementById("auth-error");
+const userBar     = document.getElementById("user-bar");
 const userEmailEl = document.getElementById("user-email");
-const logoutBtn = document.getElementById("logout-btn");
-const adminLink = document.getElementById("admin-link");
+const logoutBtn   = document.getElementById("logout-btn");
+const adminLink   = document.getElementById("admin-link");
 
-// Auth state listener
-fbAuth.onAuthStateChanged(async (user) => {
-    currentUser = user;
-    if (user) {
-        idToken = await user.getIdToken();
+// ---------------------------------------------------------------------------
+// Public helpers
+// ---------------------------------------------------------------------------
 
-        // Refresh token every 50 minutes (expires at 60)
-        if (_tokenRefreshInterval) clearInterval(_tokenRefreshInterval);
-        _tokenRefreshInterval = setInterval(async () => {
-            idToken = await user.getIdToken(true);
-        }, 50 * 60 * 1000);
+/**
+ * Return Authorization headers for fetch calls.
+ * If the user is not authenticated, returns an empty object.
+ */
+function getAuthHeaders() {
+    if (!_token) return {};
+    return { "Authorization": "Bearer " + _token };
+}
 
-        showLoggedInUI(user.email);
-        createOrUpdateProfile();
-        checkAdminStatus();
+// ---------------------------------------------------------------------------
+// Core auth actions
+// ---------------------------------------------------------------------------
 
-        // Hook for page-specific logic
-        if (typeof onAuthReady === "function") onAuthReady(user);
-    } else {
-        idToken = null;
-        if (_tokenRefreshInterval) clearInterval(_tokenRefreshInterval);
-        showLoggedOutUI();
-
-        if (typeof onAuthSignedOut === "function") onAuthSignedOut();
-    }
-});
-
-// Register
+/** POST /api/auth/register and log in on success. */
 async function register() {
-    const email = authEmail.value.trim();
-    const password = authPassword.value;
+    const email    = (authEmail?.value || "").trim();
+    const password = authPassword?.value || "";
+
     if (!email || !password) return showAuthError("Enter email and password.");
-    if (password.length < 6) return showAuthError("Password must be at least 6 characters.");
+    if (password.length < 8)  return showAuthError("Password must be at least 8 characters.");
 
     try {
-        await fbAuth.createUserWithEmailAndPassword(email, password);
-        showAuthError("");
-    } catch (err) {
-        showAuthError(err.message);
-    }
-}
-
-// Login
-async function login() {
-    const email = authEmail.value.trim();
-    const password = authPassword.value;
-    if (!email || !password) return showAuthError("Enter email and password.");
-
-    try {
-        await fbAuth.signInWithEmailAndPassword(email, password);
-        showAuthError("");
-    } catch (err) {
-        showAuthError(err.message);
-    }
-}
-
-// Logout
-async function logout() {
-    await fbAuth.signOut();
-}
-
-// Create or update user profile in Firestore via backend
-async function createOrUpdateProfile() {
-    try {
-        await fetch("/api/user/profile", {
+        const resp = await fetch("/api/auth/register", {
             method: "POST",
-            headers: getAuthHeaders(),
-        });
-    } catch (err) {
-        console.warn("Profile update failed:", err);
-    }
-}
-
-// Check if current user is admin
-async function checkAdminStatus() {
-    try {
-        const resp = await fetch("/api/user/role", {
-            headers: getAuthHeaders(),
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
         });
         const data = await resp.json();
-        if (data.role === "admin" && adminLink) {
-            adminLink.hidden = false;
-        }
+
+        if (!resp.ok) return showAuthError(data.error || "Registration failed.");
+
+        _saveSession(data);
+        showAuthError("");
     } catch (err) {
-        console.warn("Admin check failed:", err);
+        showAuthError("Network error: " + err.message);
     }
 }
 
-// Returns auth headers for fetch calls
-function getAuthHeaders() {
-    if (!idToken) return {};
-    return { "Authorization": "Bearer " + idToken };
+/** POST /api/auth/login and store the returned JWT. */
+async function login() {
+    const email    = (authEmail?.value || "").trim();
+    const password = authPassword?.value || "";
+
+    if (!email || !password) return showAuthError("Enter email and password.");
+
+    try {
+        const resp = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+        });
+        const data = await resp.json();
+
+        if (!resp.ok) return showAuthError(data.error || "Login failed.");
+
+        _saveSession(data);
+        showAuthError("");
+    } catch (err) {
+        showAuthError("Network error: " + err.message);
+    }
 }
 
+/** Clear the stored token and update the UI. */
+function logout() {
+    _token = null;
+    _currentUser = null;
+    localStorage.removeItem("jwt_token");
+    localStorage.removeItem("jwt_user");
+    showLoggedOutUI();
+    if (typeof onAuthSignedOut === "function") onAuthSignedOut();
+}
+
+// ---------------------------------------------------------------------------
+// Session persistence
+// ---------------------------------------------------------------------------
+
+/** Persist token + user info and trigger the authenticated UI. */
+function _saveSession(data) {
+    _token = data.token;
+    _currentUser = { email: data.email, role: data.role };
+    localStorage.setItem("jwt_token", _token);
+    localStorage.setItem("jwt_user", JSON.stringify(_currentUser));
+    _applyAuthState();
+}
+
+/** Restore session from localStorage on page load (no round-trip needed). */
+function _restoreSession() {
+    const stored = localStorage.getItem("jwt_user");
+    if (_token && stored) {
+        try {
+            _currentUser = JSON.parse(stored);
+            _applyAuthState();
+        } catch (_) {
+            logout();
+        }
+    } else {
+        showLoggedOutUI();
+    }
+}
+
+/** Update UI and call page-specific hook. */
+function _applyAuthState() {
+    if (!_currentUser) { showLoggedOutUI(); return; }
+    showLoggedInUI(_currentUser.email);
+    if (_currentUser.role === "admin" && adminLink) {
+        adminLink.hidden = false;
+    }
+    if (typeof onAuthReady === "function") onAuthReady(_currentUser);
+}
+
+// ---------------------------------------------------------------------------
 // UI helpers
+// ---------------------------------------------------------------------------
+
 function showLoggedInUI(email) {
     if (authForms) authForms.hidden = true;
     if (userBar) {
@@ -132,14 +171,23 @@ function showAuthError(msg) {
     if (authError) authError.textContent = msg;
 }
 
+// ---------------------------------------------------------------------------
 // Event listeners
-if (loginBtn) loginBtn.addEventListener("click", login);
-if (registerBtn) registerBtn.addEventListener("click", register);
-if (logoutBtn) logoutBtn.addEventListener("click", logout);
+// ---------------------------------------------------------------------------
 
-// Allow Enter key to submit
+if (loginBtn)    loginBtn.addEventListener("click", login);
+if (registerBtn) registerBtn.addEventListener("click", register);
+if (logoutBtn)   logoutBtn.addEventListener("click", logout);
+
+// Allow Enter key to submit.
 if (authPassword) {
     authPassword.addEventListener("keydown", (e) => {
         if (e.key === "Enter") login();
     });
 }
+
+// ---------------------------------------------------------------------------
+// Bootstrap – restore session on page load
+// ---------------------------------------------------------------------------
+
+_restoreSession();

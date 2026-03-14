@@ -1,148 +1,228 @@
-"""Firebase Auth middleware for Flask.
+"""JWT + bcrypt authentication middleware for Flask.
 
-This module verifies Firebase ID tokens (from the web client) and provides
-a Firestore client for the rest of the backend.
+Security design
+---------------
+- Passwords are hashed with bcrypt (cost factor 12).  The hash is never
+  stored in plain text and is never returned in API responses.
+- JWTs are signed with HMAC-SHA256 (HS256) using a secret loaded from the
+  JWT_SECRET_KEY environment variable.  Set this to a strong random value in
+  production (e.g. `openssl rand -hex 32`).
+- The token payload includes `exp` (expiry) and `iat` (issued-at) claims,
+  both verified on every request by PyJWT.
+- Admin access is always double-checked against the live database `role`
+  column, so a compromised or replayed token with a forged `role` field
+  cannot escalate privileges.
+- All significant actions are written to the ActivityLog table by callers
+  via the `log_activity` helper, providing a full audit trail.
 """
 
-import os
 import functools
+import json
+import os
+from datetime import datetime, timedelta, timezone
+from typing import Optional
 
-import firebase_admin
-from firebase_admin import auth, credentials, firestore
-from flask import request, jsonify
+import bcrypt
+import jwt
+from flask import g, jsonify, request
+from sqlalchemy.orm import Session
 
-_firebase_init_error = None
+from database import ActivityLog, SessionLocal, User
+
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
+
+# Load from environment.  The placeholder default lets the app start in
+# development but should NEVER be used in production.
+JWT_SECRET: str = os.environ.get("JWT_SECRET_KEY", "CHANGE_ME_IN_PRODUCTION_USE_ENV_VAR!!")
+JWT_ALGORITHM: str = "HS256"
+JWT_EXPIRY_HOURS: int = 24
+
+# ---------------------------------------------------------------------------
+# Password helpers
+# ---------------------------------------------------------------------------
 
 
-def _init_firebase_admin():
-    """Initialize Firebase Admin SDK once.
+def hash_password(plain: str) -> str:
+    """Return a bcrypt hash of *plain*.
 
-    Keeps the Flask app importable even when credentials are missing.
+    Cost factor 12 ≈ 300 ms on a modern CPU, making brute-force attacks
+    expensive while still being acceptable for interactive login.
     """
-    global _firebase_init_error
-    if _firebase_init_error is not None:
-        return
-
-    # Avoid crashing in debug reloader / multiple imports.
-    if firebase_admin._apps:
-        return
-
-    cred_path = os.path.join(os.path.dirname(__file__), "service-account-key.json")
-    try:
-        if os.path.exists(cred_path):
-            cred = credentials.Certificate(cred_path)
-            firebase_admin.initialize_app(cred)
-        else:
-            # Fall back to GOOGLE_APPLICATION_CREDENTIALS env var or default credentials
-            firebase_admin.initialize_app()
-    except Exception as e:
-        _firebase_init_error = e
+    return bcrypt.hashpw(plain.encode("utf-8"), bcrypt.gensalt(rounds=12)).decode()
 
 
-_init_firebase_admin()
-
-try:
-    db = firestore.client() if _firebase_init_error is None else None
-except Exception as e:
-    _firebase_init_error = e
-    db = None
+def verify_password(plain: str, hashed: str) -> bool:
+    """Return True if *plain* matches the bcrypt *hashed* value."""
+    return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
 
 
-def _ensure_firebase_ready():
-    """Return a Flask response if Firebase isn't configured, else None."""
-    if _firebase_init_error is None:
-        return None
-    return (
-        jsonify({
-            "error": "Firebase Admin SDK not configured",
-            "details": str(_firebase_init_error),
-        }),
-        500,
+# ---------------------------------------------------------------------------
+# JWT helpers
+# ---------------------------------------------------------------------------
+
+
+def create_token(user: User) -> str:
+    """Return a signed JWT for *user* that expires in JWT_EXPIRY_HOURS."""
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": str(user.id),  # JWT spec requires sub to be a string
+        "email": user.email,
+        "role": user.role,
+        "iat": now,
+        "exp": now + timedelta(hours=JWT_EXPIRY_HOURS),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def decode_token(token: str) -> dict:
+    """Decode and verify a JWT.  Raises jwt.PyJWTError on any failure."""
+    return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+
+
+# ---------------------------------------------------------------------------
+# Activity logging
+# ---------------------------------------------------------------------------
+
+
+def log_activity(
+    db: Session,
+    action: str,
+    user_id: Optional[int] = None,
+    details: Optional[dict] = None,
+    resource: Optional[str] = None,
+) -> None:
+    """Persist an ActivityLog entry for the current request.
+
+    Parameters
+    ----------
+    db:       SQLAlchemy session (caller-owned; this function commits it).
+    action:   Short verb describing the event, e.g. 'login', 'analyze'.
+    user_id:  Database PK of the acting user, or None for anonymous events.
+    details:  Optional dict with extra context (serialised to JSON).
+    resource: Optional string identifying what was accessed/modified.
+    """
+    entry = ActivityLog(
+        user_id=user_id,
+        action=action,
+        details=json.dumps(details) if details else None,
+        ip_address=request.remote_addr,
+        resource=resource,
+        timestamp=datetime.utcnow(),
     )
+    db.add(entry)
+    db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+
+def _extract_bearer() -> Optional[str]:
+    """Return the raw Bearer token from the Authorization header, or None."""
+    header = request.headers.get("Authorization", "")
+    if header.startswith("Bearer "):
+        return header.split("Bearer ", 1)[1].strip()
+    return None
+
+
+def _load_user(token: str) -> Optional[User]:
+    """Decode *token* and return the matching active User, or None."""
+    try:
+        payload = decode_token(token)
+        db = SessionLocal()
+        try:
+            return (
+                db.query(User)
+                .filter(User.id == int(payload["sub"]), User.is_active == True)  # noqa: E712
+                .first()
+            )
+        finally:
+            db.close()
+    except Exception:
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Route decorators
+# ---------------------------------------------------------------------------
 
 
 def verify_token(f):
-    """Decorator: requires a valid Firebase ID token.
+    """Require a valid JWT.
 
-    Sets request.uid and request.firebase_user on success.
-    Returns 401 if token is missing or invalid.
+    On success, sets ``g.user`` (User ORM object) and ``g.db`` (Session).
+    Returns 401 if the token is missing, expired, or invalid.
     """
+
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
-        not_ready = _ensure_firebase_ready()
-        if not_ready is not None:
-            return not_ready
-
-        auth_header = request.headers.get("Authorization", "")
-        if not auth_header.startswith("Bearer "):
+        token = _extract_bearer()
+        if not token:
             return jsonify({"error": "Missing auth token"}), 401
 
-        token = auth_header.split("Bearer ", 1)[1]
-        try:
-            decoded = auth.verify_id_token(token)
-            request.uid = decoded["uid"]
-            request.firebase_user = decoded
-        except Exception:
+        user = _load_user(token)
+        if user is None:
             return jsonify({"error": "Invalid or expired token"}), 401
 
-        return f(*args, **kwargs)
+        g.user = user
+        g.db = SessionLocal()
+        try:
+            return f(*args, **kwargs)
+        finally:
+            g.db.close()
+
     return wrapper
 
 
 def optional_token(f):
-    """Decorator: verifies token if present, but does not require it.
+    """Accept a JWT when present; set ``g.user = None`` if absent or invalid."""
 
-    Sets request.uid to the UID if authenticated, or None if not.
-    """
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
-        request.uid = None
-        request.firebase_user = None
+        g.user = None
+        token = _extract_bearer()
+        if token:
+            g.user = _load_user(token)
 
-        not_ready = _ensure_firebase_ready()
-        if not_ready is not None:
+        g.db = SessionLocal()
+        try:
             return f(*args, **kwargs)
+        finally:
+            g.db.close()
 
-        auth_header = request.headers.get("Authorization", "")
-        if auth_header.startswith("Bearer "):
-            token = auth_header.split("Bearer ", 1)[1]
-            try:
-                decoded = auth.verify_id_token(token)
-                request.uid = decoded["uid"]
-                request.firebase_user = decoded
-            except Exception:
-                pass
-
-        return f(*args, **kwargs)
     return wrapper
 
 
 def require_admin(f):
-    """Decorator: requires valid token AND admin role in Firestore."""
+    """Require a valid JWT **and** the 'admin' role verified against the DB.
+
+    Re-fetching the role from the database on every request means that a
+    demoted admin cannot retain access by replaying an older, still-valid
+    token whose payload claims ``role='admin'``.
+    """
+
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
-        not_ready = _ensure_firebase_ready()
-        if not_ready is not None:
-            return not_ready
-
-        auth_header = request.headers.get("Authorization", "")
-        if not auth_header.startswith("Bearer "):
+        token = _extract_bearer()
+        if not token:
             return jsonify({"error": "Missing auth token"}), 401
 
-        token = auth_header.split("Bearer ", 1)[1]
-        try:
-            decoded = auth.verify_id_token(token)
-            request.uid = decoded["uid"]
-            request.firebase_user = decoded
-        except Exception:
+        user = _load_user(token)
+        if user is None:
             return jsonify({"error": "Invalid or expired token"}), 401
 
-        if db is None:
-            return jsonify({"error": "Firestore not available"}), 500
-
-        user_doc = db.collection("users").document(request.uid).get()
-        if not user_doc.exists or user_doc.to_dict().get("role") != "admin":
+        # Role is taken from the live database row, not from the JWT payload.
+        if user.role != "admin":
             return jsonify({"error": "Admin access required"}), 403
 
-        return f(*args, **kwargs)
+        g.user = user
+        g.db = SessionLocal()
+        try:
+            return f(*args, **kwargs)
+        finally:
+            g.db.close()
+
     return wrapper
