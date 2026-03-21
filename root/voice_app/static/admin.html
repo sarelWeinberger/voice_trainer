@@ -16,14 +16,14 @@
         <!-- Auth Bar -->
         <div id="auth-bar" class="panel auth-bar">
             <div id="auth-forms" class="auth-forms">
-                <input type="email" id="auth-email" placeholder="Email" class="auth-input" />
+                <input type="text" id="auth-username" placeholder="Username" class="auth-input" />
                 <input type="password" id="auth-password" placeholder="Password" class="auth-input" />
                 <button id="login-btn" class="secondary-btn">Log In</button>
                 <button id="register-btn" class="secondary-btn">Register</button>
                 <span id="auth-error" class="auth-error"></span>
             </div>
             <div id="user-bar" class="user-bar" hidden>
-                <span id="user-email" class="user-email"></span>
+                <span id="user-name" class="user-email"></span>
                 <button id="logout-btn" class="secondary-btn">Log Out</button>
                 <a href="/" class="secondary-btn">Back to App</a>
                 <a href="/admin" id="admin-link" class="secondary-btn" hidden>Admin Dashboard</a>
@@ -36,65 +36,27 @@
             <a href="/" class="secondary-btn">Back to App</a>
         </section>
 
-        <!-- Admin Tabs -->
+        <!-- Admin Content -->
         <section class="panel" id="admin-content" hidden>
-            <div class="tab-bar">
-                <button class="tab-btn active" data-tab="users">Users</button>
-                <button class="tab-btn" data-tab="activity">Activity Log</button>
-            </div>
-
-            <!-- Users Tab -->
-            <div id="tab-users" class="tab-panel">
-                <h2>All Users</h2>
-                <div class="table-wrapper">
-                    <table class="admin-table" id="users-table">
-                        <thead>
-                            <tr>
-                                <th>Email</th>
-                                <th>Role</th>
-                                <th>Registered</th>
-                                <th>Last Login</th>
-                                <th>G</th>
-                                <th>R</th>
-                                <th>B</th>
-                                <th>A</th>
-                                <th>S</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="users-tbody"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Activity Log Tab -->
-            <div id="tab-activity" class="tab-panel" hidden>
-                <h2>Activity Log</h2>
-                <div class="activity-filters">
-                    <input type="number" id="activity-user-filter" placeholder="Filter by User ID" class="auth-input" style="width:200px" />
-                    <button class="secondary-btn" id="activity-filter-btn">Apply</button>
-                    <button class="secondary-btn" id="activity-clear-btn">Clear Filter</button>
-                </div>
-                <div class="table-wrapper">
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Timestamp</th>
-                                <th>User</th>
-                                <th>Action</th>
-                                <th>Resource</th>
-                                <th>IP</th>
-                                <th>Details</th>
-                            </tr>
-                        </thead>
-                        <tbody id="activity-tbody"></tbody>
-                    </table>
-                </div>
-                <div class="activity-pagination">
-                    <button class="secondary-btn" id="activity-prev-btn" disabled>Previous</button>
-                    <span id="activity-page-info">Page 1</span>
-                    <button class="secondary-btn" id="activity-next-btn">Next</button>
-                </div>
+            <h2>All Users</h2>
+            <div class="table-wrapper">
+                <table class="admin-table" id="users-table">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Full Name</th>
+                            <th>Role</th>
+                            <th>Registered</th>
+                            <th>G</th>
+                            <th>R</th>
+                            <th>B</th>
+                            <th>A</th>
+                            <th>S</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-tbody"></tbody>
+                </table>
             </div>
         </section>
 
@@ -106,7 +68,6 @@
         </section>
     </main>
 
-    <!-- No Firebase SDK – auth is handled by our own JWT layer in auth.js -->
     <script src="auth.js"></script>
     <script src="admin.js"></script>
 </body>

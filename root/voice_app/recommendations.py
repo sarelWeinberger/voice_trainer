@@ -1,4 +1,4 @@
-"""YouTube practice recommendations based on GRBAS scores."""
+"""YouTube practice recommendations based on GRBAS scores and neck effort."""
 
 from dataclasses import dataclass, asdict
 from typing import Dict, List, Tuple
@@ -117,6 +117,11 @@ FIXED_RESOURCES: Dict[str, List[Resource]] = {
         Resource("קורס 3", "צוואר", 137, yt_time_url(COURSE_3_BASE_URL, 137), "שחרור מאמץ צווארי"),
         Resource("קורס 3", "תרגילים לסוף יום עבודה", 648, yt_time_url(COURSE_3_BASE_URL, 648), "הרפיה והורדת עומס"),
     ],
+    "N": [
+        Resource("קורס 1", "יציבה - תרגיל מטאטא", 486, yt_time_url(COURSE_1_BASE_URL, 486), "ארגון הראש והצוואר והפחתת מאמץ"),
+        Resource("קורס 2", "יציבה - כתפיים", 115, yt_time_url(COURSE_2_BASE_URL, 115), "שחרור חגורת הכתפיים והורדת עומס מהצוואר"),
+        Resource("קורס 3", "צוואר", 137, yt_time_url(COURSE_3_BASE_URL, 137), "שחרור מאמץ צווארי ישיר"),
+    ],
 }
 
 
@@ -148,6 +153,32 @@ def recommend_by_grbas(
             )
         )
         rank += 1
+
+    return recommendations
+
+
+def recommend_with_context(
+    scores: Dict[str, int],
+    neck_effort: Dict | None = None,
+    include_only_bad_scores: bool = True,
+) -> List[Recommendation]:
+    recommendations = recommend_by_grbas(scores, include_only_bad_scores=include_only_bad_scores)
+    rank = len(recommendations) + 1
+
+    if neck_effort:
+        neck_score = neck_effort.get("score")
+        neck_confidence = float(neck_effort.get("confidence") or 0.0)
+        neck_calibrated = bool(neck_effort.get("calibrated"))
+
+        if isinstance(neck_score, int) and neck_score >= 1 and neck_confidence >= 0.45 and neck_calibrated:
+            recommendations.append(
+                Recommendation(
+                    measure="N",
+                    score=neck_score,
+                    priority_rank=rank,
+                    resources=FIXED_RESOURCES["N"],
+                )
+            )
 
     return recommendations
 

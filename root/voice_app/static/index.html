@@ -14,21 +14,31 @@
 
     <main>
         <!-- Auth Bar -->
-        <div id="auth-bar" class="panel auth-bar">
+        <div id="auth-bar" class="panel auth-bar" style="margin-bottom:1.5rem">
             <div id="auth-forms" class="auth-forms">
-                <input type="email" id="auth-email" placeholder="Email" class="auth-input" />
-                <input type="password" id="auth-password" placeholder="Password (8+ chars)" class="auth-input" />
+                <input type="text" id="auth-username" placeholder="Username" class="auth-input" />
+                <div class="password-wrapper">
+                    <input type="password" id="auth-password" placeholder="Password (8+ chars)" class="auth-input" />
+                    <button type="button" id="toggle-password-btn" class="toggle-password-btn" title="Show password">👁</button>
+                </div>
                 <button id="login-btn" class="secondary-btn">Log In</button>
                 <button id="register-btn" class="secondary-btn">Register</button>
                 <span id="auth-error" class="auth-error"></span>
             </div>
             <div id="user-bar" class="user-bar" hidden>
-                <span id="user-email" class="user-email"></span>
+                <span id="user-name" class="user-email"></span>
                 <button id="logout-btn" class="secondary-btn">Log Out</button>
                 <a href="/admin" id="admin-link" class="secondary-btn" hidden>Admin Dashboard</a>
             </div>
         </div>
 
+        <!-- Login required message -->
+        <div id="login-required" class="panel" style="text-align:center;padding:3rem 1rem">
+            <h2>&#128274; Login Required</h2>
+            <p style="color:#94a3b8;margin-top:.5rem">Please log in or register above to use the voice analysis tool.</p>
+        </div>
+
+        <div id="app-content" style="display:none">
         <div class="grid">
             <!-- Camera / Face Mesh Panel -->
             <section class="panel camera-panel">
@@ -36,6 +46,20 @@
                 <div class="video-container">
                     <video id="video" autoplay playsinline muted></video>
                     <canvas id="face-canvas"></canvas>
+                    <div id="neck-effort-widget" class="neck-effort-widget">
+                        <div class="neck-effort-header">
+                            <span>Neck Effort</span>
+                            <span id="neck-effort-mode" class="neck-effort-mode">Waiting</span>
+                        </div>
+                        <div class="neck-effort-main">
+                            <span id="neck-effort-score" class="neck-effort-score">--</span>
+                            <div class="neck-effort-meta">
+                                <div id="neck-effort-label" class="neck-effort-label">Camera not started</div>
+                                <div id="neck-effort-confidence" class="neck-effort-confidence">Confidence: --</div>
+                            </div>
+                        </div>
+                        <div id="neck-effort-reasons" class="neck-effort-reasons">Align your head, neck, and shoulders in frame.</div>
+                    </div>
                     <div id="face-metrics" class="face-metrics"></div>
                 </div>
             </section>
@@ -55,6 +79,17 @@
             <!-- GRBAS Results Panel -->
             <section class="panel results-panel" id="results-panel" hidden>
                 <h2>GRBAS Scores</h2>
+                <div id="combined-summary" class="combined-summary" hidden>
+                    <div class="combined-summary-header">
+                        <div>
+                            <p class="combined-summary-kicker">Integrated Summary</p>
+                            <h3 id="combined-summary-title" class="combined-summary-title">Waiting for analysis</h3>
+                        </div>
+                        <span id="combined-summary-badge" class="combined-summary-badge">--</span>
+                    </div>
+                    <p id="combined-summary-text" class="combined-summary-text"></p>
+                    <div id="combined-summary-metrics" class="combined-summary-metrics"></div>
+                </div>
                 <div class="results-grid">
                     <div class="radar-container">
                         <canvas id="radar-chart" width="440" height="440"></canvas>
@@ -86,6 +121,7 @@
             </div>
             <button id="clear-history-btn" class="secondary-btn" hidden>Clear History</button>
         </section>
+        </div><!-- /app-content -->
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>

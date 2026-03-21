@@ -1,33 +1,43 @@
-"""Flask backend for Voice Training App with GRBAS analysis.
+"""FastAPI backend for Voice Training App with GRBAS analysis.
 
-Authentication is handled by JWT tokens (see auth_middleware.py).
+Authentication is handled via JWT tokens with OAuth2 password flow.
 Data is stored in SQLite via SQLAlchemy (see database.py).
 """
 
 import json
 import os
 import tempfile
-from datetime import datetime
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
 
+import cv2
 import numpy as np
-from flask import Flask, g, jsonify, request, send_from_directory
-from flask_cors import CORS
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Request
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+from passlib.context import CryptContext
+from jose import JWTError, jwt
 
-from auth_middleware import (
-    create_token,
-    hash_password,
-    log_activity,
-    optional_token,
-    require_admin,
-    verify_password,
-    verify_token,
-)
-from database import ActivityLog, Analysis, SessionLocal, User, init_db
+from database import SessionLocal, User, Result, init_db
 from grbas_model import GRBASClassifier, extract_features
-from recommendations import recommend_by_grbas, flatten_recommendations
+from neck_effort_engine import NeckEffortConfig, NeckEffortEngine
+from recommendations import recommend_with_context, flatten_recommendations
 
-app = Flask(__name__, static_folder="static", static_url_path="")
-CORS(app)
+# =========================
+# Config
+# =========================
+SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "replace_this_with_a_long_random_secret")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
+
+app = FastAPI(title="Voice Training - GRBAS Analysis")
 
 # Initialise database tables on startup (idempotent).
 init_db()
@@ -38,149 +48,252 @@ MODEL_PATH = os.path.join(os.path.dirname(__file__), "grbas_model.joblib")
 if os.path.exists(MODEL_PATH):
     classifier.load(MODEL_PATH)
 
+NECK_EFFORT_CONFIG = NeckEffortConfig(calibration_frames=12, smooth_window=12)
+neck_effort_engines: Dict[int, NeckEffortEngine] = {}
 
-# ===========================================================================
+
+# =========================
+# Schemas
+# =========================
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    full_name: Optional[str] = None
+
+
+class UserOut(BaseModel):
+    id: int
+    username: str
+    full_name: Optional[str]
+    is_admin: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class ResultOut(BaseModel):
+    id: int
+    title: str
+    raw_scores: str
+    recommendation: Optional[str]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AdminResultOut(BaseModel):
+    id: int
+    username: str
+    full_name: Optional[str]
+    title: str
+    raw_scores: str
+    recommendation: Optional[str]
+    created_at: datetime
+
+
+class RoleUpdate(BaseModel):
+    is_admin: bool
+
+
+class NeckEffortOut(BaseModel):
+    ok: bool
+    mode: str
+    calibrated: bool
+    calibration_progress: float
+    score: Optional[int]
+    score_label: Optional[str]
+    confidence: float
+    features: Optional[Dict[str, float]]
+    reasons: List[str]
+    continuous_score: Optional[float] = None
+    debug: Optional[Dict[str, Any]] = None
+    last_valid_score: Optional[int] = None
+
+
+# =========================
+# Helpers
+# =========================
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def verify_password(plain_password: str, hashed_password: str):
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+def hash_password(password: str):
+    return pwd_context.hash(password)
+
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def authenticate_user(db: Session, username: str, password: str):
+    user = db.query(User).filter(User.username == username).first()
+    if not user or not verify_password(password, user.hashed_password):
+        return None
+    return user
+
+
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid authentication credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: Optional[str] = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        raise credentials_exception
+    return user
+
+
+async def get_optional_user(request: Request, db: Session = Depends(get_db)):
+    """Extract user from Bearer token if present; return None otherwise."""
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return None
+    token = auth_header.split("Bearer ", 1)[1].strip()
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if username is None:
+            return None
+        return db.query(User).filter(User.username == username).first()
+    except JWTError:
+        return None
+
+
+def get_admin_user(current_user: User = Depends(get_current_user)):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return current_user
+
+
+def get_neck_effort_engine(user_id: int) -> NeckEffortEngine:
+    engine = neck_effort_engines.get(user_id)
+    if engine is None:
+        engine = NeckEffortEngine(NECK_EFFORT_CONFIG)
+        neck_effort_engines[user_id] = engine
+    return engine
+
+
+def get_latest_neck_effort(current_user: User) -> Optional[Dict[str, Any]]:
+    engine = neck_effort_engines.get(current_user.id)
+    if engine is None:
+        return None
+    return engine.state.last_valid_result
+
+
+# =========================
+# Seed admin on startup
+# =========================
+@app.on_event("startup")
+def create_default_admin():
+    db = SessionLocal()
+    try:
+        existing = db.query(User).filter(User.username == "admin").first()
+        if not existing:
+            admin = User(
+                username="admin",
+                full_name="System Admin",
+                hashed_password=hash_password("admin1234"),
+                is_admin=True,
+            )
+            db.add(admin)
+            db.commit()
+    finally:
+        db.close()
+
+
+# =========================
 # Pages
-# ===========================================================================
+# =========================
+@app.get("/")
+async def index():
+    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 
 
-@app.route("/")
-def index():
-    return send_from_directory("static", "index.html")
+@app.get("/admin")
+async def admin_page():
+    return FileResponse(os.path.join(STATIC_DIR, "admin.html"))
 
 
-@app.route("/admin")
-def admin_page():
-    return send_from_directory("static", "admin.html")
-
-
-# ===========================================================================
+# =========================
 # Auth – Registration & Login
-# ===========================================================================
+# =========================
+@app.post("/api/register", response_model=UserOut)
+def register(user_in: UserCreate, db: Session = Depends(get_db)):
+    if not user_in.username or not user_in.password:
+        raise HTTPException(status_code=400, detail="Username and password are required")
+    if len(user_in.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+
+    existing = db.query(User).filter(User.username == user_in.username).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Username already exists")
+
+    user = User(
+        username=user_in.username,
+        full_name=user_in.full_name,
+        hashed_password=hash_password(user_in.password),
+        is_admin=False,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
 
 
-@app.route("/api/auth/register", methods=["POST"])
-def register():
-    """Register a new user account.
+@app.post("/api/login", response_model=Token)
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = authenticate_user(db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
 
-    Expects JSON: { "email": "...", "password": "..." }
-    Passwords are hashed with bcrypt before storage; the plain text is never
-    persisted.  Returns a JWT on success so the client is immediately logged in.
-    """
-    data = request.get_json(silent=True) or {}
-    email = (data.get("email") or "").strip().lower()
-    password = data.get("password") or ""
-
-    if not email or not password:
-        return jsonify({"error": "Email and password are required"}), 400
-    if len(password) < 8:
-        return jsonify({"error": "Password must be at least 8 characters"}), 400
-
-    db = SessionLocal()
-    try:
-        if db.query(User).filter(User.email == email).first():
-            return jsonify({"error": "An account with that email already exists"}), 409
-
-        user = User(
-            email=email,
-            password_hash=hash_password(password),
-            role="user",
-            created_at=datetime.utcnow(),
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-
-        log_activity(db, "register", user_id=user.id, details={"email": email})
-
-        token = create_token(user)
-        return jsonify({"token": token, "role": user.role, "email": user.email}), 201
-    finally:
-        db.close()
+    access_token = create_access_token(data={"sub": user.username})
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
-@app.route("/api/auth/login", methods=["POST"])
-def login():
-    """Authenticate a user and return a JWT.
-
-    Expects JSON: { "email": "...", "password": "..." }
-    bcrypt.checkpw is used for constant-time comparison, preventing timing
-    attacks that could reveal whether an email address is registered.
-    """
-    data = request.get_json(silent=True) or {}
-    email = (data.get("email") or "").strip().lower()
-    password = data.get("password") or ""
-
-    db = SessionLocal()
-    try:
-        user = db.query(User).filter(User.email == email).first()
-
-        # Intentionally return the same error message whether the email is
-        # unknown or the password is wrong, to prevent user enumeration.
-        if user is None or not user.is_active or not verify_password(password, user.password_hash):
-            log_activity(db, "login_failed", details={"email": email})
-            return jsonify({"error": "Invalid email or password"}), 401
-
-        user.last_login_at = datetime.utcnow()
-        db.commit()
-
-        log_activity(db, "login", user_id=user.id, details={"email": email})
-
-        token = create_token(user)
-        return jsonify({"token": token, "role": user.role, "email": user.email})
-    finally:
-        db.close()
+@app.get("/api/me", response_model=UserOut)
+def me(current_user: User = Depends(get_current_user)):
+    return current_user
 
 
-# ===========================================================================
-# User – Profile & Role
-# ===========================================================================
-
-
-@app.route("/api/user/profile", methods=["GET"])
-@verify_token
-def get_profile():
-    """Return the authenticated user's profile."""
-    u = g.user
-    return jsonify({
-        "id": u.id,
-        "email": u.email,
-        "display_name": u.display_name,
-        "role": u.role,
-        "created_at": u.created_at.isoformat() if u.created_at else None,
-        "last_login_at": u.last_login_at.isoformat() if u.last_login_at else None,
-    })
-
-
-@app.route("/api/user/role", methods=["GET"])
-@verify_token
-def get_user_role():
-    """Return the authenticated user's current role."""
-    log_activity(g.db, "view_role", user_id=g.user.id, resource="/api/user/role")
-    return jsonify({"role": g.user.role})
-
-
-# ===========================================================================
+# =========================
 # Voice Analysis
-# ===========================================================================
-
-
-@app.route("/api/analyze", methods=["POST"])
-@optional_token
-def analyze():
-    """Receive an audio file, extract features, and return GRBAS scores.
-
-    The analysis result is saved to the database when the user is authenticated.
-    Anonymous requests still receive results but nothing is persisted.
-    """
-    if "audio" not in request.files:
-        return jsonify({"error": "No audio file provided"}), 400
-
-    audio_file = request.files["audio"]
-
+# =========================
+@app.post("/api/analyze")
+async def analyze(
+    audio: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
         tmp_path = tmp.name
-        audio_data = audio_file.read()
+        audio_data = await audio.read()
         tmp.write(audio_data)
 
     try:
@@ -204,230 +317,238 @@ def analyze():
             "f3": round(features.get("f3_mean", 0), 1),
         }
 
-        recs = recommend_by_grbas(scores)
+        latest_neck_effort = get_latest_neck_effort(current_user)
+        recs = recommend_with_context(scores, neck_effort=latest_neck_effort)
         recommendations = flatten_recommendations(recs)
 
         response_data = {
             "scores": scores,
             "features": key_features,
             "model_type": "trained" if classifier.is_trained else "heuristic",
+            "neck_effort": latest_neck_effort,
             "recommendations": recommendations,
         }
 
-        # Persist result and log activity if authenticated.
-        if g.user:
-            analysis = Analysis(
-                user_id=g.user.id,
-                scores=json.dumps(scores),
-                features=json.dumps(key_features),
-                model_type=response_data["model_type"],
-                timestamp=datetime.utcnow(),
+        # Persist result for authenticated user.
+        result = Result(
+                user_id=current_user.id,
+                title="GRBAS Analysis",
+                raw_scores=json.dumps({
+                    "scores": scores,
+                    "features": key_features,
+                    "model_type": response_data["model_type"],
+                    "neck_effort": latest_neck_effort,
+                }),
+                recommendation=json.dumps(recommendations) if recommendations else None,
             )
-            g.db.add(analysis)
-            g.db.commit()
-            log_activity(
-                g.db, "analyze",
-                user_id=g.user.id,
-                details={"model_type": response_data["model_type"]},
-                resource="/api/analyze",
-            )
+        db.add(result)
+        db.commit()
 
-        return jsonify(response_data)
+        return response_data
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         if os.path.exists(tmp_path):
             os.unlink(tmp_path)
 
 
-@app.route("/api/history", methods=["GET"])
-@verify_token
-def get_history():
-    """Return the authenticated user's analysis history (most recent first)."""
-    log_activity(g.db, "view_history", user_id=g.user.id, resource="/api/history")
+@app.post("/api/neck-effort/reset")
+def reset_neck_effort(current_user: User = Depends(get_current_user)):
+    engine = get_neck_effort_engine(current_user.id)
+    engine.reset_session()
+    return {"status": "ok"}
 
-    rows = (
-        g.db.query(Analysis)
-        .filter(Analysis.user_id == g.user.id)
-        .order_by(Analysis.timestamp.desc())
+
+@app.post("/api/neck-effort", response_model=NeckEffortOut)
+async def analyze_neck_effort_frame(
+    frame: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    image_bytes = await frame.read()
+    if not image_bytes:
+        raise HTTPException(status_code=400, detail="Frame is required")
+
+    np_buffer = np.frombuffer(image_bytes, dtype=np.uint8)
+    image_bgr = cv2.imdecode(np_buffer, cv2.IMREAD_COLOR)
+    if image_bgr is None:
+        raise HTTPException(status_code=400, detail="Invalid image frame")
+
+    engine = get_neck_effort_engine(current_user.id)
+    return engine.process_frame(image_bgr)
+
+
+# =========================
+# Results / History
+# =========================
+@app.get("/api/my-results", response_model=List[ResultOut])
+def my_results(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return (
+        db.query(Result)
+        .filter(Result.user_id == current_user.id)
+        .order_by(Result.created_at.desc())
         .limit(50)
         .all()
     )
 
-    history = [
-        {
-            "id": row.id,
-            "timestamp": row.timestamp.isoformat(),
-            "scores": row.scores_dict(),
-            "features": row.features_dict(),
-            "model_type": row.model_type,
-        }
-        for row in rows
-    ]
-    return jsonify({"history": history})
+
+@app.get("/api/history")
+def get_history(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return analysis history in the format expected by the frontend."""
+    rows = (
+        db.query(Result)
+        .filter(Result.user_id == current_user.id)
+        .order_by(Result.created_at.desc())
+        .limit(50)
+        .all()
+    )
+
+    history = []
+    for row in rows:
+        try:
+            data = json.loads(row.raw_scores)
+            history.append({
+                "id": row.id,
+                "timestamp": row.created_at.isoformat(),
+                "scores": data.get("scores", {}),
+                "features": data.get("features", {}),
+                "model_type": data.get("model_type", "unknown"),
+                "neck_effort": data.get("neck_effort"),
+            })
+        except (json.JSONDecodeError, AttributeError):
+            pass
+
+    return {"history": history}
 
 
-# ===========================================================================
+# =========================
 # Admin – User Management
-# ===========================================================================
-
-
-@app.route("/api/admin/users", methods=["GET"])
-@require_admin
-def list_users():
-    """Return all users with their most recent analysis scores."""
-    log_activity(g.db, "admin_list_users", user_id=g.user.id, resource="/api/admin/users")
-
-    users = g.db.query(User).order_by(User.created_at.desc()).all()
+# =========================
+@app.get("/api/admin/users")
+def admin_users(
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(get_admin_user),
+):
+    users = db.query(User).order_by(User.created_at.desc()).all()
     result = []
 
     for u in users:
         latest = (
-            g.db.query(Analysis)
-            .filter(Analysis.user_id == u.id)
-            .order_by(Analysis.timestamp.desc())
+            db.query(Result)
+            .filter(Result.user_id == u.id)
+            .order_by(Result.created_at.desc())
             .first()
         )
 
         latest_analysis = None
         if latest:
-            latest_analysis = {
-                "timestamp": latest.timestamp.isoformat(),
-                "scores": latest.scores_dict(),
-            }
+            try:
+                data = json.loads(latest.raw_scores)
+                latest_analysis = {
+                    "timestamp": latest.created_at.isoformat(),
+                    "scores": data.get("scores", {}),
+                }
+            except (json.JSONDecodeError, AttributeError):
+                pass
 
         result.append({
             "id": u.id,
-            "email": u.email,
-            "display_name": u.display_name,
-            "role": u.role,
-            "is_active": u.is_active,
+            "username": u.username,
+            "full_name": u.full_name,
+            "is_admin": u.is_admin,
             "created_at": u.created_at.isoformat() if u.created_at else None,
-            "last_login_at": u.last_login_at.isoformat() if u.last_login_at else None,
             "latest_analysis": latest_analysis,
         })
 
-    return jsonify({"users": result})
+    return {"users": result}
 
 
-@app.route("/api/admin/users/<int:uid>/analyses", methods=["GET"])
-@require_admin
-def get_user_analyses(uid):
-    """Return all analyses for a specific user (admin only)."""
-    log_activity(
-        g.db, "admin_view_user_analyses",
-        user_id=g.user.id,
-        resource=f"/api/admin/users/{uid}/analyses",
-        details={"target_user_id": uid},
-    )
-
+@app.get("/api/admin/users/{uid}/results")
+def get_user_results(
+    uid: int,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(get_admin_user),
+):
     rows = (
-        g.db.query(Analysis)
-        .filter(Analysis.user_id == uid)
-        .order_by(Analysis.timestamp.desc())
+        db.query(Result)
+        .filter(Result.user_id == uid)
+        .order_by(Result.created_at.desc())
         .limit(100)
         .all()
     )
 
-    return jsonify({
-        "analyses": [
-            {
+    results = []
+    for row in rows:
+        try:
+            data = json.loads(row.raw_scores)
+            results.append({
                 "id": row.id,
-                "timestamp": row.timestamp.isoformat(),
-                "scores": row.scores_dict(),
-                "features": row.features_dict(),
-                "model_type": row.model_type,
-            }
-            for row in rows
-        ]
-    })
+                "timestamp": row.created_at.isoformat(),
+                "scores": data.get("scores", {}),
+                "features": data.get("features", {}),
+                "model_type": data.get("model_type", "unknown"),
+                "neck_effort": data.get("neck_effort"),
+            })
+        except (json.JSONDecodeError, AttributeError):
+            pass
+
+    return {"results": results}
 
 
-@app.route("/api/admin/users/<int:uid>/role", methods=["PUT"])
-@require_admin
-def set_user_role(uid):
-    """Set a user's role (admin only).  Allowed values: 'user', 'admin'."""
-    data = request.get_json(silent=True) or {}
-    new_role = data.get("role")
+@app.get("/api/admin/results", response_model=List[AdminResultOut])
+def admin_results(
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(get_admin_user),
+):
+    rows = (
+        db.query(Result, User)
+        .join(User, Result.user_id == User.id)
+        .order_by(Result.created_at.desc())
+        .all()
+    )
 
-    if new_role not in ("user", "admin"):
-        return jsonify({"error": "Invalid role; must be 'user' or 'admin'"}), 400
+    output = []
+    for result, user in rows:
+        output.append(
+            AdminResultOut(
+                id=result.id,
+                username=user.username,
+                full_name=user.full_name,
+                title=result.title,
+                raw_scores=result.raw_scores,
+                recommendation=result.recommendation,
+                created_at=result.created_at,
+            )
+        )
+    return output
 
-    target = g.db.query(User).filter(User.id == uid).first()
+
+@app.put("/api/admin/users/{uid}/role")
+def set_user_role(
+    uid: int,
+    body: RoleUpdate,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(get_admin_user),
+):
+    """Set a user's admin status."""
+    target = db.query(User).filter(User.id == uid).first()
     if target is None:
-        return jsonify({"error": "User not found"}), 404
+        raise HTTPException(status_code=404, detail="User not found")
 
-    old_role = target.role
-    target.role = new_role
-    g.db.commit()
-
-    log_activity(
-        g.db, "admin_set_role",
-        user_id=g.user.id,
-        resource=f"/api/admin/users/{uid}/role",
-        details={"target_user_id": uid, "old_role": old_role, "new_role": new_role},
-    )
-
-    return jsonify({"status": "ok", "role": new_role})
+    target.is_admin = body.is_admin
+    db.commit()
+    return {"status": "ok", "is_admin": target.is_admin}
 
 
-# ===========================================================================
-# Admin – Activity Log
-# ===========================================================================
-
-
-@app.route("/api/admin/activity-log", methods=["GET"])
-@require_admin
-def get_activity_log():
-    """Return the system-wide activity log (admin only), newest first.
-
-    Query params:
-      limit  – max entries to return (default 100, max 500)
-      offset – pagination offset (default 0)
-      user_id – filter by a specific user's ID
-    """
-    log_activity(
-        g.db, "admin_view_activity_log",
-        user_id=g.user.id,
-        resource="/api/admin/activity-log",
-    )
-
-    try:
-        limit = min(int(request.args.get("limit", 100)), 500)
-        offset = int(request.args.get("offset", 0))
-    except ValueError:
-        return jsonify({"error": "limit and offset must be integers"}), 400
-
-    filter_uid = request.args.get("user_id")
-    query = g.db.query(ActivityLog)
-    if filter_uid:
-        query = query.filter(ActivityLog.user_id == int(filter_uid))
-
-    rows = query.order_by(ActivityLog.timestamp.desc()).offset(offset).limit(limit).all()
-
-    return jsonify({
-        "logs": [
-            {
-                "id": row.id,
-                "user_id": row.user_id,
-                "user_email": row.user.email if row.user else None,
-                "action": row.action,
-                "details": row.details_dict(),
-                "ip_address": row.ip_address,
-                "resource": row.resource,
-                "timestamp": row.timestamp.isoformat(),
-            }
-            for row in rows
-        ]
-    })
-
-
-# ===========================================================================
+# =========================
 # Helpers
-# ===========================================================================
-
-
+# =========================
 def _ensure_wav(path: str, raw_data: bytes) -> str:
     """Convert audio to WAV using soundfile, replacing the original file."""
     import soundfile as sf
@@ -449,5 +570,9 @@ def _ensure_wav(path: str, raw_data: bytes) -> str:
         )
 
 
+# Mount static files last so API routes take precedence.
+app.mount("/", StaticFiles(directory=STATIC_DIR), name="static")
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=5000)

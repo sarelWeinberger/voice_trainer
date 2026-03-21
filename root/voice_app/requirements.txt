@@ -1,9 +1,12 @@
-Flask>=2.0
-flask-cors>=3.0
+fastapi>=0.100
+uvicorn[standard]>=0.20
+python-multipart>=0.0.6
 librosa>=0.10
 praat-parselmouth>=0.4
 numpy>=1.24
 scipy>=1.7
+opencv-python>=4.8
+mediapipe>=0.10
 scikit-learn>=1.0
 joblib>=1.1
 soundfile>=0.10
@@ -15,7 +18,7 @@ python_speech_features>=0.6
 opensmile>=2.6.0
 pyloudnorm>=0.2.0
 webrtcvad>=2.0.10
-# --- Auth (replaces firebase-admin) ---
-bcrypt>=4.0
-PyJWT>=2.8
+# --- Auth ---
+passlib[bcrypt]>=1.7
+python-jose[cryptography]>=3.3
 SQLAlchemy>=2.0

@@ -6,6 +6,7 @@ const GRBAS_LABELS = {
     B: "Breathiness",
     A: "Asthenia",
     S: "Strain",
+    N: "Neck effort",
 };
 
 // Index = score: 0=normal(green), 1=slight(yellow), 2=moderate(orange), 3=severe(red)
@@ -21,17 +22,31 @@ let recordingStart = 0;
 let timerInterval = null;
 let faceMesh = null;
 let camera = null;
+let initInProgress = false;
+let neckEffortInterval = null;
+let neckEffortRequestInFlight = false;
+let neckCaptureCanvas = null;
 
 // ---- DOM refs ----
 const video = document.getElementById("video");
 const faceCanvas = document.getElementById("face-canvas");
 const faceCtx = faceCanvas.getContext("2d");
 const faceMetrics = document.getElementById("face-metrics");
+const neckEffortMode = document.getElementById("neck-effort-mode");
+const neckEffortScore = document.getElementById("neck-effort-score");
+const neckEffortLabel = document.getElementById("neck-effort-label");
+const neckEffortConfidence = document.getElementById("neck-effort-confidence");
+const neckEffortReasons = document.getElementById("neck-effort-reasons");
 const recordBtn = document.getElementById("record-btn");
 const recordLabel = recordBtn.querySelector(".record-label");
 const timerEl = document.getElementById("recording-timer");
 const statusEl = document.getElementById("status");
 const resultsPanel = document.getElementById("results-panel");
+const combinedSummary = document.getElementById("combined-summary");
+const combinedSummaryTitle = document.getElementById("combined-summary-title");
+const combinedSummaryBadge = document.getElementById("combined-summary-badge");
+const combinedSummaryText = document.getElementById("combined-summary-text");
+const combinedSummaryMetrics = document.getElementById("combined-summary-metrics");
 const scoresList = document.getElementById("scores-list");
 const radarCanvas = document.getElementById("radar-chart");
 const modelBadge = document.getElementById("model-badge");
@@ -44,6 +59,11 @@ const recommendationsList = document.getElementById("recommendations-list");
 
 // ---- Initialize Camera + Mic ----
 async function init() {
+    if (initInProgress || mediaStream || audioStream) {
+        return;
+    }
+
+    initInProgress = true;
     try {
         // Request camera
         mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -56,9 +76,14 @@ async function init() {
         audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
         initFaceMesh();
+        await resetNeckEffortSession();
+        startNeckEffortMonitoring();
         setStatus("Camera and microphone ready.");
     } catch (err) {
         setStatus("Error: " + err.message, true);
+        updateNeckEffortUI(null);
+    } finally {
+        initInProgress = false;
     }
 
     loadHistory();
@@ -158,6 +183,171 @@ function computeFaceMetrics(landmarks) {
     const facialTension = Math.min(100, (browRaise / faceHeight) * 500);
 
     return { jawOpenness, lipSymmetry, facialTension };
+}
+
+async function resetNeckEffortSession() {
+    if (typeof getAuthHeaders !== "function") return;
+    const headers = getAuthHeaders();
+    if (!headers.Authorization) return;
+
+    try {
+        await fetch("/api/neck-effort/reset", {
+            method: "POST",
+            headers: headers,
+        });
+        updateNeckEffortUI({
+            mode: "calibrating",
+            calibrated: false,
+            calibration_progress: 0,
+            score: null,
+            score_label: null,
+            confidence: 0,
+            reasons: ["Hold a relaxed neutral posture for calibration"],
+        });
+    } catch (err) {
+        console.warn("Neck effort reset failed:", err);
+    }
+}
+
+function startNeckEffortMonitoring() {
+    stopNeckEffortMonitoring();
+    neckCaptureCanvas = document.createElement("canvas");
+    neckCaptureCanvas.width = 320;
+    neckCaptureCanvas.height = 240;
+    neckEffortInterval = window.setInterval(captureNeckEffortFrame, 900);
+}
+
+function stopNeckEffortMonitoring() {
+    if (neckEffortInterval) {
+        window.clearInterval(neckEffortInterval);
+        neckEffortInterval = null;
+    }
+    neckEffortRequestInFlight = false;
+}
+
+async function captureNeckEffortFrame() {
+    if (neckEffortRequestInFlight || !neckCaptureCanvas || !video.videoWidth || !video.videoHeight) {
+        return;
+    }
+    if (typeof getAuthHeaders !== "function") return;
+    const headers = getAuthHeaders();
+    if (!headers.Authorization) return;
+
+    neckEffortRequestInFlight = true;
+    try {
+        const ctx = neckCaptureCanvas.getContext("2d");
+        ctx.drawImage(video, 0, 0, neckCaptureCanvas.width, neckCaptureCanvas.height);
+        const blob = await new Promise((resolve) => {
+            neckCaptureCanvas.toBlob(resolve, "image/jpeg", 0.8);
+        });
+        if (!blob) {
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("frame", blob, "frame.jpg");
+
+        const resp = await fetch("/api/neck-effort", {
+            method: "POST",
+            body: formData,
+            headers: headers,
+        });
+
+        if (resp.status === 401) {
+            if (typeof logout === "function") logout();
+            return;
+        }
+
+        if (!resp.ok) {
+            throw new Error("HTTP " + resp.status);
+        }
+
+        const data = await resp.json();
+        updateNeckEffortUI(data);
+    } catch (err) {
+        console.warn("Neck effort analysis failed:", err);
+        updateNeckEffortUI({
+            mode: "error",
+            score: null,
+            score_label: null,
+            confidence: 0,
+            reasons: ["neck_effort_unavailable"],
+        });
+    } finally {
+        neckEffortRequestInFlight = false;
+    }
+}
+
+function updateNeckEffortUI(data) {
+    if (!data) {
+        neckEffortMode.textContent = "Idle";
+        neckEffortScore.textContent = "--";
+        neckEffortScore.className = "neck-effort-score";
+        neckEffortLabel.textContent = "Camera not started";
+        neckEffortConfidence.textContent = "Confidence: --";
+        neckEffortReasons.textContent = "Align your head, neck, and shoulders in frame.";
+        return;
+    }
+
+    if (data.mode === "calibrating") {
+        const progress = Math.round((data.calibration_progress || 0) * 100);
+        neckEffortMode.textContent = "Calibrating";
+        neckEffortScore.textContent = progress + "%";
+        neckEffortScore.className = "neck-effort-score";
+        neckEffortLabel.textContent = "Hold a neutral posture";
+        neckEffortConfidence.textContent = "Confidence: " + Math.round((data.confidence || 0) * 100) + "%";
+        neckEffortReasons.textContent = "Relax your shoulders and keep your neck centered until calibration finishes.";
+        return;
+    }
+
+    if (data.mode === "running" && Number.isInteger(data.score)) {
+        neckEffortMode.textContent = "Live";
+        neckEffortScore.textContent = String(data.score);
+        neckEffortScore.className = "neck-effort-score grade-" + data.score;
+        neckEffortLabel.textContent = (data.score_label || "unknown").replace(/^./, (char) => char.toUpperCase());
+        neckEffortConfidence.textContent = "Confidence: " + Math.round((data.confidence || 0) * 100) + "%";
+        neckEffortReasons.textContent = formatNeckEffortReasons(data.reasons || []);
+        return;
+    }
+
+    if (data.mode === "no_score") {
+        neckEffortMode.textContent = "Adjust";
+        neckEffortScore.textContent = data.last_valid_score ?? "--";
+        neckEffortScore.className = Number.isInteger(data.last_valid_score)
+            ? "neck-effort-score grade-" + data.last_valid_score
+            : "neck-effort-score";
+        neckEffortLabel.textContent = "Need better framing";
+        neckEffortConfidence.textContent = "Confidence: " + Math.round((data.confidence || 0) * 100) + "%";
+        neckEffortReasons.textContent = formatNeckEffortReasons(data.reasons || []);
+        return;
+    }
+
+    neckEffortMode.textContent = "Error";
+    neckEffortScore.textContent = "--";
+    neckEffortScore.className = "neck-effort-score";
+    neckEffortLabel.textContent = "Analysis unavailable";
+    neckEffortConfidence.textContent = "Confidence: 0%";
+    neckEffortReasons.textContent = formatNeckEffortReasons(data.reasons || []);
+}
+
+function formatNeckEffortReasons(reasons) {
+    const labels = {
+        head_forward_posture: "Head appears forward relative to shoulders.",
+        neck_tilt: "Neck tilt is elevated.",
+        shoulder_imbalance: "Shoulders look uneven.",
+        raised_shoulders: "Shoulders appear raised.",
+        head_instability: "Head position is unstable.",
+        excess_mouth_opening: "Mouth opening is larger than expected.",
+        head_rotation: "Face is turned away from frontal view.",
+        minimal_visible_effort: "Minimal visible neck effort.",
+        no_face_or_pose: "Keep your face and shoulders visible to the camera.",
+        low_confidence_view: "Adjust framing and face the camera more directly.",
+        neck_effort_unavailable: "Neck effort analysis is temporarily unavailable.",
+    };
+    if (!reasons || reasons.length === 0) {
+        return "Align your head, neck, and shoulders in frame.";
+    }
+    return reasons.map((reason) => labels[reason] || reason.replaceAll("_", " ")).join(" ");
 }
 
 // ---- Audio Recording ----
@@ -311,22 +501,20 @@ async function sendAudio(blob) {
 function displayResults(data) {
     resultsPanel.hidden = false;
     featuresPanel.hidden = false;
+    renderCombinedSummary(data);
 
     // Scores list
     scoresList.innerHTML = "";
     for (const dim of "GRBAS") {
         const score = data.scores[dim];
-        const row = document.createElement("div");
-        row.className = "score-row";
-        row.innerHTML = `
-            <span class="score-label">${dim}</span>
-            <div class="score-bar-bg">
-                <div class="score-bar" style="width:${(score / 3) * 100}%;background:${GRADE_COLORS[score]}"></div>
-            </div>
-            <span class="score-value grade-${score}">${score}</span>
-            <span class="score-desc">${GRBAS_LABELS[dim]}</span>
-        `;
-        scoresList.appendChild(row);
+        scoresList.appendChild(createScoreRow(dim, score));
+    }
+
+    const neckScore = data.neck_effort && Number.isInteger(data.neck_effort.score)
+        ? data.neck_effort.score
+        : null;
+    if (neckScore !== null) {
+        scoresList.appendChild(createScoreRow("N", neckScore));
     }
 
     modelBadge.textContent = `Model: ${data.model_type}`;
@@ -365,8 +553,103 @@ function displayResults(data) {
     displayRecommendations(data.recommendations);
 }
 
+function createScoreRow(dim, score) {
+    const row = document.createElement("div");
+    row.className = "score-row";
+    row.innerHTML = `
+        <span class="score-label">${dim}</span>
+        <div class="score-bar-bg">
+            <div class="score-bar" style="width:${(score / 3) * 100}%;background:${GRADE_COLORS[score]}"></div>
+        </div>
+        <span class="score-value grade-${score}">${score}</span>
+        <span class="score-desc">${GRBAS_LABELS[dim] || dim}</span>
+    `;
+    return row;
+}
+
+function renderCombinedSummary(data) {
+    if (!combinedSummary) {
+        return;
+    }
+
+    const voiceGrade = Number(data.scores?.G ?? 0);
+    const strain = Number(data.scores?.S ?? 0);
+    const neckEffort = data.neck_effort && Number.isInteger(data.neck_effort.score)
+        ? data.neck_effort.score
+        : null;
+    const overallLevel = Math.max(voiceGrade, strain, neckEffort ?? 0);
+
+    const summaryByLevel = {
+        0: {
+            title: "Low visible load across voice and neck",
+            badge: "Stable",
+            text: "The recording looks organized. Voice quality is close to normal and there is no clear sign of elevated neck effort.",
+        },
+        1: {
+            title: "Mild load detected",
+            badge: "Watch",
+            text: "There are early signs of extra effort. Keep monitoring posture, airflow, and ease during practice.",
+        },
+        2: {
+            title: "Moderate combined load",
+            badge: "Attention",
+            text: "The analysis suggests noticeable vocal or cervical effort. Focus on posture release, shoulder relaxation, and efficient phonation.",
+        },
+        3: {
+            title: "High combined load",
+            badge: "High",
+            text: "The sample shows strong vocal and/or neck effort. Practice should prioritize unloading tension before increasing vocal demand.",
+        },
+    };
+
+    const summary = summaryByLevel[overallLevel] || summaryByLevel[0];
+    const neckText = neckEffort === null
+        ? ""
+        : `Neck effort scored ${neckEffort}/3${data.neck_effort?.score_label ? ` (${data.neck_effort.score_label})` : ""}.`;
+
+    combinedSummary.hidden = false;
+    combinedSummaryTitle.textContent = summary.title;
+    combinedSummaryBadge.textContent = summary.badge;
+    combinedSummaryBadge.className = "combined-summary-badge level-" + overallLevel;
+    combinedSummaryText.textContent = [
+        summary.text,
+        `Grade is ${voiceGrade}/3, strain is ${strain}/3.`,
+        neckText,
+    ].filter(Boolean).join(" ");
+
+    combinedSummaryMetrics.innerHTML = "";
+    const chips = [
+        { label: "Voice Grade", value: `${voiceGrade}/3`, score: voiceGrade },
+        { label: "Strain", value: `${strain}/3`, score: strain },
+        {
+            label: "Model",
+            value: data.model_type || "unknown",
+            score: null,
+        },
+    ];
+
+    if (neckEffort !== null) {
+        chips.splice(2, 0, {
+            label: "Neck Effort",
+            value: `${neckEffort}/3`,
+            score: neckEffort,
+        });
+    }
+
+    for (const chip of chips) {
+        const element = document.createElement("div");
+        element.className = "summary-chip";
+        const valueClass = Number.isInteger(chip.score) ? `grade-${chip.score}` : "";
+        element.innerHTML = `
+            <span class="summary-chip-label">${chip.label}</span>
+            <span class="summary-chip-value ${valueClass}">${chip.value}</span>
+        `;
+        combinedSummaryMetrics.appendChild(element);
+    }
+}
+
 // ---- Display Recommendations ----
-const MEASURE_NAMES = { G: "Grade", R: "Roughness", B: "Breathiness", A: "Asthenia", S: "Strain" };
+const MEASURE_NAMES = { G: "Grade", R: "Roughness", B: "Breathiness", A: "Asthenia", S: "Strain", N: "Neck Effort" };
 
 function displayRecommendations(recommendations) {
     if (!recommendations || recommendations.length === 0) {
@@ -497,21 +780,33 @@ function drawRadarChart(scores) {
 }
 
 // ---- Session History ----
+
+/** Return a per-user localStorage key so each account has its own history. */
+function _historyKey() {
+    if (typeof _currentUser !== "undefined" && _currentUser && _currentUser.username) {
+        return "grbas_history_" + _currentUser.username;
+    }
+    return "grbas_history";
+}
+
 function saveToHistory(data) {
-    const history = JSON.parse(localStorage.getItem("grbas_history") || "[]");
+    const key = _historyKey();
+    const history = JSON.parse(localStorage.getItem(key) || "[]");
     history.unshift({
         timestamp: new Date().toISOString(),
         scores: data.scores,
         features: data.features,
+        neck_effort: data.neck_effort || null,
     });
     // Keep last 50 entries
     if (history.length > 50) history.length = 50;
-    localStorage.setItem("grbas_history", JSON.stringify(history));
+    localStorage.setItem(key, JSON.stringify(history));
     loadHistory();
 }
 
 function loadHistory() {
-    const history = JSON.parse(localStorage.getItem("grbas_history") || "[]");
+    const key = _historyKey();
+    const history = JSON.parse(localStorage.getItem(key) || "[]");
 
     if (history.length === 0) {
         historyList.innerHTML =
@@ -535,6 +830,9 @@ function loadHistory() {
             const s = entry.scores[dim];
             scoresHtml += `<span class="history-score grade-${s}">${dim}:${s}</span>`;
         }
+        if (entry.neck_effort && Number.isInteger(entry.neck_effort.score)) {
+            scoresHtml += `<span class="history-score grade-${entry.neck_effort.score}">N:${entry.neck_effort.score}</span>`;
+        }
 
         item.innerHTML = `
             <span class="history-time">${timeStr}</span>
@@ -545,7 +843,7 @@ function loadHistory() {
 }
 
 clearHistoryBtn.addEventListener("click", () => {
-    localStorage.removeItem("grbas_history");
+    localStorage.removeItem(_historyKey());
     loadHistory();
 });
 
@@ -597,6 +895,9 @@ function renderHistory(entries) {
             const s = entry.scores[dim];
             scoresHtml += `<span class="history-score grade-${s}">${dim}:${s}</span>`;
         }
+        if (entry.neck_effort && Number.isInteger(entry.neck_effort.score)) {
+            scoresHtml += `<span class="history-score grade-${entry.neck_effort.score}">N:${entry.neck_effort.score}</span>`;
+        }
 
         item.innerHTML = `
             <span class="history-time">${timeStr}</span>
@@ -606,14 +907,41 @@ function renderHistory(entries) {
     }
 }
 
+// ---- Show / Hide app content based on auth ----
+const appContent = document.getElementById("app-content");
+const loginRequired = document.getElementById("login-required");
+
+function showApp() {
+    if (appContent) appContent.style.display = "";
+    if (loginRequired) loginRequired.style.display = "none";
+}
+
+function hideApp() {
+    if (appContent) appContent.style.display = "none";
+    if (loginRequired) loginRequired.style.display = "";
+}
+
 // Auth hooks called by auth.js
 function onAuthReady(user) {
+    showApp();
+    init();
     loadCloudHistory();
 }
 
 function onAuthSignedOut() {
-    loadHistory();
+    hideApp();
+    stopNeckEffortMonitoring();
+    updateNeckEffortUI(null);
+    if (camera) { camera.stop(); camera = null; }
+    if (mediaStream) { mediaStream.getTracks().forEach((track) => track.stop()); mediaStream = null; }
+    if (audioStream) { audioStream.getTracks().forEach((track) => track.stop()); audioStream = null; }
+    faceMesh = null;
+    if (combinedSummary) combinedSummary.hidden = true;
+    resultsPanel.hidden = true;
+    featuresPanel.hidden = true;
+    recommendationsPanel.hidden = true;
 }
 
 // ---- Start ----
-init();
+// Don't auto-init; wait for auth. If already logged in, _restoreSession in
+// auth.js will call onAuthReady which triggers init().
