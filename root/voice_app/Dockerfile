@@ -11,6 +11,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip uninstall -y opencv-python opencv-contrib-python || true
 RUN pip install --no-cache-dir 'opencv-python-headless>=4.8'
+# Ensure setuptools/pkg_resources is available after all installs
+RUN pip install --no-cache-dir --force-reinstall setuptools
 
 COPY . .
 ENV PORT=8000
