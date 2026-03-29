@@ -22,3 +22,4 @@ webrtcvad>=2.0.10
 passlib[bcrypt]>=1.7
 python-jose[cryptography]>=3.3
 SQLAlchemy>=2.0
+psycopg2-binary>=2.9
