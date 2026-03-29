@@ -18,6 +18,8 @@ python_speech_features>=0.6
 opensmile>=2.6.0
 pyloudnorm>=0.2.0
 webrtcvad>=2.0.10
+# --- Core ---
+setuptools>=68
 # --- Auth ---
 passlib[bcrypt]>=1.7
 python-jose[cryptography]>=3.3
