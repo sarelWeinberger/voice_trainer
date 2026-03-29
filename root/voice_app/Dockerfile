@@ -18,5 +18,6 @@ import glob; \
 for f in glob.glob('/usr/local/lib/python*/site-packages/webrtcvad.py')]"
 
 COPY . .
+RUN mkdir -p /memories && cp memories/allowed_emails.txt /memories/allowed_emails.txt
 ENV PORT=8000
 CMD python -m uvicorn app:app --host 0.0.0.0 --port $PORT
