@@ -1,2 +1,9 @@
 [phases.setup]
-aptPkgs = ["libxcb1", "libxcb-render0", "libxcb-shm0", "libgl1", "libglib2.0-0", "libsm6", "libxext6", "libxrender1"]
+nixPkgs = ["xorg.libxcb", "libGL", "glib"]
+
+[phases.install]
+cmds = [
+  "pip install -r requirements.txt",
+  "pip uninstall opencv-python opencv-contrib-python -y || true",
+  "pip install 'opencv-python-headless>=4.8'"
+]
