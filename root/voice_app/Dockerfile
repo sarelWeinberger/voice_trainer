@@ -11,8 +11,11 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip uninstall -y opencv-python opencv-contrib-python || true
 RUN pip install --no-cache-dir 'opencv-python-headless>=4.8'
-# Ensure setuptools/pkg_resources is available after all installs
-RUN pip install --no-cache-dir --force-reinstall setuptools
+# Patch webrtcvad.py: it uses pkg_resources only for __version__, replace with literal
+RUN python -c "\
+import glob; \
+[open(f,'w').write(open(f).read().replace('import pkg_resources\n','').replace(\"pkg_resources.get_distribution('webrtcvad').version\",\"'2.0.10'\")) \
+for f in glob.glob('/usr/local/lib/python*/site-packages/webrtcvad.py')]"
 
 COPY . .
 ENV PORT=8000
