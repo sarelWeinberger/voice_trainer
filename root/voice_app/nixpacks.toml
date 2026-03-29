@@ -3,7 +3,7 @@ nixPkgs = ["xorg.libxcb", "libGL", "glib"]
 
 [phases.install]
 cmds = [
-  "pip install -r requirements.txt",
-  "pip uninstall opencv-python opencv-contrib-python -y || true",
-  "pip install 'opencv-python-headless>=4.8'"
+  "python -m pip install -r requirements.txt",
+  "python -m pip uninstall opencv-python opencv-contrib-python -y || true",
+  "python -m pip install 'opencv-python-headless>=4.8'"
 ]
