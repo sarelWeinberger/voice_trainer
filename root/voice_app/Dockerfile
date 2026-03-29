@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install --no-cache-dir uvicorn[standard] fastapi
+RUN pip install --no-cache-dir setuptools uvicorn[standard] fastapi
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip uninstall -y opencv-python opencv-contrib-python || true
 RUN pip install --no-cache-dir 'opencv-python-headless>=4.8'
