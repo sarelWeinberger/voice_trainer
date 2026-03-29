@@ -22,6 +22,7 @@ webrtcvad>=2.0.10
 setuptools>=68
 # --- Auth ---
 passlib[bcrypt]>=1.7
+bcrypt==4.0.1
 python-jose[cryptography]>=3.3
 SQLAlchemy>=2.0
 psycopg2-binary>=2.9
