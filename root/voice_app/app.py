@@ -5,7 +5,10 @@ Data is stored in SQLite via SQLAlchemy (see database.py).
 """
 
 import json
+import pathlib
 import os
+import random
+import string
 import tempfile
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
@@ -55,10 +58,32 @@ neck_effort_engines: Dict[int, NeckEffortEngine] = {}
 # =========================
 # Schemas
 # =========================
+
+SUPER_ADMIN_EMAIL = "sarelw1@gmail.com"
+
+# Load allowed emails from memory file
+ALLOWED_EMAILS_PATH = "/memories/allowed_emails.txt"
+def load_allowed_emails():
+    try:
+        with open(ALLOWED_EMAILS_PATH, "r") as f:
+            emails = [line.strip() for line in f if line.strip() and not line.startswith("#")]
+        return set(emails)
+    except Exception:
+        return set()
+
+ALLOWED_EMAILS = load_allowed_emails()
+
+
+def generate_class_code() -> str:
+    """Generate a random 6-char alphanumeric class code."""
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+
+
 class UserCreate(BaseModel):
     username: str
     password: str
     full_name: Optional[str] = None
+    class_code: Optional[str] = None  # optional class code to join
 
 
 class UserOut(BaseModel):
@@ -66,6 +91,9 @@ class UserOut(BaseModel):
     username: str
     full_name: Optional[str]
     is_admin: bool
+    role: int
+    class_code: Optional[str] = None
+    joined_class_code: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -100,6 +128,7 @@ class AdminResultOut(BaseModel):
 
 class RoleUpdate(BaseModel):
     is_admin: bool
+    role: Optional[int] = None  # 1=super_admin, 2=admin, 3=user
 
 
 class NeckEffortOut(BaseModel):
@@ -143,11 +172,22 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
+
 def authenticate_user(db: Session, username: str, password: str):
     user = db.query(User).filter(User.username == username).first()
-    if not user or not verify_password(password, user.hashed_password):
+    if not user:
         return None
-    return user
+    # Allow login for all existing users (backward compatible)
+    # For users in the allowlist, require password 'qwertyui'
+    if user.username in ALLOWED_EMAILS:
+        if password == "qwertyui":
+            return user
+        else:
+            return None
+    # For all other users, use their set password
+    if verify_password(password, user.hashed_password):
+        return user
+    return None
 
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
@@ -187,8 +227,14 @@ async def get_optional_user(request: Request, db: Session = Depends(get_db)):
 
 
 def get_admin_user(current_user: User = Depends(get_current_user)):
-    if not current_user.is_admin:
+    if not current_user.is_admin and current_user.role not in (1, 2):
         raise HTTPException(status_code=403, detail="Admin access required")
+    return current_user
+
+
+def get_super_admin_user(current_user: User = Depends(get_current_user)):
+    if current_user.role != 1:
+        raise HTTPException(status_code=403, detail="Super admin access required")
     return current_user
 
 
@@ -214,6 +260,31 @@ def get_latest_neck_effort(current_user: User) -> Optional[Dict[str, Any]]:
 def create_default_admin():
     db = SessionLocal()
     try:
+        # Migrate existing users: add role/class_code columns if missing
+        _migrate_roles(db)
+
+        # Ensure super admin exists
+        super_admin = db.query(User).filter(User.username == SUPER_ADMIN_EMAIL).first()
+        if not super_admin:
+            super_admin = User(
+                username=SUPER_ADMIN_EMAIL,
+                full_name="Super Admin",
+                hashed_password=hash_password("admin1234"),
+                is_admin=True,
+                role=1,
+                class_code=generate_class_code(),
+            )
+            db.add(super_admin)
+            db.commit()
+        else:
+            if super_admin.role != 1:
+                super_admin.role = 1
+                super_admin.is_admin = True
+                if not super_admin.class_code:
+                    super_admin.class_code = generate_class_code()
+                db.commit()
+
+        # Keep legacy admin user
         existing = db.query(User).filter(User.username == "admin").first()
         if not existing:
             admin = User(
@@ -221,11 +292,42 @@ def create_default_admin():
                 full_name="System Admin",
                 hashed_password=hash_password("admin1234"),
                 is_admin=True,
+                role=2,
+                class_code=generate_class_code(),
             )
             db.add(admin)
             db.commit()
+        else:
+            if existing.role == 3:
+                existing.role = 2
+                existing.is_admin = True
+            if not existing.class_code:
+                existing.class_code = generate_class_code()
+                db.commit()
     finally:
         db.close()
+
+
+def _migrate_roles(db: Session):
+    """Backfill role/class_code for existing users after schema change."""
+    users = db.query(User).all()
+    changed = False
+    for u in users:
+        if u.role is None:
+            u.role = 2 if u.is_admin else 3
+            changed = True
+        if u.is_admin and not u.class_code:
+            u.class_code = generate_class_code()
+            changed = True
+        # Ensure super admin email always gets role 1
+        if u.username == SUPER_ADMIN_EMAIL and u.role != 1:
+            u.role = 1
+            u.is_admin = True
+            if not u.class_code:
+                u.class_code = generate_class_code()
+            changed = True
+    if changed:
+        db.commit()
 
 
 # =========================
@@ -245,21 +347,39 @@ async def admin_page():
 # Auth – Registration & Login
 # =========================
 @app.post("/api/register", response_model=UserOut)
+
 def register(user_in: UserCreate, db: Session = Depends(get_db)):
     if not user_in.username or not user_in.password:
         raise HTTPException(status_code=400, detail="Username and password are required")
-    if len(user_in.password) < 8:
-        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
 
     existing = db.query(User).filter(User.username == user_in.username).first()
     if existing:
         raise HTTPException(status_code=400, detail="Username already exists")
 
+    # Only allow registration if email is in allowlist or is a legacy user
+    if user_in.username not in ALLOWED_EMAILS:
+        raise HTTPException(status_code=403, detail="User not allowed to register")
+
+    # Password is always 'qwertyui' for allowlist users
+    if user_in.password != "qwertyui":
+        raise HTTPException(status_code=400, detail="Password must be 'qwertyui' for allowed users")
+
+    # Validate class code if provided
+    joined_class = None
+    if user_in.class_code and user_in.class_code.strip():
+        code = user_in.class_code.strip().upper()
+        owner = db.query(User).filter(User.class_code == code).first()
+        if not owner:
+            raise HTTPException(status_code=400, detail="קוד כיתה לא תקין")
+        joined_class = code
+
     user = User(
         username=user_in.username,
         full_name=user_in.full_name,
-        hashed_password=hash_password(user_in.password),
+        hashed_password=hash_password("qwertyui"),
         is_admin=False,
+        role=3,
+        joined_class_code=joined_class,
     )
     db.add(user)
     db.commit()
@@ -413,6 +533,12 @@ def get_history(
     for row in rows:
         try:
             data = json.loads(row.raw_scores)
+            recs = None
+            if row.recommendation:
+                try:
+                    recs = json.loads(row.recommendation)
+                except (json.JSONDecodeError, TypeError):
+                    pass
             history.append({
                 "id": row.id,
                 "timestamp": row.created_at.isoformat(),
@@ -420,6 +546,7 @@ def get_history(
                 "features": data.get("features", {}),
                 "model_type": data.get("model_type", "unknown"),
                 "neck_effort": data.get("neck_effort"),
+                "recommendations": recs,
             })
         except (json.JSONDecodeError, AttributeError):
             pass
@@ -435,9 +562,16 @@ def admin_users(
     db: Session = Depends(get_db),
     admin_user: User = Depends(get_admin_user),
 ):
-    users = db.query(User).order_by(User.created_at.desc()).all()
-    result = []
+    if admin_user.role == 1:
+        # Super admin sees all users
+        users = db.query(User).order_by(User.created_at.desc()).all()
+    else:
+        # Regular admin sees only users in their class
+        users = db.query(User).filter(
+            User.joined_class_code == admin_user.class_code
+        ).order_by(User.created_at.desc()).all()
 
+    result = []
     for u in users:
         latest = (
             db.query(Result)
@@ -462,6 +596,9 @@ def admin_users(
             "username": u.username,
             "full_name": u.full_name,
             "is_admin": u.is_admin,
+            "role": u.role,
+            "class_code": u.class_code,
+            "joined_class_code": u.joined_class_code,
             "created_at": u.created_at.isoformat() if u.created_at else None,
             "latest_analysis": latest_analysis,
         })
@@ -475,6 +612,12 @@ def get_user_results(
     db: Session = Depends(get_db),
     admin_user: User = Depends(get_admin_user),
 ):
+    # Regular admin: verify target user is in their class
+    if admin_user.role != 1:
+        target = db.query(User).filter(User.id == uid).first()
+        if not target or target.joined_class_code != admin_user.class_code:
+            raise HTTPException(status_code=403, detail="Access denied")
+
     rows = (
         db.query(Result)
         .filter(Result.user_id == uid)
@@ -487,6 +630,12 @@ def get_user_results(
     for row in rows:
         try:
             data = json.loads(row.raw_scores)
+            recs = None
+            if row.recommendation:
+                try:
+                    recs = json.loads(row.recommendation)
+                except (json.JSONDecodeError, TypeError):
+                    pass
             results.append({
                 "id": row.id,
                 "timestamp": row.created_at.isoformat(),
@@ -494,6 +643,7 @@ def get_user_results(
                 "features": data.get("features", {}),
                 "model_type": data.get("model_type", "unknown"),
                 "neck_effort": data.get("neck_effort"),
+                "recommendations": recs,
             })
         except (json.JSONDecodeError, AttributeError):
             pass
@@ -536,14 +686,127 @@ def set_user_role(
     db: Session = Depends(get_db),
     admin_user: User = Depends(get_admin_user),
 ):
-    """Set a user's admin status."""
+    """Set a user's role. Only super admin can promote to admin/super_admin."""
     target = db.query(User).filter(User.id == uid).first()
     if target is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    target.is_admin = body.is_admin
+    new_role = body.role if body.role is not None else (2 if body.is_admin else 3)
+
+    # Only super admin can set roles
+    if admin_user.role != 1:
+        raise HTTPException(status_code=403, detail="Only super admin can change roles")
+
+    # Cannot demote yourself
+    if target.id == admin_user.id:
+        raise HTTPException(status_code=400, detail="Cannot change your own role")
+
+    target.role = new_role
+    target.is_admin = new_role in (1, 2)
+
+    # Generate class code for new admins
+    if new_role in (1, 2) and not target.class_code:
+        target.class_code = generate_class_code()
+
+    # Remove class code from demoted users
+    if new_role == 3:
+        target.class_code = None
+
     db.commit()
-    return {"status": "ok", "is_admin": target.is_admin}
+    return {
+        "status": "ok",
+        "is_admin": target.is_admin,
+        "role": target.role,
+        "class_code": target.class_code,
+    }
+
+
+# =========================
+# User class code management
+# =========================
+@app.post("/api/join-class")
+def join_class(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    body: dict = None,
+):
+    """Join a class by code. Body: {\"class_code\": \"ABC123\"}"""
+    if not body or not body.get("class_code"):
+        raise HTTPException(status_code=400, detail="Class code is required")
+
+    code = body["class_code"].strip().upper()
+    owner = db.query(User).filter(User.class_code == code).first()
+    if not owner:
+        raise HTTPException(status_code=400, detail="\u05e7\u05d5\u05d3 \u05db\u05d9\u05ea\u05d4 \u05dc\u05d0 \u05ea\u05e7\u05d9\u05df")
+
+    current_user.joined_class_code = code
+    db.commit()
+    return {"status": "ok", "joined_class_code": code}
+
+
+@app.post("/api/leave-class")
+def leave_class(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Leave current class."""
+    current_user.joined_class_code = None
+    db.commit()
+    return {"status": "ok"}
+
+
+# =========================
+# Standalone Recommendations
+# =========================
+class RecommendationRequest(BaseModel):
+    scores: Dict[str, int]
+    neck_effort: Optional[Dict[str, Any]] = None
+
+
+@app.post("/api/recommendations")
+def get_recommendations(
+    body: RecommendationRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Return practice recommendations for the given GRBAS scores."""
+    recs = recommend_with_context(body.scores, neck_effort=body.neck_effort)
+    return {"recommendations": flatten_recommendations(recs)}
+
+
+@app.get("/api/results/{result_id}/recommendations")
+def get_result_recommendations(
+    result_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Re-generate recommendations for a stored result."""
+    row = db.query(Result).filter(
+        Result.id == result_id,
+        Result.user_id == current_user.id,
+    ).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Result not found")
+
+    if row.recommendation:
+        try:
+            return {"recommendations": json.loads(row.recommendation)}
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    try:
+        data = json.loads(row.raw_scores)
+    except (json.JSONDecodeError, TypeError):
+        return {"recommendations": []}
+
+    scores = data.get("scores", {})
+    neck_effort = data.get("neck_effort")
+    recs = recommend_with_context(scores, neck_effort=neck_effort)
+    flat = flatten_recommendations(recs)
+
+    row.recommendation = json.dumps(flat)
+    db.commit()
+
+    return {"recommendations": flat}
 
 
 # =========================

@@ -4,7 +4,7 @@
  * Login uses OAuth2 password flow (form-encoded).
  * Register sends JSON to /api/register.
  * After login, /api/me is fetched to get user details.
- * The JWT is stored in sessionStorage so each new tab requires fresh login.
+ * The JWT is stored in localStorage so sessions persist across refreshes and tabs.
  */
 
 "use strict";
@@ -13,8 +13,8 @@
 // State
 // ---------------------------------------------------------------------------
 
-let _token = sessionStorage.getItem("jwt_token") || null;
-let _currentUser = null;   // { username, full_name, is_admin }
+let _token = localStorage.getItem("jwt_token") || null;
+let _currentUser = null;   // { username, full_name, is_admin, role, class_code, joined_class_code }
 
 // ---------------------------------------------------------------------------
 // DOM references
@@ -23,6 +23,7 @@ let _currentUser = null;   // { username, full_name, is_admin }
 const authForms    = document.getElementById("auth-forms");
 const authUsername  = document.getElementById("auth-username");
 const authPassword = document.getElementById("auth-password");
+const authClassCode = document.getElementById("auth-class-code");
 const loginBtn     = document.getElementById("login-btn");
 const registerBtn  = document.getElementById("register-btn");
 const authError    = document.getElementById("auth-error");
@@ -51,24 +52,28 @@ function getAuthHeaders() {
 async function register() {
     const username = (authUsername?.value || "").trim();
     const password = authPassword?.value || "";
+    const classCode = (authClassCode?.value || "").trim();
 
-    if (!username || !password) return showAuthError("Enter username and password.");
-    if (password.length < 8)   return showAuthError("Password must be at least 8 characters.");
+    if (!username || !password) return showAuthError("הזינו שם משתמש וסיסמה.");
+    if (password.length < 8)   return showAuthError("הסיסמה חייבת להכיל לפחות 8 תווים.");
 
     try {
+        const body = { username, password };
+        if (classCode) body.class_code = classCode;
+
         const resp = await fetch("/api/register", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, password }),
+            body: JSON.stringify(body),
         });
         const data = await resp.json();
 
-        if (!resp.ok) return showAuthError(data.detail || "Registration failed.");
+        if (!resp.ok) return showAuthError(data.detail || "ההרשמה נכשלה.");
 
         // Auto-login after successful registration
         await loginWithCredentials(username, password);
     } catch (err) {
-        showAuthError("Network error: " + err.message);
+        showAuthError("שגיאת רשת: " + err.message);
     }
 }
 
@@ -77,7 +82,7 @@ async function login() {
     const username = (authUsername?.value || "").trim();
     const password = authPassword?.value || "";
 
-    if (!username || !password) return showAuthError("Enter username and password.");
+    if (!username || !password) return showAuthError("הזינו שם משתמש וסיסמה.");
 
     await loginWithCredentials(username, password);
 }
@@ -95,16 +100,16 @@ async function loginWithCredentials(username, password) {
         });
         const data = await resp.json();
 
-        if (!resp.ok) return showAuthError(data.detail || "Login failed.");
+        if (!resp.ok) return showAuthError(data.detail || "ההתחברות נכשלה.");
 
         _token = data.access_token;
-        sessionStorage.setItem("jwt_token", _token);
+        localStorage.setItem("jwt_token", _token);
 
         // Fetch user profile
         await _fetchMe();
         showAuthError("");
     } catch (err) {
-        showAuthError("Network error: " + err.message);
+        showAuthError("שגיאת רשת: " + err.message);
     }
 }
 
@@ -112,8 +117,8 @@ async function loginWithCredentials(username, password) {
 function logout() {
     _token = null;
     _currentUser = null;
-    sessionStorage.removeItem("jwt_token");
-    sessionStorage.removeItem("jwt_user");
+    localStorage.removeItem("jwt_token");
+    localStorage.removeItem("jwt_user");
     showLoggedOutUI();
     if (typeof onAuthSignedOut === "function") onAuthSignedOut();
 }
@@ -132,8 +137,11 @@ async function _fetchMe() {
             username: data.username,
             full_name: data.full_name,
             is_admin: data.is_admin,
+            role: data.role || 3,
+            class_code: data.class_code || null,
+            joined_class_code: data.joined_class_code || null,
         };
-        sessionStorage.setItem("jwt_user", JSON.stringify(_currentUser));
+        localStorage.setItem("jwt_user", JSON.stringify(_currentUser));
         _applyAuthState();
     } catch (_) {
         logout();
@@ -142,14 +150,19 @@ async function _fetchMe() {
 
 /** Restore session from localStorage on page load. */
 function _restoreSession() {
-    const stored = sessionStorage.getItem("jwt_user");
+    const stored = localStorage.getItem("jwt_user");
     if (_token && stored) {
         try {
             _currentUser = JSON.parse(stored);
             _applyAuthState();
+            // Re-validate token in background
+            _fetchMe();
         } catch (_) {
             logout();
         }
+    } else if (_token) {
+        // Have token but no user data — fetch it
+        _fetchMe();
     } else {
         showLoggedOutUI();
     }
@@ -159,8 +172,24 @@ function _restoreSession() {
 function _applyAuthState() {
     if (!_currentUser) { showLoggedOutUI(); return; }
     showLoggedInUI(_currentUser.username);
-    if (_currentUser.is_admin && adminLink) {
+    if ((_currentUser.is_admin || _currentUser.role <= 2) && adminLink) {
         adminLink.hidden = false;
+    }
+    // Show class code info for admins
+    const classCodeDisplay = document.getElementById("my-class-code");
+    if (classCodeDisplay && _currentUser.class_code && _currentUser.role <= 2) {
+        classCodeDisplay.textContent = "קוד כיתה: " + _currentUser.class_code;
+        classCodeDisplay.hidden = false;
+    } else if (classCodeDisplay) {
+        classCodeDisplay.hidden = true;
+    }
+    // Show joined class for regular users
+    const joinedClassDisplay = document.getElementById("joined-class-info");
+    if (joinedClassDisplay && _currentUser.joined_class_code && _currentUser.role === 3) {
+        joinedClassDisplay.textContent = "מחובר לכיתה: " + _currentUser.joined_class_code;
+        joinedClassDisplay.hidden = false;
+    } else if (joinedClassDisplay) {
+        joinedClassDisplay.hidden = true;
     }
     if (typeof onAuthReady === "function") onAuthReady(_currentUser);
 }
@@ -202,7 +231,7 @@ if (togglePasswordBtn && authPassword) {
         const isHidden = authPassword.type === "password";
         authPassword.type = isHidden ? "text" : "password";
         togglePasswordBtn.textContent = isHidden ? "🙈" : "👁";
-        togglePasswordBtn.title = isHidden ? "Hide password" : "Show password";
+        togglePasswordBtn.title = isHidden ? "הסתר סיסמה" : "הצג סיסמה";
     });
 }
 
@@ -217,8 +246,8 @@ if (authPassword) {
 // Bootstrap – restore session on page load
 // ---------------------------------------------------------------------------
 
-// Clean up any old localStorage tokens from previous versions
-localStorage.removeItem("jwt_token");
-localStorage.removeItem("jwt_user");
+// Clean up any old sessionStorage tokens from previous versions
+sessionStorage.removeItem("jwt_token");
+sessionStorage.removeItem("jwt_user");
 
 _restoreSession();

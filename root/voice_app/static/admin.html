@@ -1,58 +1,76 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Voice Training</title>
-    <link rel="stylesheet" href="style.css">
+    <title>לוח ניהול - אימון קולי</title>
+    <link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
     <header>
-        <h1>Admin Dashboard</h1>
-        <p class="subtitle">Voice Training – User Management</p>
+        <h1>לוח ניהול</h1>
+        <p class="subtitle">אימון קולי – ניהול משתמשים</p>
     </header>
 
     <main>
         <!-- Auth Bar -->
         <div id="auth-bar" class="panel auth-bar">
             <div id="auth-forms" class="auth-forms">
-                <input type="text" id="auth-username" placeholder="Username" class="auth-input" />
-                <input type="password" id="auth-password" placeholder="Password" class="auth-input" />
-                <button id="login-btn" class="secondary-btn">Log In</button>
-                <button id="register-btn" class="secondary-btn">Register</button>
+                <input type="text" id="auth-username" placeholder="שם משתמש" class="auth-input" />
+                <input type="password" id="auth-password" placeholder="סיסמה" class="auth-input" />
+                <input type="text" id="auth-class-code" placeholder="קוד כיתה (אופציונלי)" class="auth-input" />
+                <button id="login-btn" class="secondary-btn">התחברות</button>
+                <button id="register-btn" class="secondary-btn">הרשמה</button>
                 <span id="auth-error" class="auth-error"></span>
             </div>
             <div id="user-bar" class="user-bar" hidden>
                 <span id="user-name" class="user-email"></span>
-                <button id="logout-btn" class="secondary-btn">Log Out</button>
-                <a href="/" class="secondary-btn">Back to App</a>
-                <a href="/admin" id="admin-link" class="secondary-btn" hidden>Admin Dashboard</a>
+                <span id="my-class-code" class="class-code-badge" hidden></span>
+                <span id="joined-class-info" class="class-code-badge" hidden></span>
+                <button id="logout-btn" class="secondary-btn">התנתקות</button>
+                <a href="/" class="secondary-btn">חזרה לאפליקציה</a>
+                <a href="/admin" id="admin-link" class="secondary-btn" hidden>לוח ניהול</a>
             </div>
         </div>
 
         <!-- Access Denied -->
         <section class="panel" id="admin-denied" hidden>
-            <p>You do not have admin access. Please log in with an admin account.</p>
-            <a href="/" class="secondary-btn">Back to App</a>
+            <p>אין לך הרשאת מנהל. יש להתחבר עם חשבון מנהל.</p>
+            <a href="/" class="secondary-btn">חזרה לאפליקציה</a>
         </section>
 
         <!-- Admin Content -->
         <section class="panel" id="admin-content" hidden>
-            <h2>All Users</h2>
+            <!-- Class code display for admin -->
+            <div id="admin-class-code-box" class="class-code-box" hidden>
+                <strong>קוד הכיתה שלך:</strong>
+                <span id="admin-class-code-value" class="class-code-value"></span>
+                <button id="copy-class-code" class="small-btn" title="העתק קוד">📋</button>
+            </div>
+
+            <!-- Class filter tabs (super admin only) -->
+            <div id="class-tabs" class="class-tabs" hidden>
+                <button class="class-tab active" data-filter="all">כל המשתמשים</button>
+                <button class="class-tab" data-filter="no-class">ללא כיתה</button>
+                <!-- dynamic tabs per class will be inserted here -->
+            </div>
+
+            <h2 id="users-title">משתמשים</h2>
             <div class="table-wrapper">
                 <table class="admin-table" id="users-table">
                     <thead>
                         <tr>
-                            <th>Username</th>
-                            <th>Full Name</th>
-                            <th>Role</th>
-                            <th>Registered</th>
+                            <th>שם משתמש</th>
+                            <th>שם מלא</th>
+                            <th>תפקיד</th>
+                            <th>כיתה</th>
+                            <th>תאריך הרשמה</th>
                             <th>G</th>
                             <th>R</th>
                             <th>B</th>
                             <th>A</th>
                             <th>S</th>
-                            <th>Actions</th>
+                            <th>פעולות</th>
                         </tr>
                     </thead>
                     <tbody id="users-tbody"></tbody>
@@ -62,13 +80,13 @@
 
         <!-- User Detail Panel -->
         <section class="panel" id="user-detail-panel" hidden>
-            <h2 id="detail-title">User Analysis History</h2>
-            <button class="secondary-btn" id="detail-close-btn">Close</button>
+            <h2 id="detail-title">היסטוריית ניתוחים</h2>
+            <button class="secondary-btn" id="detail-close-btn">סגור</button>
             <div id="user-detail-content"></div>
         </section>
     </main>
 
-    <script src="auth.js"></script>
-    <script src="admin.js"></script>
+    <script src="auth.js?v=10"></script>
+    <script src="admin.js?v=7"></script>
 </body>
 </html>

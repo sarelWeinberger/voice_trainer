@@ -1,16 +1,16 @@
 // Voice Training App - Frontend Logic
 
 const GRBAS_LABELS = {
-    G: "Grade (overall)",
-    R: "Roughness",
-    B: "Breathiness",
-    A: "Asthenia",
-    S: "Strain",
-    N: "Neck effort",
+    G: "דירוג כללי",
+    R: "צרידות",
+    B: "נשיפות",
+    A: "חולשה",
+    S: "מאמץ",
+    N: "מאמץ צוואר",
 };
 
 // Index = score: 0=normal(green), 1=slight(yellow), 2=moderate(orange), 3=severe(red)
-const GRADE_COLORS = ["#3ddc84", "#ffb74d", "#ff8a50", "#ff4f5e"];
+const GRADE_COLORS = ["#22c55e", "#f59e0b", "#f97316", "#ef4444"];
 
 // ---- State ----
 let mediaStream = null;
@@ -36,6 +36,7 @@ const neckEffortMode = document.getElementById("neck-effort-mode");
 const neckEffortScore = document.getElementById("neck-effort-score");
 const neckEffortLabel = document.getElementById("neck-effort-label");
 const neckEffortConfidence = document.getElementById("neck-effort-confidence");
+const neckEffortFeedback = document.getElementById("neck-effort-feedback");
 const neckEffortReasons = document.getElementById("neck-effort-reasons");
 const recordBtn = document.getElementById("record-btn");
 const recordLabel = recordBtn.querySelector(".record-label");
@@ -56,6 +57,9 @@ const historyList = document.getElementById("history-list");
 const clearHistoryBtn = document.getElementById("clear-history-btn");
 const recommendationsPanel = document.getElementById("recommendations-panel");
 const recommendationsList = document.getElementById("recommendations-list");
+const progressPanel = document.getElementById("progress-panel");
+const progressChart = document.getElementById("progress-chart");
+const progressSummary = document.getElementById("progress-summary");
 
 // ---- Initialize Camera + Mic ----
 async function init() {
@@ -78,10 +82,9 @@ async function init() {
         initFaceMesh();
         await resetNeckEffortSession();
         startNeckEffortMonitoring();
-        setStatus("Camera and microphone ready.");
+        setStatus("מצלמה ומיקרופון מוכנים.");
     } catch (err) {
-        setStatus("Error: " + err.message, true);
-        updateNeckEffortUI(null);
+        setStatus("שגיאה: " + err.message, true);
     } finally {
         initInProgress = false;
     }
@@ -145,9 +148,9 @@ function onFaceResults(results) {
         const metrics = computeFaceMetrics(landmarks);
         faceMetrics.style.display = "block";
         faceMetrics.textContent =
-            `Jaw: ${metrics.jawOpenness.toFixed(1)}% | ` +
-            `Lip Sym: ${metrics.lipSymmetry.toFixed(1)}% | ` +
-            `Tension: ${metrics.facialTension.toFixed(1)}%`;
+            `לסת: ${metrics.jawOpenness.toFixed(1)}% | ` +
+            `סימטריית שפתיים: ${metrics.lipSymmetry.toFixed(1)}% | ` +
+            `מתח: ${metrics.facialTension.toFixed(1)}%`;
     } else {
         faceMetrics.style.display = "none";
     }
@@ -202,7 +205,7 @@ async function resetNeckEffortSession() {
             score: null,
             score_label: null,
             confidence: 0,
-            reasons: ["Hold a relaxed neutral posture for calibration"],
+            reasons: ["החזיקו תנוחה נינוחה לכיול"],
         });
     } catch (err) {
         console.warn("Neck effort reset failed:", err);
@@ -280,74 +283,134 @@ async function captureNeckEffortFrame() {
 
 function updateNeckEffortUI(data) {
     if (!data) {
-        neckEffortMode.textContent = "Idle";
+        neckEffortMode.textContent = "לא פעיל";
         neckEffortScore.textContent = "--";
         neckEffortScore.className = "neck-effort-score";
-        neckEffortLabel.textContent = "Camera not started";
-        neckEffortConfidence.textContent = "Confidence: --";
-        neckEffortReasons.textContent = "Align your head, neck, and shoulders in frame.";
+        neckEffortLabel.textContent = "המצלמה לא הופעלה";
+        neckEffortConfidence.textContent = "ביטחון: --";
+        neckEffortReasons.textContent = "יישרו את הראש, הצוואר והכתפיים מול המצלמה.";
         return;
     }
 
     if (data.mode === "calibrating") {
         const progress = Math.round((data.calibration_progress || 0) * 100);
-        neckEffortMode.textContent = "Calibrating";
+        neckEffortMode.textContent = "כיול";
         neckEffortScore.textContent = progress + "%";
         neckEffortScore.className = "neck-effort-score";
-        neckEffortLabel.textContent = "Hold a neutral posture";
-        neckEffortConfidence.textContent = "Confidence: " + Math.round((data.confidence || 0) * 100) + "%";
-        neckEffortReasons.textContent = "Relax your shoulders and keep your neck centered until calibration finishes.";
+        neckEffortLabel.textContent = "החזיקו תנוחה נינוחה";
+        neckEffortConfidence.textContent = "ביטחון: " + Math.round((data.confidence || 0) * 100) + "%";
+        neckEffortReasons.textContent = "הרפו את הכתפיים ושמרו על הצוואר במרכז עד סיום הכיול.";
         return;
     }
 
     if (data.mode === "running" && Number.isInteger(data.score)) {
-        neckEffortMode.textContent = "Live";
+        neckEffortMode.textContent = "פעיל";
         neckEffortScore.textContent = String(data.score);
         neckEffortScore.className = "neck-effort-score grade-" + data.score;
-        neckEffortLabel.textContent = (data.score_label || "unknown").replace(/^./, (char) => char.toUpperCase());
-        neckEffortConfidence.textContent = "Confidence: " + Math.round((data.confidence || 0) * 100) + "%";
+        neckEffortLabel.textContent = (data.score_label || "לא ידוע").replace(/^./, (char) => char.toUpperCase());
+        neckEffortConfidence.textContent = "ביטחון: " + Math.round((data.confidence || 0) * 100) + "%";
+        updateNeckEffortFeedback(data.score, data.reasons || []);
         neckEffortReasons.textContent = formatNeckEffortReasons(data.reasons || []);
         return;
     }
 
     if (data.mode === "no_score") {
-        neckEffortMode.textContent = "Adjust";
+        neckEffortMode.textContent = "התאמה";
         neckEffortScore.textContent = data.last_valid_score ?? "--";
         neckEffortScore.className = Number.isInteger(data.last_valid_score)
             ? "neck-effort-score grade-" + data.last_valid_score
             : "neck-effort-score";
-        neckEffortLabel.textContent = "Need better framing";
-        neckEffortConfidence.textContent = "Confidence: " + Math.round((data.confidence || 0) * 100) + "%";
+        neckEffortLabel.textContent = "נדרש מיסגור טוב יותר";
+        neckEffortConfidence.textContent = "ביטחון: " + Math.round((data.confidence || 0) * 100) + "%";
         neckEffortReasons.textContent = formatNeckEffortReasons(data.reasons || []);
         return;
     }
 
-    neckEffortMode.textContent = "Error";
+    neckEffortMode.textContent = "שגיאה";
     neckEffortScore.textContent = "--";
     neckEffortScore.className = "neck-effort-score";
-    neckEffortLabel.textContent = "Analysis unavailable";
-    neckEffortConfidence.textContent = "Confidence: 0%";
+    neckEffortLabel.textContent = "הניתוח לא זמין";
+    neckEffortConfidence.textContent = "ביטחון: 0%";
     neckEffortReasons.textContent = formatNeckEffortReasons(data.reasons || []);
 }
 
 function formatNeckEffortReasons(reasons) {
     const labels = {
-        head_forward_posture: "Head appears forward relative to shoulders.",
-        neck_tilt: "Neck tilt is elevated.",
-        shoulder_imbalance: "Shoulders look uneven.",
-        raised_shoulders: "Shoulders appear raised.",
-        head_instability: "Head position is unstable.",
-        excess_mouth_opening: "Mouth opening is larger than expected.",
-        head_rotation: "Face is turned away from frontal view.",
-        minimal_visible_effort: "Minimal visible neck effort.",
-        no_face_or_pose: "Keep your face and shoulders visible to the camera.",
-        low_confidence_view: "Adjust framing and face the camera more directly.",
-        neck_effort_unavailable: "Neck effort analysis is temporarily unavailable.",
+        head_forward_posture: "הראש נראה קדימה ביחס לכתפיים.",
+        neck_tilt: "הטיית הצוואר מוגבהת.",
+        shoulder_imbalance: "הכתפיים נראות לא מאוזנות.",
+        raised_shoulders: "הכתפיים נראות מורמות.",
+        head_instability: "מצב הראש לא יציב.",
+        excess_mouth_opening: "פתיחת הפה גדולה מהצפוי.",
+        head_rotation: "הפנים מופנות הצידה מהמצלמה.",
+        minimal_visible_effort: "מאמץ צוואר מינימלי.",
+        no_face_or_pose: "ודאו שהפנים והכתפיים נראים למצלמה.",
+        low_confidence_view: "התאימו את המיסגור והפנו ישירות למצלמה.",
+        neck_effort_unavailable: "ניתוח מאמץ הצוואר אינו זמין זמנית.",
     };
     if (!reasons || reasons.length === 0) {
-        return "Align your head, neck, and shoulders in frame.";
+        return "יישרו את הראש, הצוואר והכתפיים מול המצלמה.";
     }
     return reasons.map((reason) => labels[reason] || reason.replaceAll("_", " ")).join(" ");
+}
+
+// ---- Neck Effort Positive Reinforcement ----
+let _lastNeckScore = null;
+let _neckGoodStreak = 0;
+
+function updateNeckEffortFeedback(score, reasons) {
+    if (!neckEffortFeedback) return;
+
+    // Track streak of good scores
+    if (score <= 1) {
+        _neckGoodStreak++;
+    } else {
+        _neckGoodStreak = 0;
+    }
+
+    const improved = _lastNeckScore !== null && score < _lastNeckScore;
+    _lastNeckScore = score;
+
+    let icon = "";
+    let msg = "";
+    let cls = "";
+
+    if (score === 0) {
+        icon = "\u2728"; // ✨
+        if (_neckGoodStreak >= 10) {
+            msg = "מצוין! תנוחה רפויה בעקביות \u2014 המשיכו!";
+        } else if (improved) {
+            msg = "שיפור מעולה! הצוואר משוחרר יפה.";
+        } else {
+            msg = "נראה מצוין \u2014 תנוחה רפויה ומיושרת.";
+        }
+        cls = "neck-feedback-great";
+    } else if (score === 1) {
+        icon = "\u2705"; // ✅
+        if (improved) {
+            msg = "הולך והשתפר! מאמץ קל \u2014 התאמות קטנות עוזרות.";
+        } else if (_neckGoodStreak >= 5) {
+            msg = "עקביות טובה! שמרו על הכתפיים רפויות.";
+        } else {
+            msg = "זוהה מאמץ קל \u2014 נסו להרפות את הכתפיים קצת.";
+        }
+        cls = "neck-feedback-good";
+    } else if (score === 2) {
+        icon = "\u26A0\uFE0F"; // ⚠️
+        if (improved) {
+            msg = "יותר טוב! המשיכו לשחרר מתח מאזור הצוואר.";
+        } else {
+            msg = "מתח מורגש \u2014 הורידו את הכתפיים ונשמו.";
+        }
+        cls = "neck-feedback-caution";
+    } else {
+        icon = "\uD83D\uDCA1"; // 💡
+        msg = "מאמץ גבוה זוהה \u2014 עצרו, נשמו החוצה והורידו את הכתפיים.";
+        cls = "neck-feedback-alert";
+    }
+
+    neckEffortFeedback.className = "neck-effort-feedback " + cls;
+    neckEffortFeedback.innerHTML = `<span class="neck-feedback-icon">${icon}</span> <span class="neck-feedback-msg">${msg}</span>`;
 }
 
 // ---- Audio Recording ----
@@ -363,7 +426,7 @@ function toggleRecording() {
 
 function startRecording() {
     if (!audioStream) {
-        setStatus("Microphone not available.", true);
+        setStatus("המיקרופון לא זמין.", true);
         return;
     }
 
@@ -388,9 +451,9 @@ function startRecording() {
     isRecording = true;
     recordingStart = Date.now();
     recordBtn.classList.add("recording");
-    recordLabel.textContent = "Stop Recording";
+    recordLabel.textContent = "עצור הקלטה";
     timerEl.hidden = false;
-    setStatus("Recording...");
+    setStatus("מקליט...");
 
     timerInterval = setInterval(() => {
         const elapsed = ((Date.now() - recordingStart) / 1000).toFixed(1);
@@ -408,7 +471,7 @@ function stopRecording() {
     isRecording = false;
     clearInterval(timerInterval);
     recordBtn.classList.remove("recording");
-    recordLabel.textContent = "Start Recording";
+    recordLabel.textContent = "התחל הקלטה";
 
     const audioContext = recordBtn._audioContext;
     const processor = recordBtn._processor;
@@ -422,7 +485,7 @@ function stopRecording() {
     const wavBlob = pcmToWav(pcmChunks, audioContext.sampleRate);
     audioContext.close();
 
-    setStatus("Analyzing...");
+    setStatus("מנתח...");
     sendAudio(wavBlob);
 }
 
@@ -484,13 +547,15 @@ async function sendAudio(blob) {
         });
         const data = await resp.json();
 
-        if (data.error) {
-            setStatus("Error: " + data.error, true);
+        if (!resp.ok) {
+            setStatus("Error: " + (data.detail || data.error || "Analysis failed"), true);
             return;
         }
 
+        showImprovementBanner(data);
         displayResults(data);
         saveToHistory(data);
+        loadCloudHistory();
         setStatus("Analysis complete.");
     } catch (err) {
         setStatus("Error: " + err.message, true);
@@ -517,7 +582,7 @@ function displayResults(data) {
         scoresList.appendChild(createScoreRow("N", neckScore));
     }
 
-    modelBadge.textContent = `Model: ${data.model_type}`;
+    modelBadge.textContent = `מודל: ${data.model_type}`;
 
     // Radar chart
     drawRadarChart(data.scores);
@@ -525,16 +590,16 @@ function displayResults(data) {
     // Features
     featuresGrid.innerHTML = "";
     const featureLabels = {
-        f0_mean: "F0 Mean (Hz)",
-        f0_std: "F0 Std Dev",
-        f0_range: "F0 Range (Hz)",
-        jitter_percent: "Jitter (%)",
-        shimmer_percent: "Shimmer (%)",
+        f0_mean: "תדר יסוד F0 (Hz)",
+        f0_std: "סטיית תקן F0",
+        f0_range: "טווח F0 (Hz)",
+        jitter_percent: "רעידה (%)",
+        shimmer_percent: "ריצוד (%)",
         hnr: "HNR (dB)",
-        spectral_centroid: "Spectral Centroid",
-        spectral_tilt: "Spectral Tilt",
-        hf_energy_ratio: "HF Energy Ratio",
-        intensity_mean: "Intensity (dB)",
+        spectral_centroid: "מרכז ספקטרלי",
+        spectral_tilt: "נטיית ספקטרלית",
+        hf_energy_ratio: "יחס אנרגיה גבוהה",
+        intensity_mean: "עוצמה (dB)",
         f1: "F1 (Hz)",
         f2: "F2 (Hz)",
         f3: "F3 (Hz)",
@@ -581,31 +646,31 @@ function renderCombinedSummary(data) {
 
     const summaryByLevel = {
         0: {
-            title: "Low visible load across voice and neck",
-            badge: "Stable",
-            text: "The recording looks organized. Voice quality is close to normal and there is no clear sign of elevated neck effort.",
+            title: "עומס נמוך על הקול והצוואר",
+            badge: "יציב",
+            text: "ההקלטה נראית מסודרת. איכות הקול קרובה לתקינה ואין סימנים למאמץ צוואר מוגבר.",
         },
         1: {
-            title: "Mild load detected",
-            badge: "Watch",
-            text: "There are early signs of extra effort. Keep monitoring posture, airflow, and ease during practice.",
+            title: "עומס קל זוהה",
+            badge: "מעקב",
+            text: "יש סימנים מוקדמים למאמץ נוסף. המשיכו לעקוב אחר התנוחה, זרימת האוויר והקלות בתרגול.",
         },
         2: {
-            title: "Moderate combined load",
-            badge: "Attention",
-            text: "The analysis suggests noticeable vocal or cervical effort. Focus on posture release, shoulder relaxation, and efficient phonation.",
+            title: "עומס משולב בינוני",
+            badge: "תשומת לב",
+            text: "הניתוח מראה מאמץ קולי או צווארי מורגש. התמקדו בשחרור תנוחה, הרפיית כתפיים והפקה יעילה.",
         },
         3: {
-            title: "High combined load",
-            badge: "High",
-            text: "The sample shows strong vocal and/or neck effort. Practice should prioritize unloading tension before increasing vocal demand.",
+            title: "עומס משולב גבוה",
+            badge: "גבוה",
+            text: "הדגימה מראה מאמץ קולי ו/או צווארי חזק. מומלץ לתעדף הפחתת מתח לפני הגברת העומס הקולי.",
         },
     };
 
     const summary = summaryByLevel[overallLevel] || summaryByLevel[0];
     const neckText = neckEffort === null
         ? ""
-        : `Neck effort scored ${neckEffort}/3${data.neck_effort?.score_label ? ` (${data.neck_effort.score_label})` : ""}.`;
+        : `מאמץ צוואר ${neckEffort}/3${data.neck_effort?.score_label ? ` (${data.neck_effort.score_label})` : ""}.`;
 
     combinedSummary.hidden = false;
     combinedSummaryTitle.textContent = summary.title;
@@ -613,24 +678,24 @@ function renderCombinedSummary(data) {
     combinedSummaryBadge.className = "combined-summary-badge level-" + overallLevel;
     combinedSummaryText.textContent = [
         summary.text,
-        `Grade is ${voiceGrade}/3, strain is ${strain}/3.`,
+        `דירוג ${voiceGrade}/3, מאמץ ${strain}/3.`,
         neckText,
     ].filter(Boolean).join(" ");
 
     combinedSummaryMetrics.innerHTML = "";
     const chips = [
-        { label: "Voice Grade", value: `${voiceGrade}/3`, score: voiceGrade },
-        { label: "Strain", value: `${strain}/3`, score: strain },
+        { label: "דירוג קולי", value: `${voiceGrade}/3`, score: voiceGrade },
+        { label: "מאמץ", value: `${strain}/3`, score: strain },
         {
-            label: "Model",
-            value: data.model_type || "unknown",
+            label: "מודל",
+            value: data.model_type || "לא ידוע",
             score: null,
         },
     ];
 
     if (neckEffort !== null) {
         chips.splice(2, 0, {
-            label: "Neck Effort",
+            label: "מאמץ צוואר",
             value: `${neckEffort}/3`,
             score: neckEffort,
         });
@@ -649,7 +714,7 @@ function renderCombinedSummary(data) {
 }
 
 // ---- Display Recommendations ----
-const MEASURE_NAMES = { G: "Grade", R: "Roughness", B: "Breathiness", A: "Asthenia", S: "Strain", N: "Neck Effort" };
+const MEASURE_NAMES = { G: "דירוג כללי", R: "צרידות", B: "נשיפות", A: "חולשה", S: "מאמץ", N: "מאמץ צוואר" };
 
 function displayRecommendations(recommendations) {
     if (!recommendations || recommendations.length === 0) {
@@ -660,6 +725,19 @@ function displayRecommendations(recommendations) {
     recommendationsPanel.hidden = false;
     recommendationsList.innerHTML = "";
 
+    // Show appropriate subtitle
+    const recSubtitle = recommendationsPanel.querySelector(".rec-subtitle");
+    const maxScore = Math.max(...recommendations.map((r) => r.score));
+    if (recSubtitle) {
+        if (maxScore === 0) {
+            recSubtitle.textContent = "הקול נשמע תקין! הנה תרגילים לשמירה על בריאות הקול.";
+        } else if (maxScore === 1) {
+            recSubtitle.textContent = "זוהו מממצאים קלים — תרגילים אלו יעזרו לשמור על בריאות הקול.";
+        } else {
+            recSubtitle.textContent = "תרגילי YouTube מותאמים לתוצאות GRBAS שלך";
+        }
+    }
+
     for (const rec of recommendations) {
         const group = document.createElement("div");
         group.className = "rec-group";
@@ -668,8 +746,8 @@ function displayRecommendations(recommendations) {
         header.className = "rec-header";
         header.innerHTML = `
             <span class="rec-measure grade-${rec.score}">${rec.measure} – ${MEASURE_NAMES[rec.measure] || rec.measure}</span>
-            <span class="rec-score">Score: ${rec.score}/3</span>
-            <span class="rec-priority">Priority #${rec.priority_rank}</span>
+            <span class="rec-score">ציון: ${rec.score}/3</span>
+            <span class="rec-priority">עדיפות #${rec.priority_rank}</span>
         `;
         group.appendChild(header);
 
@@ -721,7 +799,7 @@ function drawRadarChart(scores) {
             if (i === 0) ctx.moveTo(x, y);
             else ctx.lineTo(x, y);
         }
-        ctx.strokeStyle = "rgba(255,255,255,0.1)";
+        ctx.strokeStyle = "rgba(0,0,0,0.08)";
         ctx.lineWidth = 1;
         ctx.stroke();
     }
@@ -732,7 +810,7 @@ function drawRadarChart(scores) {
         ctx.beginPath();
         ctx.moveTo(cx, cy);
         ctx.lineTo(cx + maxR * Math.cos(angle), cy + maxR * Math.sin(angle));
-        ctx.strokeStyle = "rgba(255,255,255,0.15)";
+        ctx.strokeStyle = "rgba(0,0,0,0.1)";
         ctx.stroke();
     }
 
@@ -748,9 +826,9 @@ function drawRadarChart(scores) {
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
     }
-    ctx.fillStyle = "rgba(79,140,255,0.25)";
+    ctx.fillStyle = "rgba(74,124,255,0.15)";
     ctx.fill();
-    ctx.strokeStyle = "#4f8cff";
+    ctx.strokeStyle = "#4a7cff";
     ctx.lineWidth = 2;
     ctx.stroke();
 
@@ -771,12 +849,69 @@ function drawRadarChart(scores) {
         // Label
         const lx = cx + (maxR + 18) * Math.cos(angle);
         const ly = cy + (maxR + 18) * Math.sin(angle);
-        ctx.fillStyle = "#e8eaf0";
-        ctx.font = "bold 13px sans-serif";
+        ctx.fillStyle = "#1a2332";
+        ctx.font = "bold 14px 'Rubik', sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(dims[i], lx, ly);
     }
+}
+
+// ---- Improvement Banner ----
+const improvementBanner = document.getElementById("improvement-banner");
+
+const ENCOURAGEMENT_MESSAGES = [
+    { title: "כל הכבוד! יש שיפור!", msg: "התרגול משתלם – הקול שלך נשמע טוב יותר מהפעם הקודמת!" },
+    { title: "מעולה! התקדמות יפה!", msg: "העבודה הקשה משתלמת. המשיכו/י להתאמן!" },
+    { title: "איזה קפיצה קדימה!", msg: "הנתונים מראים שיפור אמיתי באיכות הקול. כל הכבוד!" },
+    { title: "ראית שיפור!", msg: "המאמץ שלך נותן פירות – הקול נשמע חזק ויציב יותר." },
+    { title: "ואו מדהים!", msg: "הקול שלך השתפר. זו בדיוק התוצאה של עבודה קשה!" },
+];
+
+const DIM_NAMES_HE = { G: "דירוג כללי", R: "צרידות", B: "נשיפות", A: "חולשה", S: "מאמץ", N: "מאמץ צוואר" };
+
+function showImprovementBanner(data) {
+    if (!improvementBanner) return;
+    improvementBanner.hidden = true;
+
+    // Get previous history to compare
+    const key = _historyKey();
+    const history = JSON.parse(localStorage.getItem(key) || "[]");
+    if (history.length === 0) return;
+
+    const prev = history[0]; // most recent previous entry
+    const improved = [];
+
+    for (const dim of "GRBAS") {
+        const prevScore = prev.scores[dim] ?? 0;
+        const curScore = data.scores[dim] ?? 0;
+        if (curScore < prevScore) {
+            improved.push({ dim, from: prevScore, to: curScore });
+        }
+    }
+
+    // Check neck effort improvement
+    const prevNeck = prev.neck_effort && Number.isInteger(prev.neck_effort.score) ? prev.neck_effort.score : null;
+    const curNeck = data.neck_effort && Number.isInteger(data.neck_effort.score) ? data.neck_effort.score : null;
+    if (prevNeck !== null && curNeck !== null && curNeck < prevNeck) {
+        improved.push({ dim: "N", from: prevNeck, to: curNeck });
+    }
+
+    if (improved.length === 0) return;
+
+    const pick = ENCOURAGEMENT_MESSAGES[Math.floor(Math.random() * ENCOURAGEMENT_MESSAGES.length)];
+
+    let chipsHtml = "";
+    for (const imp of improved) {
+        chipsHtml += `<span class="banner-chip">${DIM_NAMES_HE[imp.dim]}: ${imp.from} \u2192 ${imp.to} \u2193</span>`;
+    }
+
+    improvementBanner.innerHTML = `
+        <div class="banner-title"><span class="banner-icon">\u2728</span>${pick.title}</div>
+        <div class="banner-message">${pick.msg}</div>
+        <div class="banner-details">${chipsHtml}</div>
+    `;
+    improvementBanner.hidden = false;
 }
 
 // ---- Session History ----
@@ -810,7 +945,7 @@ function loadHistory() {
 
     if (history.length === 0) {
         historyList.innerHTML =
-            '<p class="empty-state">No recordings yet. Start by recording your voice above.</p>';
+            '<p class="empty-state">אין עדיין הקלטות. התחילו בהקלטת הקול למעלה.</p>';
         clearHistoryBtn.hidden = true;
         return;
     }
@@ -837,7 +972,10 @@ function loadHistory() {
         item.innerHTML = `
             <span class="history-time">${timeStr}</span>
             <div class="history-scores">${scoresHtml}</div>
+            <span class="history-view-btn" title="צפה בהמלצות">&#x25B6;</span>
         `;
+        item.className = "history-item history-item-clickable";
+        item.addEventListener("click", () => loadHistoryEntry(entry));
         historyList.appendChild(item);
     }
 }
@@ -866,16 +1004,44 @@ async function loadCloudHistory() {
 
         if (data.history && data.history.length > 0) {
             renderHistory(data.history);
+            renderProgressChart(data.history);
+            updateQuickStats(data.history);
         }
     } catch (err) {
         console.warn("Cloud history load failed:", err);
     }
 }
 
+// ---- Quick Stats ----
+function updateQuickStats(entries) {
+    const qsTotal = document.getElementById("qs-total");
+    const qsLastDate = document.getElementById("qs-last-date");
+    const qsBestG = document.getElementById("qs-best-g");
+    if (!qsTotal) return;
+
+    qsTotal.textContent = entries.length;
+
+    if (entries.length > 0) {
+        const sorted = entries.slice().sort((a, b) =>
+            new Date(b.timestamp) - new Date(a.timestamp)
+        );
+        const lastDate = new Date(sorted[0].timestamp);
+        qsLastDate.textContent = lastDate.toLocaleDateString("he-IL");
+
+        let bestG = 3;
+        for (const e of entries) {
+            if (e.scores && typeof e.scores.G === "number" && e.scores.G < bestG) {
+                bestG = e.scores.G;
+            }
+        }
+        qsBestG.textContent = bestG;
+    }
+}
+
 function renderHistory(entries) {
     if (!entries || entries.length === 0) {
         historyList.innerHTML =
-            '<p class="empty-state">No recordings yet. Start by recording your voice above.</p>';
+            '<p class="empty-state">אין עדיין הקלטות. התחילו בהקלטת הקול למעלה.</p>';
         clearHistoryBtn.hidden = true;
         return;
     }
@@ -885,7 +1051,7 @@ function renderHistory(entries) {
 
     for (const entry of entries) {
         const item = document.createElement("div");
-        item.className = "history-item";
+        item.className = "history-item history-item-clickable";
 
         const time = new Date(entry.timestamp);
         const timeStr = time.toLocaleDateString() + " " + time.toLocaleTimeString();
@@ -902,9 +1068,232 @@ function renderHistory(entries) {
         item.innerHTML = `
             <span class="history-time">${timeStr}</span>
             <div class="history-scores">${scoresHtml}</div>
+            <span class="history-view-btn" title="צפה בהמלצות">&#x25B6;</span>
         `;
+        item.className = "history-item history-item-clickable";
+        item.addEventListener("click", () => loadHistoryEntry(entry));
         historyList.appendChild(item);
     }
+}
+
+// ---- Load History Entry into Results ----
+
+// ---- Progress Chart ----
+function renderProgressChart(entries) {
+    if (!progressPanel || !progressChart || !entries || entries.length < 2) {
+        if (progressPanel) progressPanel.hidden = true;
+        return;
+    }
+
+    progressPanel.hidden = false;
+
+    // Defer drawing to next frame so the browser can layout the now-visible panel
+    requestAnimationFrame(() => _drawProgressChart(entries));
+}
+
+function _drawProgressChart(entries) {
+    // Sort oldest first
+    const sorted = [...entries].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    const dims = ["G", "R", "B", "A", "S"];
+    const dimColors = {
+        G: "#4a7cff",
+        R: "#f97316",
+        B: "#a855f7",
+        A: "#f59e0b",
+        S: "#ef4444",
+    };
+
+    const canvas = progressChart;
+    const ctx = canvas.getContext("2d");
+    const dpr = window.devicePixelRatio || 1;
+    const container = canvas.parentElement;
+    const cssW = (container && container.clientWidth > 0) ? container.clientWidth : 760;
+    const cssH = 300;
+    canvas.style.width = cssW + "px";
+    canvas.style.height = cssH + "px";
+    canvas.width = cssW * dpr;
+    canvas.height = cssH * dpr;
+    ctx.scale(dpr, dpr);
+
+    const pad = { top: 30, right: 20, bottom: 50, left: 40 };
+    const w = cssW - pad.left - pad.right;
+    const h = cssH - pad.top - pad.bottom;
+    const n = sorted.length;
+
+    ctx.clearRect(0, 0, cssW, cssH);
+
+    // Background grid
+    ctx.strokeStyle = "rgba(0,0,0,0.06)";
+    ctx.lineWidth = 1;
+    for (let level = 0; level <= 3; level++) {
+        const y = pad.top + h - (level / 3) * h;
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(pad.left + w, y);
+        ctx.stroke();
+
+        ctx.fillStyle = "rgba(0,0,0,0.4)";
+        ctx.font = "12px 'Rubik', sans-serif";
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+        ctx.fillText(String(level), pad.left - 8, y);
+    }
+
+    // X-axis date labels
+    ctx.fillStyle = "rgba(0,0,0,0.4)";
+    ctx.font = "11px 'Rubik', sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    const maxLabels = Math.min(n, 10);
+    const step = Math.max(1, Math.floor(n / maxLabels));
+    for (let i = 0; i < n; i += step) {
+        const x = pad.left + (i / Math.max(1, n - 1)) * w;
+        const date = new Date(sorted[i].timestamp);
+        const label = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+        ctx.fillText(label, x, pad.top + h + 8);
+    }
+
+    // Draw lines for each dimension
+    for (const dim of dims) {
+        ctx.beginPath();
+        ctx.strokeStyle = dimColors[dim];
+        ctx.lineWidth = 2.5;
+        ctx.lineJoin = "round";
+
+        for (let i = 0; i < n; i++) {
+            const x = pad.left + (i / Math.max(1, n - 1)) * w;
+            const score = sorted[i].scores[dim] ?? 0;
+            const y = pad.top + h - (score / 3) * h;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        // Draw dots
+        for (let i = 0; i < n; i++) {
+            const x = pad.left + (i / Math.max(1, n - 1)) * w;
+            const score = sorted[i].scores[dim] ?? 0;
+            const y = pad.top + h - (score / 3) * h;
+            ctx.beginPath();
+            ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+            ctx.fillStyle = dimColors[dim];
+            ctx.fill();
+        }
+    }
+
+    // Legend
+    const legendY = pad.top + h + 28;
+    let legendX = pad.left;
+    ctx.font = "bold 12px sans-serif";
+    for (const dim of dims) {
+        ctx.fillStyle = dimColors[dim];
+        ctx.beginPath();
+        ctx.arc(legendX + 6, legendY, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#e8eaf0";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(dim, legendX + 15, legendY);
+        legendX += 50;
+    }
+
+    // Progress summary
+    renderProgressSummary(sorted, dims);
+}
+
+function renderProgressSummary(sorted, dims) {
+    if (!progressSummary || sorted.length < 2) return;
+
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    const dimNames = { G: "דירוג", R: "צרידות", B: "נשיפות", A: "חולשה", S: "מאמץ" };
+
+    let html = "";
+    for (const dim of dims) {
+        const start = first.scores[dim] ?? 0;
+        const end = last.scores[dim] ?? 0;
+        const diff = end - start;
+
+        let arrow, cls;
+        if (diff < 0) {
+            arrow = "\u2193"; // ↓ improved (lower is better)
+            cls = "progress-improved";
+        } else if (diff > 0) {
+            arrow = "\u2191"; // ↑ worsened
+            cls = "progress-worsened";
+        } else {
+            arrow = "\u2192"; // → stable
+            cls = "progress-stable";
+        }
+
+        html += `<div class="progress-chip ${cls}">
+            <span class="progress-chip-dim">${dim}</span>
+            <span class="progress-chip-label">${dimNames[dim]}</span>
+            <span class="progress-chip-change">${start} ${arrow} ${end}</span>
+        </div>`;
+    }
+
+    progressSummary.innerHTML = html;
+}
+
+// ---- Load History Entry into Results ----
+/**
+ * Load a past analysis entry into the results panels.
+ * If the entry already has recommendations show them immediately,
+ * otherwise fetch from the server.
+ */
+async function loadHistoryEntry(entry) {
+    const fakeData = {
+        scores: entry.scores,
+        features: entry.features || {},
+        model_type: entry.model_type || "unknown",
+        neck_effort: entry.neck_effort || null,
+        recommendations: entry.recommendations || null,
+    };
+
+    displayResults(fakeData);
+
+    // If no embedded recommendations, try fetching from the server
+    if (!fakeData.recommendations && entry.id) {
+        try {
+            const headers = typeof getAuthHeaders === "function" ? getAuthHeaders() : {};
+            const resp = await fetch(`/api/results/${encodeURIComponent(entry.id)}/recommendations`, { headers });
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data.recommendations) {
+                    displayRecommendations(data.recommendations);
+                }
+            }
+        } catch (err) {
+            console.warn("Failed to load recommendations for history entry:", err);
+        }
+    }
+
+    // If still no recommendations, generate client-side from scores
+    if (!fakeData.recommendations && !entry.id) {
+        try {
+            const headers = typeof getAuthHeaders === "function" ? getAuthHeaders() : {};
+            headers["Content-Type"] = "application/json";
+            const resp = await fetch("/api/recommendations", {
+                method: "POST",
+                headers,
+                body: JSON.stringify({
+                    scores: entry.scores,
+                    neck_effort: entry.neck_effort || null,
+                }),
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data.recommendations) {
+                    displayRecommendations(data.recommendations);
+                }
+            }
+        } catch (err) {
+            console.warn("Failed to fetch recommendations:", err);
+        }
+    }
+
+    resultsPanel.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 // ---- Show / Hide app content based on auth ----
@@ -940,8 +1329,36 @@ function onAuthSignedOut() {
     resultsPanel.hidden = true;
     featuresPanel.hidden = true;
     recommendationsPanel.hidden = true;
+    if (progressPanel) progressPanel.hidden = true;
 }
 
 // ---- Start ----
 // Don't auto-init; wait for auth. If already logged in, _restoreSession in
 // auth.js will call onAuthReady which triggers init().
+
+// ---- Scroll Navigation ----
+(function initScrollNav() {
+    const scrollTopBtn = document.getElementById("scroll-top-btn");
+    const sectionNav = document.getElementById("section-nav");
+
+    if (scrollTopBtn) {
+        scrollTopBtn.addEventListener("click", () => {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+    }
+
+    // Section navigator dot clicks
+    if (sectionNav) {
+        sectionNav.addEventListener("click", (e) => {
+            const btn = e.target.closest(".snav-dot");
+            if (!btn) return;
+            const targetId = "section-" + btn.dataset.target;
+            const el = document.getElementById(targetId);
+            if (el) {
+                const navHeight = document.querySelector(".top-nav")?.offsetHeight || 0;
+                const top = el.getBoundingClientRect().top + window.scrollY - navHeight - 16;
+                window.scrollTo({ top, behavior: "smooth" });
+            }
+        });
+    }
+})();

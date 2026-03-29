@@ -45,6 +45,12 @@ class User(Base):
     full_name = Column(String, nullable=True)
     hashed_password = Column(String, nullable=False)
     is_admin = Column(Boolean, default=False)
+    # role: 1=super_admin, 2=admin, 3=user
+    role = Column(Integer, default=3, nullable=False)
+    # Unique class code for admins (role 1 & 2)
+    class_code = Column(String, nullable=True, unique=True, index=True)
+    # Class code the user joined (for role 3 users)
+    joined_class_code = Column(String, nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     results = relationship("Result", back_populates="user", cascade="all, delete-orphan")
@@ -70,3 +76,25 @@ class Result(Base):
 def init_db() -> None:
     """Create all tables if they do not already exist (idempotent)."""
     Base.metadata.create_all(bind=engine)
+    _migrate_add_columns()
+
+
+def _migrate_add_columns() -> None:
+    """Add new columns to existing SQLite tables if they are missing."""
+    from sqlalchemy import text, inspect
+
+    insp = inspect(engine)
+    existing_cols = {c["name"] for c in insp.get_columns("users")}
+
+    migrations = []
+    if "role" not in existing_cols:
+        migrations.append("ALTER TABLE users ADD COLUMN role INTEGER DEFAULT 3")
+    if "class_code" not in existing_cols:
+        migrations.append("ALTER TABLE users ADD COLUMN class_code VARCHAR")
+    if "joined_class_code" not in existing_cols:
+        migrations.append("ALTER TABLE users ADD COLUMN joined_class_code VARCHAR")
+
+    if migrations:
+        with engine.begin() as conn:
+            for stmt in migrations:
+                conn.execute(text(stmt))

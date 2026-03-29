@@ -2,20 +2,43 @@
 
 from dataclasses import dataclass, asdict
 from typing import Dict, List, Tuple
+from urllib.parse import parse_qs, urlencode, urlparse
 
 
 # =========================
 # Course base URLs
 # =========================
-COURSE_1_BASE_URL = "PASTE_COURSE_1_URL_HERE"
-COURSE_2_BASE_URL = "https://youtube.com/playlist?list=PLCUi9YqX0Sj55jP7ptJbMNC_iV2VDsgOQ"
+COURSE_1_BASE_URL = "https://www.youtube.com/watch?v=dgGyow4nn3Q"
+COURSE_2_BASE_URL = "https://www.youtube.com/watch?v=fIwaDTqaQ94"
 COURSE_3_BASE_URL = "https://youtu.be/_rPOXZDUq30"
 
 
 def yt_time_url(base_url: str, seconds: int) -> str:
-    if base_url == "PASTE_COURSE_1_URL_HERE":
-        return base_url
-    sep = "&" if "?" in base_url else "?"
+    parsed = urlparse(base_url)
+    host = parsed.netloc.lower()
+    query = parse_qs(parsed.query)
+
+    if "youtu.be" in host:
+        video_id = parsed.path.strip("/")
+        params = {"v": video_id, "t": f"{seconds}s"}
+        return f"https://www.youtube.com/watch?{urlencode(params)}"
+
+    if "youtube.com" in host and parsed.path == "/watch":
+        params = {key: values[-1] for key, values in query.items() if values}
+        params["t"] = f"{seconds}s"
+        return f"https://www.youtube.com/watch?{urlencode(params)}"
+
+    if "youtube.com" in host and parsed.path == "/playlist":
+        playlist_id = query.get("list", [""])[-1]
+        if playlist_id:
+            params = {
+                "list": playlist_id,
+                "start": str(seconds),
+                "autoplay": "1",
+            }
+            return f"https://www.youtube.com/embed/videoseries?{urlencode(params)}"
+
+    sep = "&" if parsed.query else "?"
     return f"{base_url}{sep}t={seconds}s"
 
 
@@ -141,7 +164,7 @@ def recommend_by_grbas(
     rank = 1
 
     for measure, score in sorted_measures:
-        if include_only_bad_scores and score < 2:
+        if include_only_bad_scores and score < 1:
             continue
         resources = FIXED_RESOURCES.get(measure, [])
         recommendations.append(
@@ -153,6 +176,21 @@ def recommend_by_grbas(
             )
         )
         rank += 1
+
+    # Fallback: if all scores are 0, show general maintenance exercises
+    if not recommendations:
+        recommendations.append(
+            Recommendation(
+                measure="G",
+                score=0,
+                priority_rank=1,
+                resources=[
+                    FIXED_RESOURCES["G"][0],  # יציבה
+                    FIXED_RESOURCES["G"][1],  # נשימה
+                    FIXED_RESOURCES["G"][2],  # מציאת טון בסיס
+                ],
+            )
+        )
 
     return recommendations
 
