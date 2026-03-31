@@ -398,8 +398,7 @@
             <input type="text" id="auth-username" class="m-input" placeholder="אימייל" autocomplete="username">
             <input type="password" id="auth-password" class="m-input" placeholder="סיסמה" autocomplete="current-password">
             <input type="text" id="auth-class-code" class="m-input" placeholder="קוד כיתה (אופציונלי)">
-            <button id="login-btn" class="m-btn m-btn-primary">התחברות</button>
-            <button id="register-btn" class="m-btn m-btn-outline">הרשמה</button>
+            <button id="login-btn" class="m-btn m-btn-primary">כניסה</button>
             <div id="auth-error" class="m-error"></div>
         </div>
         <div class="m-card m-welcome">
@@ -531,23 +530,25 @@ async function loginWithCredentials(username, password) {
         body: formData,
     });
     const data = await resp.json();
-    if (!resp.ok) { showAuthError(data.detail || "ההתחברות נכשלה."); return; }
+    if (!resp.ok) return false;
     _token = data.access_token;
     localStorage.setItem("jwt_token", _token);
     await fetchMe();
+    return true;
 }
 
+// Single smart button: try login first, if fails try register then login
 document.getElementById("login-btn").addEventListener("click", async () => {
-    const u = authUsername.value.trim(), p = authPassword.value;
-    if (!u || !p) return showAuthError("הזינו אימייל וסיסמה.");
-    try { await loginWithCredentials(u, p); } catch (e) { showAuthError("שגיאת רשת: " + e.message); }
-});
-
-document.getElementById("register-btn").addEventListener("click", async () => {
     const u = authUsername.value.trim(), p = authPassword.value, c = authClassCode.value.trim();
     if (!u || !p) return showAuthError("הזינו אימייל וסיסמה.");
     if (p.length < 8) return showAuthError("הסיסמה חייבת להכיל 8 תווים לפחות.");
+    showAuthError("");
     try {
+        // Try login first
+        const loggedIn = await loginWithCredentials(u, p);
+        if (loggedIn) return;
+
+        // Login failed — try to register then login
         const body = { username: u, password: p };
         if (c) body.class_code = c;
         const resp = await fetch("/api/register", {
@@ -556,8 +557,10 @@ document.getElementById("register-btn").addEventListener("click", async () => {
             body: JSON.stringify(body),
         });
         const data = await resp.json();
-        if (!resp.ok) return showAuthError(data.detail || "ההרשמה נכשלה.");
-        await loginWithCredentials(u, p);
+        if (!resp.ok) return showAuthError(data.detail || "הכניסה נכשלה.");
+
+        const loggedIn2 = await loginWithCredentials(u, p);
+        if (!loggedIn2) showAuthError("ההרשמה הצליחה אך הכניסה נכשלה. נסו שוב.");
     } catch (e) { showAuthError("שגיאת רשת: " + e.message); }
 });
 
