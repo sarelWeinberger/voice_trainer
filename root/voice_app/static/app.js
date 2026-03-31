@@ -1,5 +1,53 @@
 // Voice Training App - Frontend Logic
 
+// Interface selection logic with localStorage persistence
+(function() {
+    const savedUI = localStorage.getItem('preferred_ui');
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    // Auto-redirect if preference is mobile or device is mobile with no preference
+    if (savedUI === 'mobile' || (isMobile && savedUI !== 'desktop')) {
+        window.location.href = 'mobile.html';
+        return;
+    }
+
+    // If user already chose desktop, skip the modal
+    if (savedUI === 'desktop') {
+        const modal = document.getElementById('interface-select-modal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    // Set up modal buttons when DOM is ready
+    function setupModal() {
+        const modal = document.getElementById('interface-select-modal');
+        if (!modal) return;
+
+        if (savedUI === 'desktop') {
+            modal.style.display = 'none';
+            return;
+        }
+
+        document.body.style.overflow = 'hidden';
+
+        document.getElementById('choose-desktop').addEventListener('click', function() {
+            localStorage.setItem('preferred_ui', 'desktop');
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+        });
+
+        document.getElementById('choose-mobile').addEventListener('click', function() {
+            localStorage.setItem('preferred_ui', 'mobile');
+            window.location.href = 'mobile.html';
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupModal);
+    } else {
+        setupModal();
+    }
+})();
+
 const GRBAS_LABELS = {
     G: "דירוג כללי",
     R: "צרידות",
