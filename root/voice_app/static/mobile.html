@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>אימון קולי - נייד</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --accent: #4a7cff;
+            --accent2: #6c5ce7;
+            --accent3: #a855f7;
+            --bg: #f0f2f7;
+            --card: #fff;
+            --text: #1a2332;
+            --text2: #5a6a7e;
+            --border: #dde3ed;
+            --green: #22c55e;
+            --yellow: #eab308;
+            --orange: #f97316;
+            --red: #ef4444;
+            --shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Rubik', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 16px;
+            min-height: 100vh;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Header */
+        .m-header {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 50%, var(--accent3) 100%);
+            color: #fff;
+            padding: 16px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .m-header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .m-header-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .m-header-brand .logo { font-size: 1.6em; }
+        .m-header-brand .title { font-size: 1.1em; font-weight: 600; }
+        .m-header-brand .sub { font-size: 0.75em; opacity: 0.85; }
+        .m-user-info { font-size: 0.85em; text-align: left; }
+        .m-logout-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 0.85em;
+            cursor: pointer;
+            margin-top: 4px;
+        }
+        .m-desktop-link {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75em;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        /* Main */
+        .m-main { padding: 16px; max-width: 500px; margin: 0 auto; }
+
+        /* Cards */
+        .m-card {
+            background: var(--card);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .m-card h2 {
+            font-size: 1.1em;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Auth */
+        .m-input {
+            width: 100%;
+            padding: 14px 16px;
+            font-size: 1em;
+            border-radius: 10px;
+            border: 1.5px solid var(--border);
+            margin-bottom: 10px;
+            font-family: inherit;
+            direction: ltr;
+            text-align: right;
+        }
+        .m-input:focus { outline: none; border-color: var(--accent); }
+        .m-btn {
+            width: 100%;
+            padding: 14px;
+            font-size: 1.05em;
+            font-weight: 600;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            margin-bottom: 8px;
+            transition: transform 0.1s;
+        }
+        .m-btn:active { transform: scale(0.97); }
+        .m-btn-primary { background: var(--accent); color: #fff; }
+        .m-btn-outline { background: #fff; color: var(--accent); border: 1.5px solid var(--accent); }
+        .m-btn-green { background: var(--green); color: #fff; }
+        .m-error { color: var(--red); font-size: 0.9em; margin-top: 6px; min-height: 1.2em; }
+
+        /* Welcome */
+        .m-welcome {
+            text-align: center;
+            padding: 30px 16px;
+        }
+        .m-welcome .icon { font-size: 3em; margin-bottom: 12px; }
+        .m-welcome h1 { font-size: 1.4em; margin-bottom: 8px; }
+        .m-welcome p { color: var(--text2); font-size: 0.95em; }
+        .m-features {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .m-feature {
+            background: var(--bg);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+            font-size: 0.85em;
+        }
+        .m-feature .icon { font-size: 1.5em; display: block; margin-bottom: 4px; }
+
+        /* Recording */
+        .m-record-area { text-align: center; }
+        .m-record-btn {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 4px solid var(--border);
+            background: #fff;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 16px auto;
+            transition: all 0.2s;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        }
+        .m-record-btn .dot {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--red);
+            transition: all 0.3s;
+        }
+        .m-record-btn.recording {
+            border-color: var(--red);
+            box-shadow: 0 0 0 6px rgba(239,68,68,0.2);
+            animation: pulse-ring 1.5s ease-out infinite;
+        }
+        .m-record-btn.recording .dot {
+            width: 30px;
+            height: 30px;
+            border-radius: 6px;
+        }
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 4px rgba(239,68,68,0.3); }
+            100% { box-shadow: 0 0 0 16px rgba(239,68,68,0); }
+        }
+        .m-record-label {
+            font-size: 0.95em;
+            font-weight: 500;
+            margin-top: 8px;
+            color: var(--text2);
+        }
+        .m-timer {
+            font-size: 2em;
+            font-weight: 700;
+            color: var(--red);
+            font-variant-numeric: tabular-nums;
+        }
+        .m-status {
+            font-size: 0.9em;
+            color: var(--text2);
+            margin-top: 8px;
+            min-height: 1.4em;
+        }
+        .m-status.error { color: var(--red); }
+        .m-instruction {
+            color: var(--text2);
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+
+        /* Results */
+        .m-scores-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .m-score-card {
+            background: var(--bg);
+            border-radius: 12px;
+            padding: 14px;
+            text-align: center;
+        }
+        .m-score-card.full-width {
+            grid-column: 1 / -1;
+        }
+        .m-score-letter {
+            font-size: 1.6em;
+            font-weight: 700;
+        }
+        .m-score-name {
+            font-size: 0.78em;
+            color: var(--text2);
+            margin-bottom: 6px;
+        }
+        .m-score-bar {
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+        .m-score-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s;
+        }
+        .m-score-val {
+            font-size: 1.3em;
+            font-weight: 700;
+        }
+        .m-combined-badge {
+            text-align: center;
+            padding: 16px;
+            border-radius: 14px;
+            margin-bottom: 14px;
+        }
+        .m-combined-badge .grade { font-size: 2em; font-weight: 700; }
+        .m-combined-badge .label { font-size: 0.95em; margin-top: 4px; }
+        .m-combined-badge.level-0 { background: #dcfce7; color: #166534; }
+        .m-combined-badge.level-1 { background: #fef9c3; color: #854d0e; }
+        .m-combined-badge.level-2 { background: #ffedd5; color: #9a3412; }
+        .m-combined-badge.level-3 { background: #fee2e2; color: #991b1b; }
+
+        /* Recommendations */
+        .m-rec-item {
+            background: var(--bg);
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 10px;
+        }
+        .m-rec-item h3 {
+            font-size: 0.95em;
+            margin-bottom: 4px;
+        }
+        .m-rec-item p {
+            font-size: 0.82em;
+            color: var(--text2);
+            margin-bottom: 6px;
+        }
+        .m-rec-link {
+            display: inline-block;
+            font-size: 0.82em;
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        /* Quick stats */
+        .m-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+        }
+        .m-stat {
+            text-align: center;
+            padding: 10px 4px;
+            background: var(--bg);
+            border-radius: 10px;
+        }
+        .m-stat .icon { font-size: 1.2em; }
+        .m-stat .val { font-size: 1.1em; font-weight: 700; }
+        .m-stat .lbl { font-size: 0.7em; color: var(--text2); }
+
+        /* History */
+        .m-history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: var(--bg);
+            border-radius: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+        }
+        .m-history-item .date { font-size: 0.85em; color: var(--text2); }
+        .m-history-item .scores-mini { font-size: 0.8em; font-weight: 600; }
+        .m-empty { text-align: center; color: var(--text2); font-size: 0.9em; padding: 20px 0; }
+
+        /* Bottom nav */
+        .m-bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--card);
+            border-top: 1px solid var(--border);
+            display: flex;
+            z-index: 100;
+            padding-bottom: env(safe-area-inset-bottom, 0);
+        }
+        .m-nav-item {
+            flex: 1;
+            padding: 10px 0 8px;
+            text-align: center;
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: var(--text2);
+            font-size: 0.7em;
+            font-family: inherit;
+            transition: color 0.2s;
+        }
+        .m-nav-item .icon { font-size: 1.8em; display: block; margin-bottom: 2px; }
+        .m-nav-item.active { color: var(--accent); }
+
+        /* Sections */
+        .m-section { display: none; }
+        .m-section.active { display: block; }
+
+        /* Bottom spacing for nav */
+        .m-main { padding-bottom: 80px; }
+
+        /* Loading spinner */
+        .m-loading {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 12px auto;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="m-header">
+    <div class="m-header-row">
+        <div class="m-header-brand">
+            <span class="logo">🎤</span>
+            <div>
+                <div class="title">אימון קולי</div>
+                <div class="sub">ניתוח GRBAS</div>
+            </div>
+        </div>
+        <div>
+            <div id="m-user-info" class="m-user-info" hidden>
+                <span id="m-username"></span>
+                <br><button id="m-logout-btn" class="m-logout-btn">התנתקות</button>
+            </div>
+            <a href="index.html" class="m-desktop-link" id="m-desktop-link">גרסת מחשב</a>
+        </div>
+    </div>
+</header>
+
+<div class="m-main">
+    <!-- Auth Section (shown when logged out) -->
+    <div id="m-auth-section">
+        <div class="m-card">
+            <h2>🔐 התחברות</h2>
+            <input type="text" id="auth-username" class="m-input" placeholder="אימייל" autocomplete="username">
+            <input type="password" id="auth-password" class="m-input" placeholder="סיסמה" autocomplete="current-password">
+            <input type="text" id="auth-class-code" class="m-input" placeholder="קוד כיתה (אופציונלי)">
+            <button id="login-btn" class="m-btn m-btn-primary">התחברות</button>
+            <button id="register-btn" class="m-btn m-btn-outline">הרשמה</button>
+            <div id="auth-error" class="m-error"></div>
+        </div>
+        <div class="m-card m-welcome">
+            <div class="icon">🎤</div>
+            <h1>ברוכים הבאים</h1>
+            <p>כלי חכם לניתוח איכות הקול שלך עם מודל GRBAS</p>
+            <div class="m-features">
+                <div class="m-feature"><span class="icon">🔬</span> ניתוח אקוסטי</div>
+                <div class="m-feature"><span class="icon">📊</span> ציוני GRBAS</div>
+                <div class="m-feature"><span class="icon">💡</span> המלצות</div>
+                <div class="m-feature"><span class="icon">📈</span> מעקב התקדמות</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- App Content (shown when logged in) -->
+    <div id="m-app" hidden>
+        <!-- Tab: Record -->
+        <div id="tab-record" class="m-section active">
+            <div class="m-card m-record-area">
+                <h2>🎙️ הקלטת קול</h2>
+                <p class="m-instruction">הקליטו תנועת /א/ ממושכת למשך 3+ שניות</p>
+                <button id="m-record-btn" class="m-record-btn">
+                    <span class="dot"></span>
+                </button>
+                <div class="m-record-label" id="m-record-label">לחצו להקלטה</div>
+                <div id="m-timer" class="m-timer" hidden>0.0s</div>
+                <div id="m-status" class="m-status"></div>
+            </div>
+
+            <div class="m-card" id="m-quick-stats">
+                <div class="m-stats">
+                    <div class="m-stat">
+                        <div class="icon">📊</div>
+                        <div class="val" id="m-qs-total">0</div>
+                        <div class="lbl">ניתוחים</div>
+                    </div>
+                    <div class="m-stat">
+                        <div class="icon">📅</div>
+                        <div class="val" id="m-qs-last">—</div>
+                        <div class="lbl">אחרון</div>
+                    </div>
+                    <div class="m-stat">
+                        <div class="icon">⭐</div>
+                        <div class="val" id="m-qs-best">—</div>
+                        <div class="lbl">ציון G הטוב</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Results -->
+        <div id="tab-results" class="m-section">
+            <div class="m-card" id="m-results-empty">
+                <div class="m-empty">הקליטו קול כדי לראות תוצאות</div>
+            </div>
+            <div id="m-results-content" hidden>
+                <div class="m-card">
+                    <div id="m-combined-badge" class="m-combined-badge level-0">
+                        <div class="grade" id="m-grade">—</div>
+                        <div class="label" id="m-grade-label">ממתין לניתוח</div>
+                    </div>
+                    <div class="m-scores-grid" id="m-scores-grid"></div>
+                </div>
+
+                <div class="m-card" id="m-recs-card" hidden>
+                    <h2>💡 המלצות</h2>
+                    <div id="m-recs-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: History -->
+        <div id="tab-history" class="m-section">
+            <div class="m-card">
+                <h2>📜 היסטוריה</h2>
+                <div id="m-history-list">
+                    <div class="m-empty">אין עדיין הקלטות</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bottom Navigation -->
+<nav class="m-bottom-nav" id="m-bottom-nav" hidden>
+    <button class="m-nav-item active" data-tab="record">
+        <span class="icon">🎙️</span>
+        הקלטה
+    </button>
+    <button class="m-nav-item" data-tab="results">
+        <span class="icon">📊</span>
+        תוצאות
+    </button>
+    <button class="m-nav-item" data-tab="history">
+        <span class="icon">📜</span>
+        היסטוריה
+    </button>
+</nav>
+
+<script>
+"use strict";
+
+// =====================================================================
+// Auth
+// =====================================================================
+let _token = localStorage.getItem("jwt_token") || null;
+let _currentUser = null;
+
+function getAuthHeaders() {
+    if (!_token) return {};
+    return { "Authorization": "Bearer " + _token };
+}
+
+const authUsername = document.getElementById("auth-username");
+const authPassword = document.getElementById("auth-password");
+const authClassCode = document.getElementById("auth-class-code");
+const authError = document.getElementById("auth-error");
+
+function showAuthError(msg) { authError.textContent = msg; }
+
+async function loginWithCredentials(username, password) {
+    const formData = new URLSearchParams();
+    formData.append("username", username);
+    formData.append("password", password);
+    const resp = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData,
+    });
+    const data = await resp.json();
+    if (!resp.ok) { showAuthError(data.detail || "ההתחברות נכשלה."); return; }
+    _token = data.access_token;
+    localStorage.setItem("jwt_token", _token);
+    await fetchMe();
+}
+
+document.getElementById("login-btn").addEventListener("click", async () => {
+    const u = authUsername.value.trim(), p = authPassword.value;
+    if (!u || !p) return showAuthError("הזינו אימייל וסיסמה.");
+    try { await loginWithCredentials(u, p); } catch (e) { showAuthError("שגיאת רשת: " + e.message); }
+});
+
+document.getElementById("register-btn").addEventListener("click", async () => {
+    const u = authUsername.value.trim(), p = authPassword.value, c = authClassCode.value.trim();
+    if (!u || !p) return showAuthError("הזינו אימייל וסיסמה.");
+    if (p.length < 8) return showAuthError("הסיסמה חייבת להכיל 8 תווים לפחות.");
+    try {
+        const body = { username: u, password: p };
+        if (c) body.class_code = c;
+        const resp = await fetch("/api/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+        });
+        const data = await resp.json();
+        if (!resp.ok) return showAuthError(data.detail || "ההרשמה נכשלה.");
+        await loginWithCredentials(u, p);
+    } catch (e) { showAuthError("שגיאת רשת: " + e.message); }
+});
+
+authPassword.addEventListener("keydown", (e) => { if (e.key === "Enter") document.getElementById("login-btn").click(); });
+
+async function fetchMe() {
+    try {
+        const resp = await fetch("/api/me", { headers: getAuthHeaders() });
+        if (!resp.ok) { doLogout(); return; }
+        const data = await resp.json();
+        _currentUser = data;
+        localStorage.setItem("jwt_user", JSON.stringify(data));
+        showLoggedIn();
+    } catch (_) { doLogout(); }
+}
+
+function doLogout() {
+    _token = null;
+    _currentUser = null;
+    localStorage.removeItem("jwt_token");
+    localStorage.removeItem("jwt_user");
+    showLoggedOut();
+}
+
+function showLoggedIn() {
+    document.getElementById("m-auth-section").hidden = true;
+    document.getElementById("m-app").hidden = false;
+    document.getElementById("m-bottom-nav").hidden = false;
+    document.getElementById("m-user-info").hidden = false;
+    document.getElementById("m-username").textContent = _currentUser.username;
+    initMic();
+    loadHistory();
+    updateQuickStats();
+}
+
+function showLoggedOut() {
+    document.getElementById("m-auth-section").hidden = false;
+    document.getElementById("m-app").hidden = true;
+    document.getElementById("m-bottom-nav").hidden = true;
+    document.getElementById("m-user-info").hidden = true;
+}
+
+document.getElementById("m-logout-btn").addEventListener("click", doLogout);
+
+// Restore session
+(function restore() {
+    const stored = localStorage.getItem("jwt_user");
+    if (_token && stored) {
+        _currentUser = JSON.parse(stored);
+        showLoggedIn();
+        fetchMe(); // re-validate
+    } else if (_token) {
+        fetchMe();
+    } else {
+        showLoggedOut();
+    }
+})();
+
+// =====================================================================
+// Bottom nav tabs
+// =====================================================================
+document.querySelectorAll(".m-nav-item").forEach(btn => {
+    btn.addEventListener("click", () => {
+        document.querySelectorAll(".m-nav-item").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".m-section").forEach(s => s.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+    });
+});
+
+// =====================================================================
+// Microphone
+// =====================================================================
+let audioStream = null;
+
+async function initMic() {
+    try {
+        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    } catch (e) {
+        setStatus("לא ניתן לגשת למיקרופון: " + e.message, true);
+    }
+}
+
+// =====================================================================
+// Recording
+// =====================================================================
+const GRBAS_LABELS = { G: "דירוג כללי", R: "צרידות", B: "נשיפות", A: "חולשה", S: "מאמץ" };
+const SCORE_COLORS = ["#22c55e", "#eab308", "#f97316", "#ef4444"];
+
+let isRecording = false;
+let timerInterval = null;
+let recordingStart = 0;
+
+const recordBtn = document.getElementById("m-record-btn");
+const recordLabel = document.getElementById("m-record-label");
+const timerEl = document.getElementById("m-timer");
+const statusEl = document.getElementById("m-status");
+
+function setStatus(msg, isError) {
+    statusEl.textContent = msg;
+    statusEl.className = "m-status" + (isError ? " error" : "");
+}
+
+recordBtn.addEventListener("click", () => {
+    if (isRecording) stopRecording();
+    else startRecording();
+});
+
+function startRecording() {
+    if (!audioStream) { setStatus("המיקרופון לא זמין.", true); return; }
+
+    const audioContext = new AudioContext({ sampleRate: 44100 });
+    const source = audioContext.createMediaStreamSource(audioStream);
+    const processor = audioContext.createScriptProcessor(4096, 1, 1);
+    const pcmChunks = [];
+
+    processor.onaudioprocess = (e) => {
+        if (isRecording) pcmChunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+    };
+    source.connect(processor);
+    processor.connect(audioContext.destination);
+
+    isRecording = true;
+    recordingStart = Date.now();
+    recordBtn.classList.add("recording");
+    recordLabel.textContent = "לחצו לעצירה";
+    timerEl.hidden = false;
+    setStatus("מקליט...");
+
+    timerInterval = setInterval(() => {
+        timerEl.textContent = ((Date.now() - recordingStart) / 1000).toFixed(1) + "s";
+    }, 100);
+
+    recordBtn._ctx = audioContext;
+    recordBtn._proc = processor;
+    recordBtn._src = source;
+    recordBtn._pcm = pcmChunks;
+}
+
+function stopRecording() {
+    isRecording = false;
+    clearInterval(timerInterval);
+    recordBtn.classList.remove("recording");
+    recordLabel.textContent = "לחצו להקלטה";
+
+    const ctx = recordBtn._ctx, proc = recordBtn._proc, src = recordBtn._src, pcm = recordBtn._pcm;
+    proc.disconnect();
+    src.disconnect();
+
+    const wavBlob = pcmToWav(pcm, ctx.sampleRate);
+    ctx.close();
+
+    setStatus("מנתח...");
+    timerEl.hidden = true;
+    sendAudio(wavBlob);
+}
+
+function pcmToWav(pcmChunks, sampleRate) {
+    let totalLength = 0;
+    for (const c of pcmChunks) totalLength += c.length;
+    const merged = new Float32Array(totalLength);
+    let off = 0;
+    for (const c of pcmChunks) { merged.set(c, off); off += c.length; }
+
+    const buf = new ArrayBuffer(44 + merged.length * 2);
+    const v = new DataView(buf);
+    const ws = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+
+    ws(0, "RIFF");
+    v.setUint32(4, 36 + merged.length * 2, true);
+    ws(8, "WAVE"); ws(12, "fmt ");
+    v.setUint32(16, 16, true);
+    v.setUint16(20, 1, true);
+    v.setUint16(22, 1, true);
+    v.setUint32(24, sampleRate, true);
+    v.setUint32(28, sampleRate * 2, true);
+    v.setUint16(32, 2, true);
+    v.setUint16(34, 16, true);
+    ws(36, "data");
+    v.setUint32(40, merged.length * 2, true);
+    for (let i = 0; i < merged.length; i++) {
+        const s = Math.max(-1, Math.min(1, merged[i]));
+        v.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+    }
+    return new Blob([buf], { type: "audio/wav" });
+}
+
+// =====================================================================
+// Send & Results
+// =====================================================================
+async function sendAudio(blob) {
+    const formData = new FormData();
+    formData.append("audio", blob, "recording.wav");
+    try {
+        const resp = await fetch("/api/analyze", {
+            method: "POST",
+            body: formData,
+            headers: getAuthHeaders(),
+        });
+        const data = await resp.json();
+        if (!resp.ok) { setStatus("שגיאה: " + (data.detail || "ניתוח נכשל"), true); return; }
+
+        displayResults(data);
+        saveToHistory(data);
+        updateQuickStats();
+        setStatus("הניתוח הושלם!");
+
+        // Switch to results tab
+        document.querySelectorAll(".m-nav-item").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".m-section").forEach(s => s.classList.remove("active"));
+        document.querySelector('[data-tab="results"]').classList.add("active");
+        document.getElementById("tab-results").classList.add("active");
+    } catch (e) {
+        setStatus("שגיאה: " + e.message, true);
+    }
+}
+
+function displayResults(data) {
+    document.getElementById("m-results-empty").hidden = true;
+    document.getElementById("m-results-content").hidden = false;
+
+    // Combined badge
+    const gScore = data.scores.G;
+    const level = Math.round(gScore);
+    const badge = document.getElementById("m-combined-badge");
+    badge.className = "m-combined-badge level-" + Math.min(level, 3);
+    document.getElementById("m-grade").textContent = gScore.toFixed(1);
+    const labels = ["קול תקין", "סטייה קלה", "סטייה בינונית", "סטייה חמורה"];
+    document.getElementById("m-grade-label").textContent = labels[Math.min(level, 3)];
+
+    // Scores grid
+    const grid = document.getElementById("m-scores-grid");
+    grid.innerHTML = "";
+    for (const dim of "GRBAS") {
+        const score = data.scores[dim];
+        const color = SCORE_COLORS[Math.min(Math.round(score), 3)];
+        const card = document.createElement("div");
+        card.className = "m-score-card" + (dim === "G" ? " full-width" : "");
+        card.innerHTML = `
+            <div class="m-score-name">${GRBAS_LABELS[dim]}</div>
+            <div class="m-score-letter" style="color:${color}">${dim}</div>
+            <div class="m-score-val">${score.toFixed(2)}</div>
+            <div class="m-score-bar"><div class="m-score-fill" style="width:${(score/3*100).toFixed(0)}%;background:${color}"></div></div>
+        `;
+        grid.appendChild(card);
+    }
+
+    // Recommendations
+    if (data.recommendations && data.recommendations.length) {
+        const recsCard = document.getElementById("m-recs-card");
+        recsCard.hidden = false;
+        const recsList = document.getElementById("m-recs-list");
+        recsList.innerHTML = "";
+        const top = data.recommendations.slice(0, 4);
+        for (const rec of top) {
+            const div = document.createElement("div");
+            div.className = "m-rec-item";
+            let html = `<h3>${rec.title || rec.name || ""}</h3>`;
+            if (rec.description) html += `<p>${rec.description}</p>`;
+            if (rec.resources && rec.resources.length) {
+                for (const r of rec.resources.slice(0, 2)) {
+                    html += `<a class="m-rec-link" href="${r.url}" target="_blank">▶ ${r.title || "צפייה"}</a> `;
+                }
+            }
+            div.innerHTML = html;
+            recsList.appendChild(div);
+        }
+    }
+}
+
+// =====================================================================
+// History
+// =====================================================================
+function historyKey() {
+    return "grbas_history_" + (_currentUser ? _currentUser.username : "anon");
+}
+
+function saveToHistory(data) {
+    const key = historyKey();
+    const history = JSON.parse(localStorage.getItem(key) || "[]");
+    history.unshift({
+        date: new Date().toISOString(),
+        scores: data.scores,
+        title: data.title || "",
+    });
+    if (history.length > 50) history.pop();
+    localStorage.setItem(key, JSON.stringify(history));
+    renderHistory(history);
+}
+
+function loadHistory() {
+    const history = JSON.parse(localStorage.getItem(historyKey()) || "[]");
+    renderHistory(history);
+    // Also load from cloud
+    loadCloudHistory();
+}
+
+async function loadCloudHistory() {
+    try {
+        const resp = await fetch("/api/results", { headers: getAuthHeaders() });
+        if (!resp.ok) return;
+        const cloudResults = await resp.json();
+        if (!cloudResults.length) return;
+        const key = historyKey();
+        const local = JSON.parse(localStorage.getItem(key) || "[]");
+        // Merge cloud into local (avoid duplicates by date)
+        const localDates = new Set(local.map(h => h.date));
+        for (const cr of cloudResults) {
+            const d = cr.created_at || cr.date;
+            if (!localDates.has(d)) {
+                local.push({
+                    date: d,
+                    scores: typeof cr.raw_scores === "string" ? JSON.parse(cr.raw_scores) : cr.raw_scores,
+                    title: cr.title || "",
+                });
+            }
+        }
+        local.sort((a, b) => new Date(b.date) - new Date(a.date));
+        localStorage.setItem(key, JSON.stringify(local));
+        renderHistory(local);
+    } catch (_) {}
+}
+
+function renderHistory(history) {
+    const list = document.getElementById("m-history-list");
+    if (!history.length) {
+        list.innerHTML = '<div class="m-empty">אין עדיין הקלטות</div>';
+        return;
+    }
+    list.innerHTML = "";
+    for (const entry of history.slice(0, 20)) {
+        const item = document.createElement("div");
+        item.className = "m-history-item";
+        const d = new Date(entry.date);
+        const dateStr = d.toLocaleDateString("he-IL", { day: "numeric", month: "short" });
+        const timeStr = d.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
+        const scores = entry.scores || {};
+        const scoreParts = [];
+        for (const dim of "GRBAS") {
+            if (scores[dim] !== undefined) scoreParts.push(dim + ":" + Number(scores[dim]).toFixed(1));
+        }
+        item.innerHTML = `
+            <div>
+                <div class="date">${dateStr} ${timeStr}</div>
+                <div style="font-size:0.8em;color:var(--text2)">${entry.title || ""}</div>
+            </div>
+            <div class="scores-mini">${scoreParts.join("  ")}</div>
+        `;
+        item.addEventListener("click", () => {
+            displayResults({ scores: scores, recommendations: [] });
+            document.querySelectorAll(".m-nav-item").forEach(b => b.classList.remove("active"));
+            document.querySelectorAll(".m-section").forEach(s => s.classList.remove("active"));
+            document.querySelector('[data-tab="results"]').classList.add("active");
+            document.getElementById("tab-results").classList.add("active");
+        });
+        list.appendChild(item);
+    }
+    updateQuickStats();
+}
+
+function updateQuickStats() {
+    const history = JSON.parse(localStorage.getItem(historyKey()) || "[]");
+    document.getElementById("m-qs-total").textContent = history.length;
+    if (history.length) {
+        const last = new Date(history[0].date);
+        document.getElementById("m-qs-last").textContent = last.toLocaleDateString("he-IL", { day: "numeric", month: "short" });
+        const bestG = Math.min(...history.map(h => (h.scores && h.scores.G !== undefined) ? h.scores.G : 3));
+        document.getElementById("m-qs-best").textContent = bestG.toFixed(1);
+    }
+}
+</script>
+</body>
+</html>
