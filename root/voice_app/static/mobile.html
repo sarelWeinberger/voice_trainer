@@ -347,6 +347,88 @@
         .m-nav-item .icon { font-size: 1.8em; display: block; margin-bottom: 2px; }
         .m-nav-item.active { color: var(--accent); }
 
+        /* Instructions */
+        .m-instructions {
+            background: #f0f4ff;
+            border-radius: 10px;
+            padding: 12px 14px;
+            margin-bottom: 14px;
+            font-size: 0.88em;
+            line-height: 1.6;
+            color: var(--text);
+        }
+        .m-instructions p { margin-bottom: 6px; }
+        .m-instructions ul, .m-instructions ol {
+            padding-right: 18px;
+            margin: 0;
+        }
+        .m-instructions li { margin-bottom: 3px; }
+        .m-instructions-sm { font-size: 0.82em; }
+
+        /* Video / Camera */
+        .m-video-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4/3;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #000;
+            margin-bottom: 12px;
+        }
+        .m-video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+        .m-video-container canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform: scaleX(-1);
+            pointer-events: none;
+        }
+
+        /* Neck effort widget */
+        .m-neck-widget {
+            background: var(--bg);
+            border-radius: 10px;
+            padding: 12px;
+        }
+        .m-neck-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+        .m-neck-badge {
+            background: var(--accent);
+            color: #fff;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+        .m-neck-score {
+            font-size: 1.6em;
+            font-weight: 700;
+        }
+        .m-neck-score.grade-0 { color: var(--green); }
+        .m-neck-score.grade-1 { color: var(--yellow); }
+        .m-neck-score.grade-2 { color: var(--orange); }
+        .m-neck-score.grade-3 { color: var(--red); }
+        .m-neck-label {
+            font-size: 0.88em;
+            color: var(--text2);
+        }
+        .m-neck-reasons {
+            font-size: 0.8em;
+            color: var(--text2);
+            margin-top: 4px;
+        }
+
         /* Sections */
         .m-section { display: none; }
         .m-section.active { display: block; }
@@ -418,9 +500,46 @@
     <div id="m-app" hidden>
         <!-- Tab: Record -->
         <div id="tab-record" class="m-section active">
+            <!-- Camera + Neck Effort -->
+            <div class="m-card">
+                <h2>📸 מצלמה — ניתוח מאמץ צוואר</h2>
+                <div class="m-instructions">
+                    <p><strong>כדי לקבל ניתוח מדויק:</strong></p>
+                    <ul>
+                        <li>שבו ישר מול המצלמה</li>
+                        <li>ודאו שהפנים, הצוואר <strong>והכתפיים</strong> נראים בתמונה</li>
+                        <li>הרפו את הכתפיים ואל תרימו אותן</li>
+                        <li>הביטו ישירות למצלמה, בלי להפנות את הראש הצידה</li>
+                        <li>המתינו לסיום הכיול (מופיע באחוזים)</li>
+                    </ul>
+                </div>
+                <div class="m-video-container">
+                    <video id="m-video" autoplay playsinline muted></video>
+                    <canvas id="m-face-canvas"></canvas>
+                </div>
+                <div id="m-neck-widget" class="m-neck-widget">
+                    <div class="m-neck-row">
+                        <span id="m-neck-mode" class="m-neck-badge">ממתין</span>
+                        <span id="m-neck-score" class="m-neck-score">--</span>
+                    </div>
+                    <div id="m-neck-label" class="m-neck-label">הפעילו את המצלמה כדי להתחיל</div>
+                    <div id="m-neck-reasons" class="m-neck-reasons"></div>
+                </div>
+            </div>
+
+            <!-- Recording -->
             <div class="m-card m-record-area">
                 <h2>🎙️ הקלטת קול</h2>
-                <p class="m-instruction">הקליטו תנועת /א/ ממושכת למשך 3+ שניות</p>
+                <div class="m-instructions">
+                    <p><strong>איך מקליטים נכון:</strong></p>
+                    <ul>
+                        <li>לחצו על הכפתור האדום להתחלת הקלטה</li>
+                        <li>אמרו <strong>"אааааааа"</strong> (תנועת /א/ ממושכת) למשך 5 שניות לפחות</li>
+                        <li>שמרו על גובה קול אחיד ונוח — אל תשנו גובה</li>
+                        <li>אל תצעקו ואל תלחשו — דברו בעוצמה רגילה</li>
+                        <li>לחצו שוב על הכפתור לעצירה</li>
+                    </ul>
+                </div>
                 <button id="m-record-btn" class="m-record-btn">
                     <span class="dot"></span>
                 </button>
@@ -465,7 +584,15 @@
                 </div>
 
                 <div class="m-card" id="m-recs-card" hidden>
-                    <h2>💡 המלצות</h2>
+                    <h2>💡 תרגילים מומלצים</h2>
+                    <div class="m-instructions m-instructions-sm">
+                        <p>על סמך התוצאות שלך, אלה התרגילים החשובים ביותר עבורך. לכל תרגיל:</p>
+                        <ol>
+                            <li>לחצו על הקישור — הוא יפתח סרטון ביוטיוב בדיוק בנקודה הנכונה</li>
+                            <li>צפו בתרגיל עד סופו ובצעו אותו יחד עם המדריכה</li>
+                            <li>חזרו על התרגיל 2-3 פעמים</li>
+                        </ol>
+                    </div>
                     <div id="m-recs-list"></div>
                 </div>
             </div>
@@ -499,6 +626,9 @@
     </button>
 </nav>
 
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
 <script>
 "use strict";
 
@@ -591,7 +721,7 @@ function showLoggedIn() {
     document.getElementById("m-bottom-nav").hidden = false;
     document.getElementById("m-user-info").hidden = false;
     document.getElementById("m-username").textContent = _currentUser.username;
-    initMic();
+    initCameraAndMic();
     loadHistory();
     updateQuickStats();
 }
@@ -636,12 +766,148 @@ document.querySelectorAll(".m-nav-item").forEach(btn => {
 // =====================================================================
 let audioStream = null;
 
-async function initMic() {
+let mediaStream = null;
+let faceMesh = null;
+let mCamera = null;
+let neckCaptureCanvas = null;
+let neckEffortInterval = null;
+let neckEffortRequestInFlight = false;
+
+const mVideo = document.getElementById("m-video");
+const mFaceCanvas = document.getElementById("m-face-canvas");
+const mFaceCtx = mFaceCanvas ? mFaceCanvas.getContext("2d") : null;
+
+async function initCameraAndMic() {
     try {
-        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "user", width: { ideal: 480 }, height: { ideal: 360 } },
+            audio: false,
+        });
+        mVideo.srcObject = mediaStream;
+        initFaceMesh();
+        await resetNeckEffortSession();
+        startNeckEffortMonitoring();
+    } catch (e) {
+        console.warn("Camera failed:", e);
+    }
+    try {
+        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (e) {
         setStatus("לא ניתן לגשת למיקרופון: " + e.message, true);
     }
+}
+
+function initFaceMesh() {
+    try {
+        faceMesh = new FaceMesh({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
+        });
+        faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+        faceMesh.onResults(onFaceResults);
+        mCamera = new Camera(mVideo, {
+            onFrame: async () => { await faceMesh.send({ image: mVideo }); },
+            width: 480, height: 360,
+        });
+        mCamera.start();
+    } catch (e) { console.warn("FaceMesh init failed:", e); }
+}
+
+function onFaceResults(results) {
+    if (!mFaceCtx) return;
+    mFaceCanvas.width = mVideo.videoWidth || 480;
+    mFaceCanvas.height = mVideo.videoHeight || 360;
+    mFaceCtx.clearRect(0, 0, mFaceCanvas.width, mFaceCanvas.height);
+    if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+        const lm = results.multiFaceLandmarks[0];
+        drawConnectors(mFaceCtx, lm, FACEMESH_FACE_OVAL, { color: "rgba(79,140,255,0.5)", lineWidth: 1 });
+        drawConnectors(mFaceCtx, lm, FACEMESH_LIPS, { color: "rgba(255,79,94,0.6)", lineWidth: 1 });
+    }
+}
+
+async function resetNeckEffortSession() {
+    const headers = getAuthHeaders();
+    if (!headers.Authorization) return;
+    try {
+        await fetch("/api/neck-effort/reset", { method: "POST", headers });
+        updateNeckUI({ mode: "calibrating", calibration_progress: 0, score: null, confidence: 0, reasons: ["החזיקו תנוחה נינוחה לכיול"] });
+    } catch (_) {}
+}
+
+function startNeckEffortMonitoring() {
+    if (neckEffortInterval) clearInterval(neckEffortInterval);
+    neckCaptureCanvas = document.createElement("canvas");
+    neckCaptureCanvas.width = 320;
+    neckCaptureCanvas.height = 240;
+    neckEffortInterval = setInterval(captureNeckFrame, 900);
+}
+
+async function captureNeckFrame() {
+    if (neckEffortRequestInFlight || !neckCaptureCanvas || !mVideo.videoWidth) return;
+    const headers = getAuthHeaders();
+    if (!headers.Authorization) return;
+    neckEffortRequestInFlight = true;
+    try {
+        const ctx = neckCaptureCanvas.getContext("2d");
+        ctx.drawImage(mVideo, 0, 0, 320, 240);
+        const blob = await new Promise(r => neckCaptureCanvas.toBlob(r, "image/jpeg", 0.8));
+        if (!blob) return;
+        const fd = new FormData();
+        fd.append("frame", blob, "frame.jpg");
+        const resp = await fetch("/api/neck-effort", { method: "POST", body: fd, headers });
+        if (!resp.ok) return;
+        updateNeckUI(await resp.json());
+    } catch (_) {} finally { neckEffortRequestInFlight = false; }
+}
+
+const NECK_REASONS = {
+    head_forward_posture: "הראש נוטה קדימה ביחס לכתפיים.",
+    neck_tilt: "הצוואר נוטה הצידה.",
+    shoulder_imbalance: "הכתפיים לא מאוזנות.",
+    raised_shoulders: "הכתפיים מורמות — נסו להרפות.",
+    head_instability: "הראש לא יציב.",
+    excess_mouth_opening: "פתיחת הפה גדולה מדי.",
+    head_rotation: "הפנים מופנות הצידה.",
+    minimal_visible_effort: "מאמץ צוואר מינימלי — מצוין!",
+    no_face_or_pose: "ודאו שהפנים והכתפיים נראים למצלמה.",
+    low_confidence_view: "שפרו את המיסגור — הביטו ישירות למצלמה.",
+};
+
+function updateNeckUI(data) {
+    const mode = document.getElementById("m-neck-mode");
+    const score = document.getElementById("m-neck-score");
+    const label = document.getElementById("m-neck-label");
+    const reasons = document.getElementById("m-neck-reasons");
+
+    if (!data) { mode.textContent = "ממתין"; score.textContent = "--"; label.textContent = ""; reasons.textContent = ""; return; }
+
+    if (data.mode === "calibrating") {
+        const p = Math.round((data.calibration_progress || 0) * 100);
+        mode.textContent = "כיול " + p + "%";
+        score.textContent = "--";
+        score.className = "m-neck-score";
+        label.textContent = "החזיקו תנוחה נינוחה — הרפו כתפיים";
+        reasons.textContent = "הכיול נמשך מספר שניות. אל תזוזו.";
+        return;
+    }
+    if (data.mode === "running" && Number.isInteger(data.score)) {
+        mode.textContent = "פעיל";
+        score.textContent = data.score;
+        score.className = "m-neck-score grade-" + data.score;
+        const labels = ["מצוין — אין מאמץ", "מאמץ קל", "מאמץ בינוני", "מאמץ חמור"];
+        label.textContent = labels[Math.min(data.score, 3)];
+        reasons.textContent = (data.reasons || []).map(r => NECK_REASONS[r] || r).join(" ");
+        return;
+    }
+    if (data.mode === "no_score") {
+        mode.textContent = "מחפש";
+        score.textContent = "--";
+        label.textContent = "ודאו שהפנים והכתפיים בפריים";
+        reasons.textContent = (data.reasons || []).map(r => NECK_REASONS[r] || r).join(" ");
+        return;
+    }
+    mode.textContent = "שגיאה";
+    score.textContent = "--";
+    label.textContent = "לא זמין כרגע";
 }
 
 // =====================================================================
@@ -826,7 +1092,10 @@ function displayResults(data) {
             let html = `<h3>${measureName} (${rec.measure}) — ציון: ${rec.score}</h3>`;
             if (rec.resources && rec.resources.length) {
                 for (const r of rec.resources) {
-                    html += `<a class="m-rec-link" href="${r.url}" target="_blank" rel="noopener">▶ ${r.course} — ${r.section}</a><br>`;
+                    html += `<div style="margin:8px 0;">`;
+                    html += `<a class="m-rec-link" href="${r.url}" target="_blank" rel="noopener">▶ ${r.course} — ${r.section}</a>`;
+                    html += `<div style="font-size:0.78em;color:var(--text2);margin-top:2px;">לחצו על הקישור, צפו בתרגיל עד סופו ובצעו יחד עם המדריכה</div>`;
+                    html += `</div>`;
                 }
             }
             div.innerHTML = html;
