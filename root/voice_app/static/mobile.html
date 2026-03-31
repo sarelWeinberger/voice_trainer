@@ -805,26 +805,31 @@ function displayResults(data) {
         grid.appendChild(card);
     }
 
-    // Recommendations
+    // Recommendations — show only top 2 most critical measures
+    const MEASURE_NAMES = { G: "דירוג כללי", R: "צרידות", B: "נשיפות", A: "חולשה", S: "מאמץ", N: "מאמץ צוואר" };
     if (data.recommendations && data.recommendations.length) {
         const recsCard = document.getElementById("m-recs-card");
         recsCard.hidden = false;
         const recsList = document.getElementById("m-recs-list");
         recsList.innerHTML = "";
-        const top = data.recommendations.slice(0, 4);
-        for (const rec of top) {
+        const top2 = data.recommendations
+            .filter(r => r.score >= 1)
+            .sort((a, b) => b.score - a.score || a.priority_rank - b.priority_rank)
+            .slice(0, 2);
+        for (const rec of top2) {
             const div = document.createElement("div");
             div.className = "m-rec-item";
-            let html = `<h3>${rec.title || rec.name || ""}</h3>`;
-            if (rec.description) html += `<p>${rec.description}</p>`;
+            const measureName = MEASURE_NAMES[rec.measure] || rec.measure;
+            let html = `<h3>${measureName} (${rec.measure}) — ציון: ${rec.score}</h3>`;
             if (rec.resources && rec.resources.length) {
-                for (const r of rec.resources.slice(0, 2)) {
-                    html += `<a class="m-rec-link" href="${r.url}" target="_blank">▶ ${r.title || "צפייה"}</a> `;
+                for (const r of rec.resources) {
+                    html += `<a class="m-rec-link" href="${r.url}" target="_blank" rel="noopener">▶ ${r.course} — ${r.section}</a><br>`;
                 }
             }
             div.innerHTML = html;
             recsList.appendChild(div);
         }
+        if (top2.length === 0) recsCard.hidden = true;
     }
 }
 
