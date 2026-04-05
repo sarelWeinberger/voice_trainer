@@ -539,6 +539,75 @@
         .m-congrats-box h2 { font-size: 1.3em; margin-bottom: 8px; color: var(--green); }
         .m-congrats-box p { color: var(--text2); font-size: 0.95em; margin-bottom: 16px; }
 
+        /* Streak & Level bar */
+        .m-streak-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--card);
+            border-radius: 12px;
+            padding: 10px 14px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow);
+        }
+        .m-streak-item { text-align: center; }
+        .m-streak-item .val { font-size: 1.3em; font-weight: 700; }
+        .m-streak-item .lbl { font-size: 0.68em; color: var(--text2); }
+        .m-streak-fire { font-size: 1.5em; }
+        .m-level-bar {
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            overflow: hidden;
+            flex: 1;
+            margin: 0 10px;
+        }
+        .m-level-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--accent3));
+            border-radius: 3px;
+            transition: width 0.5s;
+        }
+
+        /* Badges */
+        .m-badges-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        .m-badge-item {
+            text-align: center;
+            padding: 10px 4px;
+            background: var(--bg);
+            border-radius: 10px;
+            font-size: 0.75em;
+        }
+        .m-badge-item.locked { opacity: 0.35; }
+        .m-badge-item .badge-icon { font-size: 1.8em; display: block; margin-bottom: 4px; }
+        .m-badge-item .badge-name { font-weight: 600; }
+
+        /* Encouragement toast */
+        .m-toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--text);
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-size: 0.9em;
+            z-index: 150;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            animation: toast-in 0.3s ease-out;
+            max-width: 90vw;
+            text-align: center;
+        }
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
         /* Sections */
         .m-section { display: none; }
         .m-section.active { display: block; }
@@ -610,6 +679,24 @@
     <div id="m-app" hidden>
         <!-- Tab: Record -->
         <div id="tab-record" class="m-section active">
+            <!-- Streak & Level -->
+            <div class="m-streak-bar" id="m-streak-bar">
+                <div class="m-streak-item">
+                    <div class="val" id="m-streak-count">0</div>
+                    <div class="lbl">ימים רצופים</div>
+                </div>
+                <div class="m-streak-fire" id="m-streak-fire"></div>
+                <div class="m-streak-item">
+                    <div class="val" id="m-level-name">מתחיל</div>
+                    <div class="lbl">רמה <span id="m-level-num">1</span></div>
+                </div>
+                <div class="m-level-bar"><div class="m-level-fill" id="m-level-fill" style="width:0%"></div></div>
+                <div class="m-streak-item">
+                    <div class="val" id="m-points">0</div>
+                    <div class="lbl">נקודות</div>
+                </div>
+            </div>
+
             <!-- Practice Timer -->
             <div id="m-practice-timer" class="m-practice-timer">
                 <div class="pt-label" id="pt-label">זמן תרגול יומי מומלץ — 10 דקות</div>
@@ -735,6 +822,18 @@
                 </div>
             </div>
         </div>
+
+        <!-- Tab: Badges -->
+        <div id="tab-badges" class="m-section">
+            <div class="m-card">
+                <h2>🏆 ההישגים שלי</h2>
+                <div class="m-badges-grid" id="m-badges-grid"></div>
+            </div>
+            <div class="m-card">
+                <h2>📈 סיכום שבועי</h2>
+                <div id="m-weekly-summary" class="m-empty">מידע יופיע לאחר שבוע של שימוש</div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -747,6 +846,10 @@
     <button class="m-nav-item" data-tab="results">
         <span class="icon">📊</span>
         תוצאות
+    </button>
+    <button class="m-nav-item" data-tab="badges">
+        <span class="icon">🏆</span>
+        הישגים
     </button>
     <button class="m-nav-item" data-tab="history">
         <span class="icon">📜</span>
@@ -1499,6 +1602,289 @@ function checkReminder() {
 loadReminderSettings();
 if (localStorage.getItem("reminder_enabled") === "true") startReminderCheck();
 loadPracticeProgress();
+
+// =====================================================================
+// Gamification: Streak, Points, Level, Badges, Encouragement
+// =====================================================================
+
+function gameData() {
+    const raw = localStorage.getItem("game_data");
+    return raw ? JSON.parse(raw) : { points: 0, streak: 0, lastActiveDate: null, practiceDays: [], badges: [], weeklyShown: null };
+}
+function saveGameData(d) { localStorage.setItem("game_data", JSON.stringify(d)); }
+
+// --- Streak (skips Saturday) ---
+function updateStreak() {
+    const g = gameData();
+    const today = new Date().toISOString().slice(0, 10);
+    if (g.lastActiveDate === today) return g; // already counted today
+
+    const yesterday = new Date(Date.now() - 86400000);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
+    const dayBefore = new Date(Date.now() - 172800000);
+    const dayBeforeStr = dayBefore.toISOString().slice(0, 10);
+
+    // Check if streak should continue
+    if (g.lastActiveDate === yesterdayStr) {
+        g.streak++;
+    } else if (yesterday.getDay() === 6 && g.lastActiveDate === dayBeforeStr) {
+        // Yesterday was Saturday — skip it, streak continues
+        g.streak++;
+    } else if (g.lastActiveDate) {
+        // Check for multi-day Saturday gap (Friday → Sunday)
+        const lastDate = new Date(g.lastActiveDate + "T12:00:00");
+        const diffDays = Math.round((Date.now() - lastDate.getTime()) / 86400000);
+        if (diffDays === 2 && yesterday.getDay() === 6) {
+            g.streak++;
+        } else {
+            g.streak = 1; // reset
+        }
+    } else {
+        g.streak = 1;
+    }
+
+    g.lastActiveDate = today;
+    if (!g.practiceDays.includes(today)) g.practiceDays.push(today);
+    // Keep only last 60 days
+    if (g.practiceDays.length > 60) g.practiceDays = g.practiceDays.slice(-60);
+    saveGameData(g);
+    return g;
+}
+
+// --- Points ---
+function addPoints(amount, reason) {
+    const g = gameData();
+    g.points += amount;
+    saveGameData(g);
+    updateGameUI();
+    showToast("+" + amount + " נקודות — " + reason);
+}
+
+// --- Level ---
+const LEVELS = [
+    { name: "מתחיל", min: 0 },
+    { name: "מתרגל", min: 100 },
+    { name: "מתקדם", min: 300 },
+    { name: "מומחה", min: 600 },
+    { name: "אלוף", min: 1000 },
+];
+
+function getLevel(points) {
+    let lvl = LEVELS[0], idx = 0;
+    for (let i = LEVELS.length - 1; i >= 0; i--) {
+        if (points >= LEVELS[i].min) { lvl = LEVELS[i]; idx = i; break; }
+    }
+    const next = LEVELS[idx + 1];
+    const pct = next ? ((points - lvl.min) / (next.min - lvl.min)) * 100 : 100;
+    return { name: lvl.name, num: idx + 1, pct: Math.min(100, pct) };
+}
+
+// --- Badges ---
+const ALL_BADGES = [
+    { id: "first_analysis", icon: "🏅", name: "צעד ראשון", desc: "השלמת ניתוח ראשון" },
+    { id: "streak_3", icon: "🔥", name: "3 ימים", desc: "רצף של 3 ימים" },
+    { id: "streak_7", icon: "⚡", name: "שבוע שלם", desc: "רצף של 7 ימים" },
+    { id: "streak_30", icon: "💎", name: "חודש!", desc: "רצף של 30 ימים" },
+    { id: "timer_5", icon: "⏱️", name: "5 תרגולים", desc: "השלמת טיימר 5 פעמים" },
+    { id: "improved_g", icon: "📈", name: "שיפור אמיתי", desc: "ציון G השתפר" },
+    { id: "perfect_neck", icon: "💪", name: "צוואר חופשי", desc: "ציון 0 במאמץ צוואר" },
+    { id: "gold_voice", icon: "🌟", name: "קול זהב", desc: "כל ציוני GRBAS מתחת ל-1" },
+    { id: "points_500", icon: "🎯", name: "500 נקודות", desc: "צברת 500 נקודות" },
+];
+
+function checkBadges() {
+    const g = gameData();
+    const history = JSON.parse(localStorage.getItem(historyKey()) || "[]");
+    const timerDays = parseInt(localStorage.getItem("timer_completed_days") || "0");
+    let newBadge = null;
+
+    function award(id) {
+        if (!g.badges.includes(id)) {
+            g.badges.push(id);
+            newBadge = ALL_BADGES.find(b => b.id === id);
+        }
+    }
+
+    if (history.length >= 1) award("first_analysis");
+    if (g.streak >= 3) award("streak_3");
+    if (g.streak >= 7) award("streak_7");
+    if (g.streak >= 30) award("streak_30");
+    if (timerDays >= 5) award("timer_5");
+    if (g.points >= 500) award("points_500");
+
+    // Check improved G
+    if (history.length >= 2) {
+        const latest = history[0].scores?.G;
+        const prev = history[1].scores?.G;
+        if (latest !== undefined && prev !== undefined && latest < prev) award("improved_g");
+    }
+
+    // Gold voice — all GRBAS < 1
+    if (history.length > 0) {
+        const s = history[0].scores;
+        if (s && s.G < 1 && s.R < 1 && s.B < 1 && s.A < 1 && s.S < 1) award("gold_voice");
+    }
+
+    saveGameData(g);
+    if (newBadge) showToast(newBadge.icon + " הישג חדש: " + newBadge.name + "!");
+    renderBadges();
+}
+
+function renderBadges() {
+    const grid = document.getElementById("m-badges-grid");
+    if (!grid) return;
+    const g = gameData();
+    grid.innerHTML = "";
+    for (const b of ALL_BADGES) {
+        const unlocked = g.badges.includes(b.id);
+        const div = document.createElement("div");
+        div.className = "m-badge-item" + (unlocked ? "" : " locked");
+        div.innerHTML = `<span class="badge-icon">${b.icon}</span><div class="badge-name">${b.name}</div><div style="font-size:0.85em;color:var(--text2)">${b.desc}</div>`;
+        grid.appendChild(div);
+    }
+}
+
+// --- Encouragement messages ---
+function showEncouragement(data) {
+    const history = JSON.parse(localStorage.getItem(historyKey()) || "[]");
+    const g = gameData();
+
+    if (history.length === 1) {
+        showToast("🎉 ניתוח ראשון! הציון הזה הוא נקודת המוצא שלך.");
+        return;
+    }
+
+    if (history.length >= 2) {
+        const prev = history[1].scores;
+        const cur = data.scores;
+        if (prev && cur) {
+            if (cur.G < prev.G) {
+                const pct = Math.round(((prev.G - cur.G) / prev.G) * 100);
+                showToast("📈 שיפור! ציון G ירד ב-" + pct + "% — התרגול עובד!");
+                return;
+            }
+            if (cur.G > prev.G + 0.3) {
+                showToast("💪 הציון עלה קצת — זה קורה. המשיכו לתרגל, זה ישתפר!");
+                return;
+            }
+        }
+    }
+
+    if (g.streak >= 7) {
+        showToast("🔥 " + g.streak + " ימים רצופים! אתם מכונה!");
+    } else if (g.streak >= 3) {
+        showToast("🔥 רצף של " + g.streak + " ימים — כל הכבוד!");
+    }
+}
+
+// --- Toast ---
+function showToast(msg) {
+    const existing = document.querySelector(".m-toast");
+    if (existing) existing.remove();
+    const toast = document.createElement("div");
+    toast.className = "m-toast";
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
+}
+
+// --- Weekly Summary ---
+function updateWeeklySummary() {
+    const g = gameData();
+    const el = document.getElementById("m-weekly-summary");
+    if (!el) return;
+
+    const now = new Date();
+    const weekAgo = new Date(Date.now() - 7 * 86400000);
+    const daysThisWeek = g.practiceDays.filter(d => new Date(d) >= weekAgo).length;
+
+    if (daysThisWeek === 0) {
+        el.innerHTML = '<div class="m-empty">לא היה תרגול השבוע — בואו נתחיל!</div>';
+        return;
+    }
+
+    const history = JSON.parse(localStorage.getItem(historyKey()) || "[]");
+    const weekHistory = history.filter(h => new Date(h.date) >= weekAgo);
+    let summaryHtml = `<div style="font-size:0.92em; line-height:1.8;">`;
+    summaryHtml += `<div>📅 <strong>${daysThisWeek}</strong> ימי תרגול השבוע</div>`;
+    summaryHtml += `<div>🔥 רצף נוכחי: <strong>${g.streak}</strong> ימים</div>`;
+    summaryHtml += `<div>⭐ סה"כ נקודות: <strong>${g.points}</strong></div>`;
+
+    if (weekHistory.length >= 2) {
+        const first = weekHistory[weekHistory.length - 1].scores?.G;
+        const last = weekHistory[0].scores?.G;
+        if (first !== undefined && last !== undefined) {
+            const diff = first - last;
+            if (diff > 0) {
+                summaryHtml += `<div>📈 ציון G השתפר ב-<strong>${(diff).toFixed(1)}</strong> נקודות השבוע!</div>`;
+            } else if (diff < 0) {
+                summaryHtml += `<div>📊 ציון G עלה ב-${Math.abs(diff).toFixed(1)} — המשיכו לתרגל!</div>`;
+            } else {
+                summaryHtml += `<div>📊 ציון G יציב — המשיכו!</div>`;
+            }
+        }
+    }
+    summaryHtml += `</div>`;
+    el.innerHTML = summaryHtml;
+}
+
+// --- Update all game UI ---
+function updateGameUI() {
+    const g = gameData();
+    const lvl = getLevel(g.points);
+
+    document.getElementById("m-streak-count").textContent = g.streak;
+    document.getElementById("m-streak-fire").textContent = g.streak >= 7 ? "🔥🔥🔥" : g.streak >= 3 ? "🔥🔥" : g.streak >= 1 ? "🔥" : "";
+    document.getElementById("m-level-name").textContent = lvl.name;
+    document.getElementById("m-level-num").textContent = lvl.num;
+    document.getElementById("m-level-fill").style.width = lvl.pct + "%";
+    document.getElementById("m-points").textContent = g.points;
+
+    renderBadges();
+    updateWeeklySummary();
+}
+
+// --- Hook into existing events ---
+const _origSendAudio = sendAudio;
+sendAudio = async function(blob) {
+    await _origSendAudio(blob);
+    // After analysis
+    const g = updateStreak();
+    addPoints(10, "ניתוח קול");
+    const history = JSON.parse(localStorage.getItem(historyKey()) || "[]");
+    if (history.length > 0) showEncouragement({ scores: history[0].scores });
+    checkBadges();
+};
+
+// Hook practice timer completion
+const _origShowPracticeDone = showPracticeDone;
+showPracticeDone = function() {
+    _origShowPracticeDone();
+    addPoints(20, "השלמת תרגול יומי");
+    const days = parseInt(localStorage.getItem("timer_completed_days") || "0") + 1;
+    localStorage.setItem("timer_completed_days", String(days));
+    checkBadges();
+};
+
+// Check for neck effort badge
+const _origUpdateNeckUI = updateNeckUI;
+updateNeckUI = function(data) {
+    _origUpdateNeckUI(data);
+    if (data && data.mode === "running" && data.score === 0) {
+        const g = gameData();
+        if (!g.badges.includes("perfect_neck")) {
+            checkBadges();
+        }
+    }
+};
+
+// Init game on login
+const _origShowLoggedIn = showLoggedIn;
+showLoggedIn = function() {
+    _origShowLoggedIn();
+    const g = updateStreak();
+    updateGameUI();
+};
 </script>
 </body>
 </html>
