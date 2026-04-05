@@ -429,6 +429,116 @@
             margin-top: 4px;
         }
 
+        /* Practice Timer */
+        .m-practice-timer {
+            background: linear-gradient(135deg, #4a7cff 0%, #6c5ce7 100%);
+            color: #fff;
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        .m-practice-timer .pt-time {
+            font-size: 2.8em;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 2px;
+        }
+        .m-practice-timer .pt-label {
+            font-size: 0.85em;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+        .m-practice-timer .pt-bar {
+            height: 6px;
+            background: rgba(255,255,255,0.25);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 10px 0 6px;
+        }
+        .m-practice-timer .pt-fill {
+            height: 100%;
+            background: #fff;
+            border-radius: 3px;
+            transition: width 1s linear;
+        }
+        .m-practice-timer .pt-btn {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.4);
+            color: #fff;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            margin-top: 6px;
+        }
+        .m-practice-done {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+        }
+
+        /* Reminder settings */
+        .m-reminder-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .m-reminder-card input[type="time"] {
+            font-size: 1.1em;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1.5px solid var(--border);
+            font-family: inherit;
+        }
+        .m-reminder-toggle {
+            position: relative;
+            width: 50px;
+            height: 28px;
+            background: #ccc;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: background 0.3s;
+            border: none;
+        }
+        .m-reminder-toggle.active { background: var(--green); }
+        .m-reminder-toggle::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            right: 3px;
+            width: 22px;
+            height: 22px;
+            background: #fff;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+        .m-reminder-toggle.active::after { transform: translateX(-22px); }
+
+        /* Congrats modal */
+        .m-congrats-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .m-congrats-box {
+            background: #fff;
+            border-radius: 20px;
+            padding: 32px 24px;
+            text-align: center;
+            max-width: 90vw;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        .m-congrats-box .emoji { font-size: 3em; margin-bottom: 12px; }
+        .m-congrats-box h2 { font-size: 1.3em; margin-bottom: 8px; color: var(--green); }
+        .m-congrats-box p { color: var(--text2); font-size: 0.95em; margin-bottom: 16px; }
+
         /* Sections */
         .m-section { display: none; }
         .m-section.active { display: block; }
@@ -500,6 +610,24 @@
     <div id="m-app" hidden>
         <!-- Tab: Record -->
         <div id="tab-record" class="m-section active">
+            <!-- Practice Timer -->
+            <div id="m-practice-timer" class="m-practice-timer">
+                <div class="pt-label" id="pt-label">זמן תרגול יומי מומלץ — 10 דקות</div>
+                <div class="pt-time" id="pt-time">10:00</div>
+                <div class="pt-bar"><div class="pt-fill" id="pt-fill" style="width:0%"></div></div>
+                <button class="pt-btn" id="pt-btn">התחילו תרגול</button>
+            </div>
+
+            <!-- Reminder settings -->
+            <div class="m-card m-reminder-card" id="m-reminder-card">
+                <div>
+                    <strong>תזכורת יומית</strong>
+                    <div style="font-size:0.8em;color:var(--text2);">כל יום (חוץ משבת)</div>
+                </div>
+                <input type="time" id="m-reminder-time" value="09:00">
+                <button class="m-reminder-toggle" id="m-reminder-toggle" title="הפעל/כבה תזכורת"></button>
+            </div>
+
             <!-- Camera + Neck Effort -->
             <div class="m-card">
                 <h2>📸 מצלמה — ניתוח מאמץ צוואר</h2>
@@ -1205,6 +1333,172 @@ function updateQuickStats() {
         document.getElementById("m-qs-best").textContent = bestG.toFixed(1);
     }
 }
+
+// =====================================================================
+// Practice Timer (10 min)
+// =====================================================================
+const PRACTICE_GOAL = 10 * 60; // 10 minutes in seconds
+let practiceSeconds = 0;
+let practiceInterval = null;
+let practiceRunning = false;
+
+const ptTime = document.getElementById("pt-time");
+const ptFill = document.getElementById("pt-fill");
+const ptBtn = document.getElementById("pt-btn");
+const ptLabel = document.getElementById("pt-label");
+const ptTimer = document.getElementById("m-practice-timer");
+
+function todayKey() {
+    return "practice_" + new Date().toISOString().slice(0, 10);
+}
+
+function loadPracticeProgress() {
+    practiceSeconds = parseInt(localStorage.getItem(todayKey()) || "0");
+    updatePracticeUI();
+    if (practiceSeconds >= PRACTICE_GOAL) showPracticeDone();
+}
+
+function updatePracticeUI() {
+    const remaining = Math.max(0, PRACTICE_GOAL - practiceSeconds);
+    const mins = Math.floor(remaining / 60);
+    const secs = remaining % 60;
+    ptTime.textContent = String(mins).padStart(2, "0") + ":" + String(secs).padStart(2, "0");
+    const pct = Math.min(100, (practiceSeconds / PRACTICE_GOAL) * 100);
+    ptFill.style.width = pct + "%";
+}
+
+function showPracticeDone() {
+    ptTimer.classList.add("m-practice-done");
+    ptLabel.textContent = "כל הכבוד! סיימתם את התרגול היומי";
+    ptBtn.textContent = "להמשיך לתרגל";
+    ptTime.textContent = "00:00";
+    ptFill.style.width = "100%";
+    if (!practiceRunning) showCongratsModal();
+}
+
+function showCongratsModal() {
+    const overlay = document.createElement("div");
+    overlay.className = "m-congrats-overlay";
+    overlay.innerHTML = `
+        <div class="m-congrats-box">
+            <div class="emoji">🎉</div>
+            <h2>כל הכבוד!</h2>
+            <p>סיימתם את 10 דקות התרגול היומי.<br>אתם מוזמנים להמשיך לתרגל כמה שתרצו!</p>
+            <button class="m-btn m-btn-green" id="congrats-continue">להמשיך לתרגל</button>
+            <button class="m-btn m-btn-outline" id="congrats-close" style="margin-top:4px;">סגור</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    document.getElementById("congrats-close").onclick = () => overlay.remove();
+    document.getElementById("congrats-continue").onclick = () => { overlay.remove(); startPracticeTimer(); };
+}
+
+function startPracticeTimer() {
+    if (practiceRunning) return;
+    practiceRunning = true;
+    ptBtn.textContent = "עצור";
+    ptLabel.textContent = "תרגול פעיל — המשיכו!";
+    ptTimer.classList.remove("m-practice-done");
+
+    practiceInterval = setInterval(() => {
+        practiceSeconds++;
+        localStorage.setItem(todayKey(), String(practiceSeconds));
+        updatePracticeUI();
+        if (practiceSeconds === PRACTICE_GOAL) {
+            stopPracticeTimer();
+            showPracticeDone();
+        }
+    }, 1000);
+}
+
+function stopPracticeTimer() {
+    practiceRunning = false;
+    if (practiceInterval) { clearInterval(practiceInterval); practiceInterval = null; }
+    if (practiceSeconds >= PRACTICE_GOAL) {
+        ptBtn.textContent = "להמשיך לתרגל";
+    } else {
+        ptBtn.textContent = "המשיכו תרגול";
+    }
+    ptLabel.textContent = "זמן תרגול יומי — 10 דקות";
+}
+
+ptBtn.addEventListener("click", () => {
+    if (practiceRunning) stopPracticeTimer();
+    else startPracticeTimer();
+});
+
+// =====================================================================
+// Daily Reminder Notifications
+// =====================================================================
+const reminderToggle = document.getElementById("m-reminder-toggle");
+const reminderTime = document.getElementById("m-reminder-time");
+
+function loadReminderSettings() {
+    const enabled = localStorage.getItem("reminder_enabled") === "true";
+    const time = localStorage.getItem("reminder_time") || "09:00";
+    reminderTime.value = time;
+    if (enabled) reminderToggle.classList.add("active");
+}
+
+reminderToggle.addEventListener("click", async () => {
+    const isActive = reminderToggle.classList.toggle("active");
+    localStorage.setItem("reminder_enabled", isActive);
+    localStorage.setItem("reminder_time", reminderTime.value);
+    if (isActive) {
+        if ("Notification" in window && Notification.permission !== "granted") {
+            const perm = await Notification.requestPermission();
+            if (perm !== "granted") {
+                reminderToggle.classList.remove("active");
+                localStorage.setItem("reminder_enabled", "false");
+                alert("יש לאשר התראות כדי לקבל תזכורות.");
+                return;
+            }
+        }
+        startReminderCheck();
+    }
+});
+
+reminderTime.addEventListener("change", () => {
+    localStorage.setItem("reminder_time", reminderTime.value);
+});
+
+let reminderCheckInterval = null;
+
+function startReminderCheck() {
+    if (reminderCheckInterval) clearInterval(reminderCheckInterval);
+    reminderCheckInterval = setInterval(checkReminder, 60000); // check every minute
+    checkReminder();
+}
+
+function checkReminder() {
+    if (localStorage.getItem("reminder_enabled") !== "true") return;
+    const now = new Date();
+    // Skip Saturday (day 6 in JS)
+    if (now.getDay() === 6) return;
+
+    const targetTime = localStorage.getItem("reminder_time") || "09:00";
+    const [targetH, targetM] = targetTime.split(":").map(Number);
+    const currentH = now.getHours(), currentM = now.getMinutes();
+
+    if (currentH === targetH && currentM === targetM) {
+        const todayNotified = localStorage.getItem("reminder_sent_" + now.toISOString().slice(0, 10));
+        if (todayNotified) return;
+        localStorage.setItem("reminder_sent_" + now.toISOString().slice(0, 10), "true");
+
+        if ("Notification" in window && Notification.permission === "granted") {
+            new Notification("🎤 הגיע הזמן לתרגל!", {
+                body: "10 דקות תרגול יומי ישפרו את הקול שלך. לחצו כדי להתחיל.",
+                icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'><text y='32' font-size='32'>🎤</text></svg>",
+                tag: "practice-reminder",
+            });
+        }
+    }
+}
+
+// Init
+loadReminderSettings();
+if (localStorage.getItem("reminder_enabled") === "true") startReminderCheck();
+loadPracticeProgress();
 </script>
 </body>
 </html>
