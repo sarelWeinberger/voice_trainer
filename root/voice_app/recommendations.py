@@ -152,7 +152,7 @@ def recommend_by_grbas(
     scores: Dict[str, int],
     include_only_bad_scores: bool = True,
 ) -> List[Recommendation]:
-    normalized = {k.upper(): int(v) for k, v in scores.items()}
+    normalized = {k.upper(): round(float(v)) for k, v in scores.items()}
     valid_measures = ["G", "R", "B", "A", "S"]
 
     sorted_measures: List[Tuple[str, int]] = sorted(
