@@ -1336,22 +1336,22 @@ def calculate_grbas(audio_path):
     # Primary indicator: HNR (low HNR = more noise = more breathy)
     #
     # HNR thresholds (Yumoto 1982, Ferrand 2002):
-    #   Normal:   > 20 dB
-    #   Mild:     15 – 20 dB
-    #   Moderate: 10 – 15 dB
-    #   Severe:   < 10 dB
-    if hnr >= 20:
+    #   Normal:   > 25 dB
+    #   Mild:     20 – 24 dB
+    #   Moderate: 15 – 19 dB
+    #   Severe:   < 14 dB
+    if hnr >= 25:
         b_score = 0
-    elif hnr >= 15:
+    elif hnr >= 20:
         b_score = 1
-    elif hnr >= 10:
+    elif hnr >= 15:
         b_score = 2
     else:
         b_score = 3
 
     # Low voiced fraction indicates air leakage (breathy voice)
     # Normal voiced fraction for sustained /a/: > 90%
-    if voiced_fraction < 0.75 and b_score < 3:
+    if voiced_fraction < 0.85 and b_score < 3:
         b_score += 1
 
     # === A (Asthenia — weakness) ======================================
