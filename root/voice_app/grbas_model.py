@@ -1119,6 +1119,9 @@ def extract_features(audio_path):
         except Exception:
             features[k] = 0.0
 
+    # Store audio path so heuristic_predict can call calculate_grbas directly
+    features["_audio_path"] = audio_path
+
     return features
 
 
@@ -1215,222 +1218,271 @@ def _gender_blend(f0_mean):
     return (f0_mean - 150) / 50.0
 
 
-def heuristic_predict(features):
-    """Clinically-calibrated GRBAS scoring.
+def calculate_grbas(audio_path):
+    """Pure Praat/parselmouth GRBAS scoring from a sustained vowel /a/.
 
-    Thresholds based on published normative data:
-    - Jitter/Shimmer: Teixeira & Fernandes 2014, Boersma 1993
-    - HNR: Yumoto et al. 1982, Ferrand 2002
-    - CPP/CPPS: Maryn et al. 2009 (AVQI), Heman-Ackah et al. 2003
-    - AVQI-inspired G: Maryn et al. 2010 (threshold 2.95)
-    - DSI components: Wuyts et al. 2000
+    Extracts all acoustic measures directly from the audio file using
+    parselmouth (Praat) and maps them to the 0–3 GRBAS scale using
+    established clinical thresholds.
 
-    Returns continuous float scores (0.0–3.0) for finer granularity.
+    References:
+        - Jitter/Shimmer norms: Teixeira & Fernandes 2014, Boersma 1993
+        - HNR norms: Yumoto et al. 1982, Ferrand 2002
+        - F0/Intensity norms: Baken & Orlikoff 2000
+        - GRBAS scale: Hirano 1981
+
+    Args:
+        audio_path: Path to a .wav file (sustained vowel /a/).
+
+    Returns:
+        dict with keys G, R, B, A, S mapped to int scores 0–3.
     """
-    scores = {}
+    # ------------------------------------------------------------------
+    # 1. Load sound and create Praat objects
+    # ------------------------------------------------------------------
+    snd = parselmouth.Sound(audio_path)
 
-    f0_mean   = features.get("f0_mean", 0)
-    blend     = _gender_blend(f0_mean)
-    jitter    = features.get("jitter_local", 0) * 100      # percent
-    shimmer   = features.get("shimmer_local", 0) * 100      # percent
-    shim_db   = features.get("shimmer_db", 0)
-    hnr       = features.get("hnr", 25)
-    tilt      = features.get("spectral_tilt", 0)
-    hf_ratio  = features.get("hf_energy_ratio", 0)
-    cpp       = features.get("cpp_mean", 5.0)
-    cpps_val  = features.get("cpps_mean", 5.0)
-    gne       = features.get("gne", 0.7)
-    s_entropy = features.get("sample_entropy", 0.5)
+    # Pitch object — fundamental frequency tracking
+    pitch = call(snd, "To Pitch", 0.0, 75.0, 600.0)
 
-    # ===================================================================
-    # R (Roughness): irregular vocal fold vibration
-    # Primary evidence: jitter, shimmer (perturbation measures)
-    # Secondary: HNR, signal irregularity
-    # Clinical norms: jitter < 1.04%, shimmer < 3.81% (Teixeira 2014)
-    # ===================================================================
-    r_evidence = 0.0
-    # Jitter — clinical threshold 1.04%, severe > 4%
-    # Weight: 0.35 (primary perturbation measure for roughness)
-    if jitter > 1.04:
-        r_evidence += min((jitter - 1.04) / 3.0, 1.0) * 0.35
+    # PointProcess — glottal pulse detection (for jitter/shimmer)
+    point_process = call(snd, "To PointProcess (periodic, cc)", 75.0, 600.0)
 
-    # Shimmer — clinical threshold 3.81%, severe > 10%
-    # Weight: 0.30
-    if shimmer > 3.81:
-        r_evidence += min((shimmer - 3.81) / 6.2, 1.0) * 0.30
+    # Harmonicity (HNR) object
+    harmonicity = call(snd, "To Harmonicity (cc)", 0.01, 75.0, 0.1, 1.0)
 
-    # HNR — reduced harmonics indicate roughness. Normal > 20 dB.
-    # Weight: 0.20 (lower than in B/A to reduce double-counting)
-    if hnr < 20:
-        r_evidence += min((20 - hnr) / 15.0, 1.0) * 0.20
+    # Intensity object
+    intensity = call(snd, "To Intensity", 75.0, 0.0, "yes")
 
-    # Shimmer dB — amplitude perturbation in dB, normal < 0.35 dB
-    # Weight: 0.10
-    if shim_db > 0.35:
-        r_evidence += min((shim_db - 0.35) / 1.0, 1.0) * 0.10
+    # ------------------------------------------------------------------
+    # 2. Extract acoustic measures
+    # ------------------------------------------------------------------
 
-    # Sample entropy > 1.5 → signal irregularity
-    # Weight: 0.05 (weak supplementary)
-    if s_entropy > 1.5:
-        r_evidence += min((s_entropy - 1.5) / 1.5, 1.0) * 0.05
+    # --- Jitter (local, %) ---
+    # Cycle-to-cycle variation in fundamental frequency.
+    # Clinical norm: < 1.04% (Teixeira 2014, Praat default threshold)
+    jitter_local = call(point_process, "Get jitter (local)", 0.0, 0.0,
+                        0.0001, 0.02, 1.3) * 100  # convert to %
 
-    scores["R"] = round(_clamp(r_evidence * 3.0, 0, 3), 2)
+    # --- Shimmer (local, %) ---
+    # Cycle-to-cycle variation in amplitude.
+    # Clinical norm: < 3.81% (Teixeira 2014, Praat default threshold)
+    shimmer_local = call([snd, point_process], "Get shimmer (local)", 0.0, 0.0,
+                         0.0001, 0.02, 1.3, 1.6) * 100  # convert to %
 
-    # ===================================================================
-    # B (Breathiness): turbulent airflow through incomplete glottal closure
-    # Primary evidence: CPPS (most validated), GNE
-    # Secondary: spectral tilt, HF energy
-    # Clinical norms: CPPS < 4.0 dB = significant (Maryn 2009)
-    # ===================================================================
-    b_evidence = 0.0
-    # CPPS — gold standard for breathiness. Normal ≥ 4.0 dB (Maryn 2009)
-    # Weight: 0.40 (primary, most clinically validated)
-    if cpps_val < 4.0:
-        b_evidence += min((4.0 - cpps_val) / 4.0, 1.0) * 0.40
+    # --- HNR (dB) ---
+    # Harmonics-to-Noise Ratio: harmonic energy vs. noise.
+    # Clinical norm: > 20 dB = healthy (Yumoto 1982)
+    # < 20 dB = mild, < 15 dB = moderate, < 10 dB = severe dysphonia
+    hnr = call(harmonicity, "Get mean", 0.0, 0.0)
+    if np.isnan(hnr) or hnr < 0:
+        hnr = 0.0
 
-    # GNE — Glottal-to-Noise Excitation. Normal > 0.5 (Michaelis 1997)
-    # Weight: 0.25
-    if gne < 0.5:
-        b_evidence += min((0.5 - gne) / 0.5, 1.0) * 0.25
+    # --- Pitch (F0) statistics ---
+    f0_mean = call(pitch, "Get mean", 0.0, 0.0, "Hertz")
+    f0_std  = call(pitch, "Get standard deviation", 0.0, 0.0, "Hertz")
+    if np.isnan(f0_mean):
+        f0_mean = 0.0
+    if np.isnan(f0_std):
+        f0_std = 0.0
 
-    # HNR — noise from air leakage. Normal > 20 dB.
-    # Weight: 0.15 (reduced from B to avoid overlap with R)
-    if hnr < 20:
-        b_evidence += min((20 - hnr) / 15.0, 1.0) * 0.15
+    # Pitch periodicity: fraction of frames that are voiced
+    n_frames = call(pitch, "Get number of frames")
+    n_voiced = 0
+    for i in range(1, n_frames + 1):
+        val = call(pitch, "Get value in frame", i, "Hertz")
+        if not np.isnan(val) and val > 0:
+            n_voiced += 1
+    voiced_fraction = n_voiced / max(n_frames, 1)
 
-    # Spectral tilt — steep negative tilt = more breathiness
-    # Weight: 0.12
-    if tilt < -0.005:
-        b_evidence += min((-0.005 - tilt) / 0.03, 1.0) * 0.12
+    # --- Intensity statistics ---
+    int_mean = call(intensity, "Get mean", 0.0, 0.0, "dB")
+    int_std  = call(intensity, "Get standard deviation", 0.0, 0.0)
+    if np.isnan(int_mean):
+        int_mean = 60.0
+    if np.isnan(int_std):
+        int_std = 0.0
 
-    # HF energy ratio — low HF energy indicates poor closure
-    # Weight: 0.08
-    if hf_ratio < 0.05:
-        b_evidence += min((0.05 - hf_ratio) / 0.05, 1.0) * 0.08
+    # ------------------------------------------------------------------
+    # 3. GRBAS scoring with clinical thresholds
+    # ------------------------------------------------------------------
 
-    scores["B"] = round(_clamp(b_evidence * 3.0, 0, 3), 2)
-
-    # ===================================================================
-    # A (Asthenia): voice weakness / reduced phonatory drive
-    # Primary: CPPS, energy/loudness
-    # Secondary: harmonic decay, phonation efficiency
-    # ===================================================================
-    lufs_val = features.get("lufs_integrated", -70.0)
-    rms_m    = features.get("rms_mean", 0.05)
-    decay    = features.get("harmonic_decay_slope", -1.0)
-    env_slp  = features.get("energy_env_slope", 0.0)
-    drop_r   = features.get("energy_env_drop_rate", 0.0)
-    pe       = features.get("phonation_efficiency", 0.5)
-    vf       = features.get("voiced_fraction", 1.0)
-
-    a_evidence = 0.0
-    # CPPS — weak voice has low cepstral peak. Healthy ≥ 5 dB, weak < 2 dB.
-    # Weight: 0.30
-    ag1 = min(max(5.0 - cpps_val, 0.0) / 5.0, 1.0)
-    a_evidence += ag1 * 0.30
-
-    # Energy & loudness — quiet voice, fading energy
-    # Weight: 0.30 (primary for asthenia, more than old 0.20)
-    ag3a = min(max(0.03 - rms_m, 0.0) / 0.03, 1.0)             # quiet voice
-    ag3b = 1.0 - min(max(lufs_val + 70.0, 0.0) / 40.0, 1.0)    # low LUFS
-    ag3c = min(max(-env_slp, 0.0) / 0.015, 1.0)                 # fading energy
-    ag3d = min(drop_r / 0.3, 1.0)                                # energy drops
-    ag3  = min(0.30 * ag3a + 0.35 * ag3b + 0.20 * ag3c + 0.15 * ag3d, 1.0)
-    a_evidence += ag3 * 0.30
-
-    # HNR — reduced to 0.15 to avoid triple-counting with R and B
-    ag2 = min(max(20.0 - hnr, 0.0) / 20.0, 1.0)
-    a_evidence += ag2 * 0.15
-
-    # Harmonic decay — weak voice loses upper harmonics fast
-    # Weight: 0.15
-    ag4 = min(max(-decay - 1.5, 0.0) / 3.0, 1.0)
-    a_evidence += ag4 * 0.15
-
-    # Phonation efficiency + voiced fraction
-    # Weight: 0.10
-    ag5a = min(max(0.4 - pe, 0.0) / 0.4, 1.0)
-    ag5b = min(max(0.6 - vf, 0.0) / 0.6, 1.0)
-    ag5  = min(0.6 * ag5a + 0.4 * ag5b, 1.0)
-    a_evidence += ag5 * 0.10
-
-    scores["A"] = round(_clamp(a_evidence * 3.0, 0, 3), 2)
-
-    # ===================================================================
-    # S (Strain): hyperfunctional voice production / excessive effort
-    # Primary: voice breaks, F0 instability, pressed phonation
-    # Secondary: TEO energy, spectral tension
-    # ===================================================================
-
-    # Group 1: Voice continuity — breaks indicate effort (w=0.30)
-    n_vb  = features.get("n_voice_breaks", 0)
-    dvb   = features.get("degree_voice_breaks", 0)
-    flu   = features.get("fraction_locally_unvoiced", 0)
-    sg1  = min(n_vb / 3.0, 1.0) * 0.45              # fewer breaks threshold
-    sg1 += min(dvb / 0.20, 1.0) * 0.35               # degree threshold lowered
-    sg1 += min(max(flu - 0.05, 0) / 0.30, 1.0) * 0.20
-    sg1  = min(sg1, 1.0)
-
-    # Group 2: F0 elevation & instability (w=0.25)
-    baseline_f0  = 110 + blend * 100    # male ~110 Hz, female ~210 Hz
-    f0_deviation = max(0, f0_mean - baseline_f0) / (baseline_f0 + 1e-6)
-    f0_cv        = features.get("f0_cv", 0)
-    f0_max_val   = features.get("f0_max", 0)
-    f0_max_dev   = max(0, f0_max_val - (baseline_f0 * 1.4)) / (baseline_f0 + 1e-6)
-    sg2  = min(max(f0_deviation - 0.15, 0) / 0.60, 1.0) * 0.40
-    sg2 += min(max(f0_cv - 0.05, 0) / 0.25, 1.0) * 0.40    # CV > 5% is elevated
-    sg2 += min(f0_max_dev / 0.40, 1.0) * 0.20
-    sg2  = min(sg2, 1.0)
-
-    # Group 3: Period & amplitude irregularity (w=0.20)
-    period_cv  = features.get("period_cv", 0)
-    jit_ddp    = features.get("jitter_ddp", 0) * 100
-    sg3  = min(max(period_cv - 0.008, 0) / 0.15, 1.0) * 0.45
-    sg3 += min(max(jit_ddp - 0.6, 0) / 4.0, 1.0) * 0.30
-    sg3 += min(max(shim_db - 0.25, 0) / 1.0, 1.0) * 0.25
-    sg3  = min(sg3, 1.0)
-
-    # Group 4: Vocal effort energy — TEO + loudness (w=0.15)
-    teo_mean  = features.get("teo_mean", 0)
-    teo_std   = features.get("teo_std", 0)
-    lufs      = features.get("lufs_integrated", -70)
-    teo_score = min(teo_mean / 8e-4, 1.0) * 0.50 + min(teo_std / 4e-4, 1.0) * 0.20
-    lufs_score = min(max(lufs + 14, 0) / 8.0, 1.0) * 0.30
-    sg4  = min(teo_score + lufs_score, 1.0)
-
-    # Group 5: Pressed-phonation spectrum (w=0.10)
-    sf_mean  = features.get("spectral_flatness_mean", 0.1)
-    cpp_val  = features.get("cpp_mean", 10.0)
-    zcr_std  = features.get("zcr_std", 0)
-    sg5  = min(max(0.12 - sf_mean, 0) / 0.12, 1.0) * 0.40
-    sg5 += min(max(8.0 - cpp_val, 0) / 8.0, 1.0) * 0.35
-    sg5 += min(zcr_std / 0.04, 1.0) * 0.25
-    sg5  = min(sg5, 1.0)
-
-    # Weighted sum
-    s_raw = sg1 * 0.30 + sg2 * 0.25 + sg3 * 0.20 + sg4 * 0.15 + sg5 * 0.10
-    scores["S"] = round(_clamp(s_raw * 3.0, 0, 3), 2)
-
-    # ===================================================================
-    # G (Grade): overall voice quality — AVQI-inspired composite
+    # === R (Roughness) ================================================
+    # Primary indicator: Jitter (irregular vocal fold vibration)
+    # Secondary: Shimmer (adds roughness perception)
     #
-    # Instead of simple max + weighted avg, use a formula that:
-    # 1. Weighs the dominant dimension heavily (like AVQI's CPPS dominance)
-    # 2. Adds contribution from other dimensions
-    # 3. Considers CPPS as direct evidence (AVQI gold-standard)
-    # ===================================================================
-    sub = [scores["R"], scores["B"], scores["A"], scores["S"]]
-    dominant = max(sub)
-    w_avg = 0.30 * scores["R"] + 0.30 * scores["B"] + 0.20 * scores["A"] + 0.20 * scores["S"]
+    # Jitter thresholds (Teixeira 2014, Boersma 1993):
+    #   Normal:   < 1.04%
+    #   Mild:     1.04% – 2.5%
+    #   Moderate: 2.5%  – 4.0%
+    #   Severe:   > 4.0%
+    if jitter_local < 1.04:
+        r_score = 0
+    elif jitter_local < 2.5:
+        r_score = 1
+    elif jitter_local < 4.0:
+        r_score = 2
+    else:
+        r_score = 3
 
-    # CPPS-based direct evidence (AVQI-inspired, threshold 4.0 dB)
-    cpps_evidence = min(max(4.0 - cpps_val, 0.0) / 4.0, 1.0) * 3.0
+    # Shimmer can push roughness up by 1 level if also abnormal
+    # Shimmer thresholds: Normal < 3.81%, Moderate > 6%, Severe > 10%
+    if shimmer_local > 6.0 and r_score < 3:
+        r_score += 1
+    elif shimmer_local > 10.0 and r_score < 3:
+        r_score = min(r_score + 2, 3)
 
-    # Composite: 40% dominant, 30% weighted average, 30% CPPS evidence
-    g_raw = 0.40 * dominant + 0.30 * w_avg + 0.30 * cpps_evidence
-    scores["G"] = round(_clamp(g_raw, 0, 3), 2)
+    # === B (Breathiness) ==============================================
+    # Primary indicator: HNR (low HNR = more noise = more breathy)
+    #
+    # HNR thresholds (Yumoto 1982, Ferrand 2002):
+    #   Normal:   > 20 dB
+    #   Mild:     15 – 20 dB
+    #   Moderate: 10 – 15 dB
+    #   Severe:   < 10 dB
+    if hnr >= 20:
+        b_score = 0
+    elif hnr >= 15:
+        b_score = 1
+    elif hnr >= 10:
+        b_score = 2
+    else:
+        b_score = 3
 
-    return scores
+    # Low voiced fraction indicates air leakage (breathy voice)
+    # Normal voiced fraction for sustained /a/: > 90%
+    if voiced_fraction < 0.75 and b_score < 3:
+        b_score += 1
+
+    # === A (Asthenia — weakness) ======================================
+    # Indicators: low intensity, high pitch instability, low HNR
+    # A weak voice has: quiet output, unstable F0, poor harmonic support
+    #
+    # Intensity thresholds (Baken & Orlikoff 2000):
+    #   Normal sustained /a/: 75–85 dB SPL
+    #   Weak voice: < 65 dB SPL
+    a_score = 0
+
+    # Low intensity = weak projection
+    if int_mean < 55:
+        a_score = 3
+    elif int_mean < 60:
+        a_score = 2
+    elif int_mean < 65:
+        a_score = 1
+
+    # High intensity variation = unstable support
+    # Normal int_std for sustained /a/: < 3 dB
+    if int_std > 5.0 and a_score < 3:
+        a_score += 1
+    elif int_std > 3.0 and a_score < 3 and a_score > 0:
+        a_score = max(a_score, 1)
+
+    # Low HNR also contributes to weakness (incomplete closure)
+    if hnr < 12 and a_score < 3:
+        a_score = max(a_score, 2)
+
+    # === S (Strain — effort/tension) ==================================
+    # Indicators: pitch instability, high F0, intensity fluctuations
+    # Strained voice: elevated/unstable F0, pressed phonation
+    #
+    # F0 standard deviation thresholds for sustained /a/:
+    #   Normal:   < 3 Hz (very stable)
+    #   Mild:     3 – 8 Hz
+    #   Moderate: 8 – 15 Hz
+    #   Severe:   > 15 Hz
+    if f0_std < 3.0:
+        s_score = 0
+    elif f0_std < 8.0:
+        s_score = 1
+    elif f0_std < 15.0:
+        s_score = 2
+    else:
+        s_score = 3
+
+    # Elevated F0 suggests laryngeal tension
+    # Male baseline ~120 Hz, Female ~210 Hz
+    # If F0 is > 30% above expected range, add strain evidence
+    if f0_mean > 0:
+        blend = _gender_blend(f0_mean)
+        baseline = 120 + blend * 90
+        if f0_mean > baseline * 1.3 and s_score < 3:
+            s_score += 1
+
+    # High intensity std also suggests effortful, inconsistent phonation
+    if int_std > 5.0 and s_score < 3:
+        s_score = max(s_score, 1)
+
+    # === G (Grade — overall severity) =================================
+    # Composite measure based on Shimmer + HNR (as requested)
+    # with consideration of all sub-scores
+    #
+    # G reflects the overall impression of voice abnormality.
+    # Clinical approach: G >= max(R, B, A, S) typically
+    # (Dejonckere 1996: G correlates with jitter + shimmer + HNR combined)
+    #
+    # Shimmer contribution: > 3.81% abnormal, > 10% severe
+    # HNR contribution: < 20 dB abnormal, < 10 dB severe
+    g_from_shimmer = 0
+    if shimmer_local >= 10.0:
+        g_from_shimmer = 3
+    elif shimmer_local >= 6.0:
+        g_from_shimmer = 2
+    elif shimmer_local >= 3.81:
+        g_from_shimmer = 1
+
+    g_from_hnr = 0
+    if hnr < 10:
+        g_from_hnr = 3
+    elif hnr < 15:
+        g_from_hnr = 2
+    elif hnr < 20:
+        g_from_hnr = 1
+
+    # G = max of (shimmer-based, HNR-based, and highest sub-score)
+    # This ensures G is never lower than the worst dimension
+    g_acoustic = max(g_from_shimmer, g_from_hnr)
+    g_subscores = max(r_score, b_score, a_score, s_score)
+    g_score = _clamp(max(g_acoustic, g_subscores), 0, 3)
+
+    return {
+        "G": g_score,
+        "R": r_score,
+        "B": b_score,
+        "A": a_score,
+        "S": s_score,
+    }
+
+
+def heuristic_predict(features):
+    """Legacy wrapper — delegates to calculate_grbas if audio_path is available,
+    otherwise falls back to feature-based estimation."""
+    # If called with audio_path in features (set by extract_features)
+    audio_path = features.get("_audio_path")
+    if audio_path and os.path.exists(audio_path):
+        return calculate_grbas(audio_path)
+
+    # Fallback: simple feature-based estimation for when no audio file is available
+    jitter  = features.get("jitter_local", 0) * 100
+    shimmer = features.get("shimmer_local", 0) * 100
+    hnr     = features.get("hnr", 25)
+    f0_std  = features.get("f0_std", 0)
+    int_std = features.get("intensity_std", 0)
+
+    r = 0 if jitter < 1.04 else (1 if jitter < 2.5 else (2 if jitter < 4.0 else 3))
+    if shimmer > 6.0 and r < 3: r += 1
+    b = 0 if hnr >= 20 else (1 if hnr >= 15 else (2 if hnr >= 10 else 3))
+    a = 0
+    if int_std > 5.0: a = 2
+    elif int_std > 3.0: a = 1
+    if hnr < 12: a = max(a, 2)
+    s = 0 if f0_std < 3 else (1 if f0_std < 8 else (2 if f0_std < 15 else 3))
+    g = max(r, b, a, s)
+    shimmer_g = 0 if shimmer < 3.81 else (1 if shimmer < 6 else (2 if shimmer < 10 else 3))
+    hnr_g = 0 if hnr >= 20 else (1 if hnr >= 15 else (2 if hnr >= 10 else 3))
+    g = _clamp(max(g, shimmer_g, hnr_g), 0, 3)
+
+    return {"G": g, "R": r, "B": b, "A": a, "S": s}
 
 
 # ---------------------------------------------------------------------------
