@@ -1312,24 +1312,24 @@ def calculate_grbas(audio_path):
     # Secondary: Shimmer (adds roughness perception)
     #
     # Jitter thresholds (Teixeira 2014, Boersma 1993):
-    #   Normal:   < 1.04%
-    #   Mild:     1.04% – 2.5%
-    #   Moderate: 2.5%  – 4.0%
-    #   Severe:   > 4.0%
-    if jitter_local < 1.04:
+    #   Normal:   < 0.8%
+    #   Mild:     0.8% – 1.5%
+    #   Moderate: 1.5%  – 3.0%
+    #   Severe:   > 3.0%
+    if jitter_local < 0.8:
         r_score = 0
-    elif jitter_local < 2.5:
+    elif jitter_local < 1.5:
         r_score = 1
-    elif jitter_local < 4.0:
+    elif jitter_local < 3:
         r_score = 2
     else:
         r_score = 3
 
     # Shimmer can push roughness up by 1 level if also abnormal
     # Shimmer thresholds: Normal < 3.81%, Moderate > 6%, Severe > 10%
-    if shimmer_local > 6.0 and r_score < 3:
+    if shimmer_local > 4.50 and r_score < 3:
         r_score += 1
-    elif shimmer_local > 10.0 and r_score < 3:
+    elif shimmer_local > 8.0 and r_score < 3:
         r_score = min(r_score + 2, 3)
 
     # === B (Breathiness) ==============================================
