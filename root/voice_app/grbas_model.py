@@ -1238,9 +1238,36 @@ def calculate_grbas(audio_path):
         dict with keys G, R, B, A, S mapped to int scores 0–3.
     """
     # ------------------------------------------------------------------
-    # 1. Load sound and create Praat objects
+    # 1. Load sound, trim leading/trailing silence, create Praat objects
     # ------------------------------------------------------------------
-    snd = parselmouth.Sound(audio_path)
+    snd_full = parselmouth.Sound(audio_path)
+
+    # Trim silence by detecting voiced region using pitch
+    # This avoids intensity_std being inflated by silence padding
+    try:
+        full_pitch = call(snd_full, "To Pitch", 0.0, 75.0, 600.0)
+        n_full = call(full_pitch, "Get number of frames")
+        first_voiced, last_voiced = None, None
+        for i in range(1, n_full + 1):
+            v = call(full_pitch, "Get value in frame", i, "Hertz")
+            if not np.isnan(v) and v > 0:
+                if first_voiced is None:
+                    first_voiced = i
+                last_voiced = i
+        if first_voiced is not None and last_voiced is not None:
+            t_start = call(full_pitch, "Get time from frame number", first_voiced)
+            t_end = call(full_pitch, "Get time from frame number", last_voiced)
+            # Add small margin
+            t_start = max(0.0, t_start - 0.05)
+            t_end = min(snd_full.get_total_duration(), t_end + 0.05)
+            if t_end - t_start > 0.5:  # at least 0.5 sec of voiced audio
+                snd = call(snd_full, "Extract part", t_start, t_end, "rectangular", 1.0, "no")
+            else:
+                snd = snd_full
+        else:
+            snd = snd_full
+    except Exception:
+        snd = snd_full
 
     # Pitch object — fundamental frequency tracking
     pitch = call(snd, "To Pitch", 0.0, 75.0, 600.0)
@@ -1295,13 +1322,37 @@ def calculate_grbas(audio_path):
             n_voiced += 1
     voiced_fraction = n_voiced / max(n_frames, 1)
 
-    # --- Intensity statistics ---
-    int_mean = call(intensity, "Get mean", 0.0, 0.0, "dB")
-    int_std  = call(intensity, "Get standard deviation", 0.0, 0.0)
-    if np.isnan(int_mean):
-        int_mean = 60.0
-    if np.isnan(int_std):
-        int_std = 0.0
+    # --- Intensity statistics over VOICED frames only ---
+    # Computing intensity over the entire signal (including silence) inflates
+    # the standard deviation. We extract intensity values frame-by-frame and
+    # filter to keep only frames where pitch is detected (voiced).
+    n_int = call(intensity, "Get number of frames")
+    voiced_int_vals = []
+    for i in range(1, n_int + 1):
+        try:
+            t_int = call(intensity, "Get time from frame number", i)
+            int_val = call(intensity, "Get value in frame", i)
+            if np.isnan(int_val) or int_val < 30:
+                continue
+            # Check if this time corresponds to a voiced pitch frame
+            f0_at_t = call(pitch, "Get value at time", t_int, "Hertz", "Linear")
+            if not np.isnan(f0_at_t) and f0_at_t > 0:
+                voiced_int_vals.append(int_val)
+        except Exception:
+            continue
+
+    if len(voiced_int_vals) > 5:
+        int_mean = float(np.mean(voiced_int_vals))
+        int_std  = float(np.std(voiced_int_vals))
+    else:
+        int_mean = call(intensity, "Get mean", 0.0, 0.0, "dB")
+        int_std  = call(intensity, "Get standard deviation", 0.0, 0.0)
+        if np.isnan(int_mean): int_mean = 60.0
+        if np.isnan(int_std):  int_std = 0.0
+
+    # F0 std as a percentage of F0 mean (CV) — more meaningful than absolute Hz
+    # Sustained vowels typically have very low F0 SD (1-3 Hz) regardless of pathology
+    f0_cv = (f0_std / f0_mean * 100) if f0_mean > 0 else 0.0
 
     # ------------------------------------------------------------------
     # 3. GRBAS scoring with clinical thresholds
@@ -1336,82 +1387,79 @@ def calculate_grbas(audio_path):
     # Primary indicator: HNR (low HNR = more noise = more breathy)
     #
     # HNR thresholds (Yumoto 1982, Ferrand 2002):
-    #   Normal:   > 25 dB
-    #   Mild:     20 – 24 dB
-    #   Moderate: 15 – 19 dB
-    #   Severe:   < 14 dB
-    if hnr >= 25:
+    #   Normal:   ≥ 20 dB
+    #   Mild:     15 – 20 dB
+    #   Moderate: 10 – 15 dB
+    #   Severe:   < 10 dB
+    # Note: 8kHz recordings have ~3 dB lower HNR due to bandwidth limitation.
+    if hnr >= 20:
         b_score = 0
-    elif hnr >= 20:
-        b_score = 1
     elif hnr >= 15:
+        b_score = 1
+    elif hnr >= 10:
         b_score = 2
     else:
         b_score = 3
 
-    # Low voiced fraction indicates air leakage (breathy voice)
-    # Normal voiced fraction for sustained /a/: > 90%
-    if voiced_fraction < 0.85 and b_score < 3:
+    # Voiced fraction below 0.7 = significant air leakage
+    if voiced_fraction < 0.7 and b_score < 3:
         b_score += 1
 
     # === A (Asthenia — weakness) ======================================
-    # Indicators: low intensity, high pitch instability, low HNR
-    # A weak voice has: quiet output, unstable F0, poor harmonic support
-    #
-    # Intensity thresholds (Baken & Orlikoff 2000):
-    #   Normal sustained /a/: 75–85 dB SPL
-    #   Weak voice: < 65 dB SPL
+    # Indicators: weak signal energy relative to peak, low harmonic support
+    # In recorded audio (where mic gain varies), absolute intensity is unreliable.
+    # We use INTENSITY VARIATION over voiced frames + HNR + jitter combo.
     a_score = 0
 
-    # Low intensity = weak projection
-    if int_mean < 55:
-        a_score = 3
-    elif int_mean < 60:
+    # Voiced intensity variability (after removing silence)
+    # Normal sustained /a/: int_std < 2 dB (very stable energy)
+    # Weak/asthenic voice: high std due to inability to maintain energy
+    if int_std > 4.0:
         a_score = 2
-    elif int_mean < 65:
+    elif int_std > 2.5:
         a_score = 1
 
-    # High intensity variation = unstable support
-    # Normal int_std for sustained /a/: < 3 dB
-    if int_std > 5.0 and a_score < 3:
-        a_score += 1
-    elif int_std > 3.0 and a_score < 3 and a_score > 0:
+    # Severely low HNR with weak signal = asthenia
+    if hnr < 10 and a_score < 3:
+        a_score = max(a_score, 2)
+    elif hnr < 13 and int_std > 2.0:
         a_score = max(a_score, 1)
 
-    # Low HNR also contributes to weakness (incomplete closure)
-    if hnr < 12 and a_score < 3:
-        a_score = max(a_score, 2)
-
     # === S (Strain — effort/tension) ==================================
-    # Indicators: pitch instability, high F0, intensity fluctuations
-    # Strained voice: elevated/unstable F0, pressed phonation
-    #
-    # F0 standard deviation thresholds for sustained /a/:
-    #   Normal:   < 3 Hz (very stable)
-    #   Mild:     3 – 8 Hz
-    #   Moderate: 8 – 15 Hz
-    #   Severe:   > 15 Hz
-    if f0_std < 3.0:
-        s_score = 0
-    elif f0_std < 8.0:
-        s_score = 1
-    elif f0_std < 15.0:
+    # For sustained /a/, F0 is naturally very stable (std < 3 Hz).
+    # F0 std is NOT a good strain indicator for sustained vowels.
+    # Better indicators: jitter (irregular vibration), shimmer (effort fluctuation),
+    # F0 elevation above expected baseline, high HNR variability.
+    s_score = 0
+
+    # F0 CV (coefficient of variation) — more meaningful than raw Hz
+    # Normal sustained /a/ CV: < 1% (very stable)
+    # Strained: > 2% (unstable due to laryngeal tension)
+    if f0_cv > 3.0:
         s_score = 2
-    else:
-        s_score = 3
+    elif f0_cv > 1.5:
+        s_score = 1
 
-    # Elevated F0 suggests laryngeal tension
-    # Male baseline ~120 Hz, Female ~210 Hz
-    # If F0 is > 30% above expected range, add strain evidence
+    # Elevated F0 suggests laryngeal hyperfunction
+    # Use ABSOLUTE thresholds (above normal max range) instead of relative
+    # Normal male F0 range: 85-180 Hz, female: 165-280 Hz
     if f0_mean > 0:
-        blend = _gender_blend(f0_mean)
-        baseline = 120 + blend * 90
-        if f0_mean > baseline * 1.3 and s_score < 3:
-            s_score += 1
+        if f0_mean < 165:  # likely male
+            if f0_mean > 220:
+                s_score = max(s_score, 2)
+            elif f0_mean > 190:
+                s_score = max(s_score, 1)
+        else:  # likely female
+            if f0_mean > 320:
+                s_score = max(s_score, 2)
+            elif f0_mean > 280:
+                s_score = max(s_score, 1)
 
-    # High intensity std also suggests effortful, inconsistent phonation
-    if int_std > 5.0 and s_score < 3:
+    # High jitter+shimmer combo without breathiness = pressed/strained
+    if jitter_local > 1.0 and shimmer_local > 4.0 and hnr > 15:
         s_score = max(s_score, 1)
+    if jitter_local > 2.0 and shimmer_local > 6.0 and hnr > 12:
+        s_score = max(s_score, 2)
 
     # === G (Grade — overall severity) =================================
     # Composite measure based on Shimmer + HNR (as requested)
