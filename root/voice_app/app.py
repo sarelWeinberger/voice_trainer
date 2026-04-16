@@ -51,7 +51,7 @@ MODEL_PATH = os.path.join(os.path.dirname(__file__), "grbas_model.joblib")
 if os.path.exists(MODEL_PATH):
     classifier.load(MODEL_PATH)
 
-NECK_EFFORT_CONFIG = NeckEffortConfig(calibration_frames=12, smooth_window=12)
+NECK_EFFORT_CONFIG = NeckEffortConfig(calibration_frames=45, smooth_window=20)
 neck_effort_engines: Dict[int, NeckEffortEngine] = {}
 
 

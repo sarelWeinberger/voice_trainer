@@ -805,6 +805,9 @@
                         <div class="label" id="m-neck-result-label">ממתין לניתוח</div>
                     </div>
                     <div id="m-neck-result-reasons" style="font-size:0.85em;color:var(--text2);margin-top:8px;line-height:1.6;"></div>
+                    <div style="font-size:0.72em;color:var(--text2);margin-top:12px;padding-top:8px;border-top:1px solid var(--border);line-height:1.5;">
+                        * הערכה משוערת מבוססת ניתוח תמונה. לא מהווה אבחון קליני. לצורך הערכה מקצועית יש לפנות לקלינאי/ת תקשורת.
+                    </div>
                 </div>
 
                 <div class="m-card" id="m-recs-card" hidden>
@@ -1133,7 +1136,7 @@ function updateNeckUI(data) {
         mode.textContent = "פעיל";
         score.textContent = data.score;
         score.className = "m-neck-score grade-" + data.score;
-        const labels = ["מצוין — אין מאמץ", "מאמץ קל", "מאמץ בינוני", "מאמץ חמור"];
+        const labels = ["נראה רגוע", "ייתכן מאמץ קל", "ייתכן מאמץ בינוני", "ייתכן מאמץ משמעותי"];
         label.textContent = labels[Math.min(data.score, 3)];
         reasons.textContent = (data.reasons || []).map(r => NECK_REASONS[r] || r).join(" ");
         return;
@@ -1324,23 +1327,23 @@ function displayResults(data) {
         neckBadge.className = "m-combined-badge level-" + neckLevel;
         document.getElementById("m-neck-result-score").textContent = ne.score;
         const neckLabels = [
-            "מצוין — אין מאמץ",
-            "מאמץ קל",
-            "מאמץ בינוני",
-            "מאמץ חמור",
+            "נראה רגוע",
+            "ייתכן מאמץ קל",
+            "ייתכן מאמץ בינוני",
+            "ייתכן מאמץ משמעותי",
         ];
         document.getElementById("m-neck-result-label").textContent = neckLabels[neckLevel];
         const reasonsEl = document.getElementById("m-neck-result-reasons");
         if (ne.reasons && ne.reasons.length) {
             const NECK_REASONS_RESULT = {
-                head_forward_posture: "• הראש נוטה קדימה ביחס לכתפיים",
-                neck_tilt: "• הצוואר או הראש נוטים הצידה",
-                shoulder_imbalance: "• הכתפיים לא מאוזנות",
-                raised_shoulders: "• הכתפיים מורמות — נסו להרפות",
-                head_instability: "• הראש לא יציב",
-                excess_mouth_opening: "• פתיחת הפה גדולה מדי",
-                head_rotation: "• הפנים מופנות הצידה",
-                minimal_visible_effort: "• אין סימני מאמץ נראים — מצוין!",
+                head_forward_posture: "• נראה שהראש נוטה קדימה ביחס לכתפיים",
+                neck_tilt: "• נראה שהצוואר או הראש נוטים הצידה",
+                shoulder_imbalance: "• נראה שהכתפיים לא מאוזנות",
+                raised_shoulders: "• נראה שהכתפיים מורמות — נסו להרפות",
+                head_instability: "• נראה שהראש לא יציב",
+                excess_mouth_opening: "• נראה שפתיחת הפה גדולה מהרגיל",
+                head_rotation: "• נראה שהפנים מופנות הצידה",
+                minimal_visible_effort: "• לא נצפו סימני מאמץ בולטים",
             };
             reasonsEl.innerHTML = ne.reasons.map(r => NECK_REASONS_RESULT[r] || "").filter(Boolean).join("<br>");
         } else {

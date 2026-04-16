@@ -335,7 +335,7 @@ function updateNeckEffortUI(data) {
         neckEffortScore.textContent = "--";
         neckEffortScore.className = "neck-effort-score";
         neckEffortLabel.textContent = "המצלמה לא הופעלה";
-        neckEffortConfidence.textContent = "ביטחון: --";
+        neckEffortConfidence.textContent = "איכות תמונה: --";
         neckEffortReasons.textContent = "יישרו את הראש, הצוואר והכתפיים מול המצלמה.";
         return;
     }
@@ -346,7 +346,7 @@ function updateNeckEffortUI(data) {
         neckEffortScore.textContent = progress + "%";
         neckEffortScore.className = "neck-effort-score";
         neckEffortLabel.textContent = "החזיקו תנוחה נינוחה";
-        neckEffortConfidence.textContent = "ביטחון: " + Math.round((data.confidence || 0) * 100) + "%";
+        neckEffortConfidence.textContent = "איכות תמונה: " + Math.round((data.confidence || 0) * 100) + "%";
         neckEffortReasons.textContent = "הרפו את הכתפיים ושמרו על הצוואר במרכז עד סיום הכיול.";
         return;
     }
@@ -356,7 +356,7 @@ function updateNeckEffortUI(data) {
         neckEffortScore.textContent = String(data.score);
         neckEffortScore.className = "neck-effort-score grade-" + data.score;
         neckEffortLabel.textContent = (data.score_label || "לא ידוע").replace(/^./, (char) => char.toUpperCase());
-        neckEffortConfidence.textContent = "ביטחון: " + Math.round((data.confidence || 0) * 100) + "%";
+        neckEffortConfidence.textContent = "איכות תמונה: " + Math.round((data.confidence || 0) * 100) + "%";
         updateNeckEffortFeedback(data.score, data.reasons || []);
         neckEffortReasons.textContent = formatNeckEffortReasons(data.reasons || []);
         return;
@@ -369,7 +369,7 @@ function updateNeckEffortUI(data) {
             ? "neck-effort-score grade-" + data.last_valid_score
             : "neck-effort-score";
         neckEffortLabel.textContent = "נדרש מיסגור טוב יותר";
-        neckEffortConfidence.textContent = "ביטחון: " + Math.round((data.confidence || 0) * 100) + "%";
+        neckEffortConfidence.textContent = "איכות תמונה: " + Math.round((data.confidence || 0) * 100) + "%";
         neckEffortReasons.textContent = formatNeckEffortReasons(data.reasons || []);
         return;
     }
@@ -391,7 +391,7 @@ function formatNeckEffortReasons(reasons) {
         head_instability: "מצב הראש לא יציב.",
         excess_mouth_opening: "פתיחת הפה גדולה מהצפוי.",
         head_rotation: "הפנים מופנות הצידה מהמצלמה.",
-        minimal_visible_effort: "מאמץ צוואר מינימלי.",
+        minimal_visible_effort: "לא נצפו סימני מאמץ בולטים.",
         no_face_or_pose: "ודאו שהפנים והכתפיים נראים למצלמה.",
         low_confidence_view: "התאימו את המיסגור והפנו ישירות למצלמה.",
         neck_effort_unavailable: "ניתוח מאמץ הצוואר אינו זמין זמנית.",

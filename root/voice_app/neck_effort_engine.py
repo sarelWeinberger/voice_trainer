@@ -385,7 +385,20 @@ class NeckEffortEngine:
         return out
 
     def _update_calibration(self, feats: Dict[str, float], confidence: float):
-        if confidence < 0.55:
+        # Require higher confidence during calibration
+        if confidence < 0.65:
+            return
+
+        # Reject frames where posture is clearly not neutral:
+        # - Head rotation > 8° (not facing camera)
+        # - Head tilt > 8° (tilted head)
+        # - Shoulder angle > 8° (asymmetric)
+        # This ensures baseline is built from genuinely neutral frames.
+        if feats.get("head_rotation", 0) > 0.10:  # ~8° rotation
+            return
+        if feats.get("head_tilt_deg", 0) > 8.0:
+            return
+        if feats.get("shoulder_angle_deg", 0) > 8.0:
             return
 
         self.state.calibration_buffer.append(
@@ -403,7 +416,7 @@ class NeckEffortEngine:
 
         if self.state.calibration_count >= self.cfg.calibration_frames:
             keys = self.state.calibration_buffer[0].keys()
-            # Use median instead of mean — more robust to brief posture dips
+            # Use median — robust to brief posture dips during calibration
             self.state.baseline = {
                 key: float(np.median([item[key] for item in self.state.calibration_buffer]))
                 for key in keys
@@ -567,10 +580,10 @@ class NeckEffortEngine:
 
     def _score_label(self, score: int) -> str:
         return {
-            0: "minimal",
-            1: "mild",
-            2: "moderate",
-            3: "severe",
+            0: "appears_relaxed",
+            1: "possible_mild_effort",
+            2: "possible_moderate_effort",
+            3: "possible_significant_effort",
         }.get(score, "unknown")
 
     def _jsonify_features(self, feats: Dict[str, float]) -> Dict[str, float]:
