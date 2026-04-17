@@ -1097,6 +1097,12 @@ async function captureNeckFrame() {
         const fd = new FormData();
         fd.append("frame", blob, "frame.jpg");
         const resp = await fetch("/api/neck-effort", { method: "POST", body: fd, headers });
+        if (resp.status === 401) {
+            // Token expired or user deleted — stop monitoring and re-login
+            if (neckEffortInterval) { clearInterval(neckEffortInterval); neckEffortInterval = null; }
+            doLogout();
+            return;
+        }
         if (!resp.ok) return;
         updateNeckUI(await resp.json());
     } catch (_) {} finally { neckEffortRequestInFlight = false; }
