@@ -62,29 +62,28 @@ class NeckEffortConfig:
     min_confidence_to_score: float = 0.45
     hysteresis_margin: float = 0.08
 
-    # --- Craniovertebral Angle (CVA) — forward head posture ---
-    # Measured as angle of ear-shoulder vector from vertical.
-    # Clinical CVA is measured from horizontal (90° - neck_tilt).
-    # Good CVA ≥ 52°, bad CVA < 44°
-    # So good neck_tilt = 90-52 = 38°, bad neck_tilt = 90-44 = 46°
-    # BUT in webcam frontal view, forward head is partially invisible,
-    # so we use Z-depth from MediaPipe as primary signal.
-    forward_head_z_good: float = 0.02   # z-depth diff ears vs shoulders (relative)
-    forward_head_z_bad: float = 0.18
+    # --- Forward head posture (FHP) — primary clinical marker ---
+    # Measured in meters using MediaPipe pose_world_landmarks.
+    # Kendall: >2.5 cm anterior offset = abnormal.
+    # Our mapping:
+    #   < 2 cm  = normal
+    #   2-6 cm  = mild
+    #   6-10 cm = moderate
+    #   > 10 cm = severe
+    forward_head_good: float = 0.02  # meters (2 cm)
+    forward_head_bad: float = 0.10   # meters (10 cm)
 
     # --- Head lateral tilt (Ferrario 1995) ---
-    # Angle of eye line from horizontal.
-    # Good < 3°, moderate 6-10°, bad > 10°
+    # Good < 3°, moderate 6-10°, severe > 10°
     head_tilt_good: float = 3.0
     head_tilt_bad: float = 12.0
 
-    # --- Shoulder asymmetry (angle of shoulder line from horizontal) ---
-    # Kibler 1998 — significant > 5°, clinical > 15°
+    # --- Shoulder line asymmetry (Kibler 1998) ---
+    # Significant > 5°, clinical > 15°
     shoulder_angle_good: float = 3.0
     shoulder_angle_bad: float = 15.0
 
-    # --- Shoulder elevation (relative to calibrated baseline) ---
-    # Measured as y-position rise / torso_length
+    # --- Shoulder elevation (delta from calibrated baseline) ---
     shoulder_raise_good: float = 0.02
     shoulder_raise_bad: float = 0.15
 
@@ -92,26 +91,23 @@ class NeckEffortConfig:
     head_instability_good: float = 0.008
     head_instability_bad: float = 0.07
 
-    # --- Mouth open (excessive opening from jaw tension) ---
-    # Normal mouth open during /a/: 0.20-0.30. Jaw tension: > 0.40 or < 0.15
-    mouth_open_good: float = 0.30
+    # --- View quality thresholds (not in scoring) ---
+    head_rotation_good: float = 0.03  # used in view_quality check only
+    head_rotation_bad: float = 0.15
+    mouth_open_good: float = 0.30     # used in view_quality check only
     mouth_open_bad: float = 0.50
 
-    # --- Head rotation (yaw from frontal) ---
-    head_rotation_good: float = 0.03
-    head_rotation_bad: float = 0.15
+    # --- Feature weights (5 effort metrics, must sum to ~1.0) ---
+    # Removed mouth_open and head_rotation from effort scoring:
+    # mouth_open → false positives during /a/ phonation
+    # head_rotation → view quality signal, not tension
+    w_forward_head: float = 0.30     # primary (was 0.25)
+    w_head_tilt: float = 0.25        # clinical marker (was 0.20)
+    w_shoulder_raise: float = 0.22   # most reliable visual sign (was 0.18)
+    w_shoulder_asym: float = 0.13    # secondary (was 0.12)
+    w_head_instability: float = 0.10 # tremor signal (kept)
 
-    # --- Feature weights for weighted sum (must sum to ~1.0) ---
-    # Forward head and head tilt are primary (most validated clinically).
-    w_forward_head: float = 0.25
-    w_head_tilt: float = 0.20
-    w_shoulder_raise: float = 0.18
-    w_shoulder_asym: float = 0.12
-    w_head_instability: float = 0.10
-    w_head_rotation: float = 0.08
-    w_mouth_open: float = 0.07
-
-    # Calibration blending weight (0 = no calibration, 1 = pure delta)
+    # Calibration blending weight
     calibration_weight: float = 0.55
 
 
@@ -186,9 +182,12 @@ class NeckEffortEngine:
         try:
             pose_lm = pose_res.pose_landmarks.landmark
             face_lm = face_res.multi_face_landmarks[0].landmark
+            # World landmarks: true 3D in meters (origin at hip center)
+            pose_world = getattr(pose_res, "pose_world_landmarks", None)
+            pose_world_lm = pose_world.landmark if pose_world else None
 
             visibility = self._estimate_visibility(pose_lm)
-            feats = self._extract_features(pose_lm, face_lm, w, h)
+            feats = self._extract_features(pose_lm, face_lm, w, h, pose_world_lm)
             view_quality = self._estimate_view_quality(feats, visibility)
             confidence = float(_clamp(0.55 * visibility + 0.45 * view_quality, 0.0, 1.0))
 
@@ -269,7 +268,7 @@ class NeckEffortEngine:
         mean_vis = _safe_mean(vals, 0.0)
         return float(np.clip((mean_vis - 0.2) / 0.8, 0.0, 1.0))
 
-    def _extract_features(self, pose_lm, face_lm, w: int, h: int) -> Dict[str, float]:
+    def _extract_features(self, pose_lm, face_lm, w: int, h: int, pose_world_lm=None) -> Dict[str, float]:
         # Pose landmarks in pixel coordinates
         l_sh = _xy(pose_lm[self.mp_pose.PoseLandmark.LEFT_SHOULDER], w, h)
         r_sh = _xy(pose_lm[self.mp_pose.PoseLandmark.RIGHT_SHOULDER], w, h)
@@ -277,19 +276,38 @@ class NeckEffortEngine:
         r_ear = _xy(pose_lm[self.mp_pose.PoseLandmark.RIGHT_EAR], w, h)
         nose = _xy(pose_lm[self.mp_pose.PoseLandmark.NOSE], w, h)
 
-        # Pose landmark Z-coordinates (depth, normalized, lower = closer to camera)
-        # MediaPipe gives z for each pose landmark. We use it to detect forward head.
-        try:
-            l_sh_z = float(pose_lm[self.mp_pose.PoseLandmark.LEFT_SHOULDER].z)
-            r_sh_z = float(pose_lm[self.mp_pose.PoseLandmark.RIGHT_SHOULDER].z)
-            l_ear_z = float(pose_lm[self.mp_pose.PoseLandmark.LEFT_EAR].z)
-            r_ear_z = float(pose_lm[self.mp_pose.PoseLandmark.RIGHT_EAR].z)
-            shoulder_z = (l_sh_z + r_sh_z) / 2.0
-            ear_z = (l_ear_z + r_ear_z) / 2.0
-            # Forward head = ears closer to camera than shoulders (more negative z)
-            forward_head_z = max(0.0, shoulder_z - ear_z)
-        except Exception:
-            forward_head_z = 0.0
+        # --- Forward head posture: use pose_world_landmarks (3D meters) when available ---
+        # Kendall clinical threshold: >2.5 cm anterior = abnormal
+        # MediaPipe pose_world_landmarks origin: hip center, Y=up, Z=depth (meters)
+        forward_head_m = 0.0
+        if pose_world_lm is not None:
+            try:
+                lsw = pose_world_lm[self.mp_pose.PoseLandmark.LEFT_SHOULDER]
+                rsw = pose_world_lm[self.mp_pose.PoseLandmark.RIGHT_SHOULDER]
+                lew = pose_world_lm[self.mp_pose.PoseLandmark.LEFT_EAR]
+                rew = pose_world_lm[self.mp_pose.PoseLandmark.RIGHT_EAR]
+                shoulder_z_m = (float(lsw.z) + float(rsw.z)) / 2.0
+                ear_z_m = (float(lew.z) + float(rew.z)) / 2.0
+                # Forward = ear z more negative than shoulder z (closer to camera)
+                forward_head_m = max(0.0, shoulder_z_m - ear_z_m)
+            except Exception:
+                pass
+
+        # Fallback to 2D z (normalized, noisy) if world landmarks missing
+        if forward_head_m == 0.0:
+            try:
+                l_sh_z = float(pose_lm[self.mp_pose.PoseLandmark.LEFT_SHOULDER].z)
+                r_sh_z = float(pose_lm[self.mp_pose.PoseLandmark.RIGHT_SHOULDER].z)
+                l_ear_z = float(pose_lm[self.mp_pose.PoseLandmark.LEFT_EAR].z)
+                r_ear_z = float(pose_lm[self.mp_pose.PoseLandmark.RIGHT_EAR].z)
+                shoulder_z = (l_sh_z + r_sh_z) / 2.0
+                ear_z = (l_ear_z + r_ear_z) / 2.0
+                forward_head_z_2d = max(0.0, shoulder_z - ear_z)
+                # Scale 2D z (unitless ~0.0–0.3) to approximate meters
+                # (rough calibration: 0.1 in 2D z ≈ 5cm anterior)
+                forward_head_m = forward_head_z_2d * 0.5
+            except Exception:
+                forward_head_m = 0.0
 
         shoulder_mid = _mid(l_sh, r_sh)
         ear_mid = _mid(l_ear, r_ear)
@@ -305,59 +323,53 @@ class NeckEffortEngine:
         except Exception:
             torso_length = shoulder_width * 1.5
 
-        # Face landmarks
-        lip_top = _xy(face_lm[13], w, h)
-        lip_bottom = _xy(face_lm[14], w, h)
-        chin = _xy(face_lm[152], w, h)
+        # Face landmarks (still needed for view quality check)
         face_nose = _xy(face_lm[1], w, h)
         eye_l = _xy(face_lm[33], w, h)
         eye_r = _xy(face_lm[263], w, h)
         eye_mid = _mid(eye_l, eye_r)
         eye_dist = max(_dist(eye_l, eye_r), 1e-6)
+        lip_top = _xy(face_lm[13], w, h)
+        lip_bottom = _xy(face_lm[14], w, h)
 
-        # --- Head lateral tilt (Ferrario 1995) ---
-        # Angle of the eye line from horizontal.
+        # --- Head lateral tilt (Ferrario 1995) — CLINICAL ---
         eye_vec = eye_r - eye_l
         horizontal = np.array([1.0, 0.0], dtype=np.float32)
         raw_eye_angle = _angle_deg(eye_vec, horizontal)
         head_tilt_deg = min(raw_eye_angle, 180.0 - raw_eye_angle)
 
-        # --- Shoulder line angle from horizontal (Kibler 1998) ---
+        # --- Shoulder line angle from horizontal (Kibler 1998) — CLINICAL ---
         shoulder_vec = r_sh - l_sh
         raw_shoulder_angle = _angle_deg(shoulder_vec, horizontal)
         shoulder_angle_deg = min(raw_shoulder_angle, 180.0 - raw_shoulder_angle)
 
         # --- Shoulder elevation (y-position relative to torso length) ---
-        # Primary signal comes from calibration delta (handled later).
-        # Raw metric: how high are shoulders in the frame (scaled by torso).
         shoulder_raise_metric = float(shoulder_mid[1] / max(torso_length, 1.0))
 
-        # --- Mouth opening (face-relative, for jaw tension detection) ---
-        mouth_open = _dist(lip_top, lip_bottom) / eye_dist
-
-        # --- Head rotation (yaw) — frontal nose vs eye midline ---
+        # --- Head rotation (yaw) — VIEW QUALITY ONLY (not effort) ---
         head_rotation = abs(float(face_nose[0] - eye_mid[0])) / eye_dist
+
+        # --- Mouth opening — VIEW QUALITY ONLY (not effort) ---
+        mouth_open = _dist(lip_top, lip_bottom) / eye_dist
 
         # --- Head stability anchor (for variance tracking) ---
         head_anchor = _dist(nose, shoulder_mid) / shoulder_width
 
-        # --- Chin drop (unused but kept for extensibility) ---
-        chin_drop = abs(float(chin[1] - lip_bottom[1])) / eye_dist
-
         return {
-            "forward_head_z": float(forward_head_z),
+            "forward_head_m": float(forward_head_m),
             "head_tilt_deg": float(head_tilt_deg),
             "shoulder_angle_deg": float(shoulder_angle_deg),
             "shoulder_raise_metric": float(shoulder_raise_metric),
-            "mouth_open": float(mouth_open),
-            "head_rotation": float(head_rotation),
             "head_anchor": float(head_anchor),
-            "chin_drop": float(chin_drop),
-            # Legacy names kept for backwards compatibility in reasons/UI:
-            "forward_head": float(forward_head_z),
+            # View quality only (not in effort scoring):
+            "head_rotation": float(head_rotation),
+            "mouth_open": float(mouth_open),
+            # Legacy names kept for UI/reasons compatibility:
+            "forward_head_z": float(forward_head_m),
+            "forward_head": float(forward_head_m),
             "neck_tilt_deg": float(head_tilt_deg),
             "shoulder_asym": float(shoulder_angle_deg) / 90.0,
-            "shoulder_raise_proxy": 0.0,  # computed from calibration delta
+            "shoulder_raise_proxy": 0.0,
         }
 
     def _estimate_view_quality(self, feats: Dict[str, float], visibility: float) -> float:
@@ -403,12 +415,10 @@ class NeckEffortEngine:
 
         self.state.calibration_buffer.append(
             {
-                "forward_head_z": feats.get("forward_head_z", 0.0),
+                "forward_head_m": feats.get("forward_head_m", 0.0),
                 "head_tilt_deg": feats.get("head_tilt_deg", 0.0),
                 "shoulder_angle_deg": feats.get("shoulder_angle_deg", 0.0),
                 "shoulder_raise_metric": feats.get("shoulder_raise_metric", 0.0),
-                "mouth_open": feats["mouth_open"],
-                "head_rotation": feats["head_rotation"],
                 "head_instability": feats.get("head_instability", 0.0),
             }
         )
@@ -435,7 +445,9 @@ class NeckEffortEngine:
         """
         cfg = self.cfg
 
-        nf = _norm_bad(feats["forward_head_z"], cfg.forward_head_z_good, cfg.forward_head_z_bad)
+        # Forward head: now in meters (from pose_world_landmarks)
+        nf = _norm_bad(feats.get("forward_head_m", feats.get("forward_head_z", 0)),
+                       cfg.forward_head_good, cfg.forward_head_bad)
         ht = _norm_bad(feats["head_tilt_deg"], cfg.head_tilt_good, cfg.head_tilt_bad)
         sa = _norm_bad(feats["shoulder_angle_deg"], cfg.shoulder_angle_good, cfg.shoulder_angle_bad)
 
@@ -445,13 +457,11 @@ class NeckEffortEngine:
             sh_base = self.state.baseline.get("shoulder_raise_metric", None)
             sh_now = feats.get("shoulder_raise_metric", None)
             if sh_base is not None and sh_now is not None:
-                # Lower y = higher on screen = raised shoulders
                 raise_delta = max(0.0, sh_base - sh_now)
                 sr = _norm_bad(raise_delta, cfg.shoulder_raise_good, cfg.shoulder_raise_bad)
 
-        ni = _norm_bad(feats.get("head_instability", 0.0), cfg.head_instability_good, cfg.head_instability_bad)
-        nm = _norm_bad(feats["mouth_open"], cfg.mouth_open_good, cfg.mouth_open_bad)
-        nh = _norm_bad(feats["head_rotation"], cfg.head_rotation_good, cfg.head_rotation_bad)
+        ni = _norm_bad(feats.get("head_instability", 0.0),
+                       cfg.head_instability_good, cfg.head_instability_bad)
 
         norms = {
             "forward_head": nf,
@@ -459,8 +469,6 @@ class NeckEffortEngine:
             "shoulder_asym": sa,
             "shoulder_raise": sr,
             "head_instability": ni,
-            "mouth_open": nm,
-            "head_rotation": nh,
         }
 
         weights = {
@@ -469,8 +477,6 @@ class NeckEffortEngine:
             "shoulder_asym": cfg.w_shoulder_asym,
             "shoulder_raise": cfg.w_shoulder_raise,
             "head_instability": cfg.w_head_instability,
-            "mouth_open": cfg.w_mouth_open,
-            "head_rotation": cfg.w_head_rotation,
         }
 
         contribs = {name: weights[name] * norms[name] for name in norms}
@@ -497,12 +503,12 @@ class NeckEffortEngine:
         baseline = self.state.baseline
         deltas = []
 
-        # Measure deterioration relative to baseline for each metric
-        fh_delta = max(0.0, feats.get("forward_head_z", 0) - baseline.get("forward_head_z", 0))
+        # Measure deterioration relative to baseline (all in SI units)
+        fh_delta = max(0.0, feats.get("forward_head_m", 0) - baseline.get("forward_head_m", 0))
         ht_delta = max(0.0, feats.get("head_tilt_deg", 0) - baseline.get("head_tilt_deg", 0))
         sa_delta = max(0.0, feats.get("shoulder_angle_deg", 0) - baseline.get("shoulder_angle_deg", 0))
 
-        deltas.append(_norm_bad(fh_delta, 0.02, 0.12))
+        deltas.append(_norm_bad(fh_delta, 0.02, 0.08))  # meters
         deltas.append(_norm_bad(ht_delta, 2.0, 8.0))
         deltas.append(_norm_bad(sa_delta, 2.0, 8.0))
 
