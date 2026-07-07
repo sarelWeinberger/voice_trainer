@@ -1,7 +1,8 @@
 """FastAPI backend for Voice Training App with GRBAS analysis.
 
 Authentication is handled via JWT tokens with OAuth2 password flow.
-Data is stored in SQLite via SQLAlchemy (see database.py).
+Data is stored via SQLAlchemy (see database.py) — SQLite locally,
+Postgres in production via the DATABASE_URL environment variable.
 """
 
 import json
@@ -10,12 +11,13 @@ import os
 import random
 import string
 import tempfile
+import uuid
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import cv2
 import numpy as np
-from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Request
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -24,7 +26,7 @@ from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 
-from database import SessionLocal, User, Result, init_db
+from database import SessionLocal, User, Result, NeckRecording, init_db
 from grbas_model import GRBASClassifier, extract_features
 from neck_effort_engine import NeckEffortConfig, NeckEffortEngine
 from recommendations import recommend_with_context, flatten_recommendations
@@ -32,10 +34,20 @@ from recommendations import recommend_with_context, flatten_recommendations
 # =========================
 # Config
 # =========================
-SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "replace_this_with_a_long_random_secret")
+_DEFAULT_SECRET = "replace_this_with_a_long_random_secret"
+SECRET_KEY = os.environ.get("JWT_SECRET_KEY", _DEFAULT_SECRET)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+
+# Refuse to boot in production with the placeholder secret — anyone could forge
+# tokens. SQLite is treated as local-dev; any other backend implies production.
+_DB_URL = os.environ.get("DATABASE_URL", "")
+if SECRET_KEY == _DEFAULT_SECRET and _DB_URL and not _DB_URL.startswith("sqlite"):
+    raise RuntimeError(
+        "JWT_SECRET_KEY must be set to a long random value in production "
+        "(detected non-SQLite DATABASE_URL with default secret)."
+    )
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
@@ -51,7 +63,7 @@ MODEL_PATH = os.path.join(os.path.dirname(__file__), "grbas_model.joblib")
 if os.path.exists(MODEL_PATH):
     classifier.load(MODEL_PATH)
 
-NECK_EFFORT_CONFIG = NeckEffortConfig(calibration_frames=45, smooth_window=20)
+NECK_EFFORT_CONFIG = NeckEffortConfig(calibration_frames=10, smooth_window=12)
 neck_effort_engines: Dict[int, NeckEffortEngine] = {}
 
 
@@ -66,7 +78,7 @@ ALLOWED_EMAILS_PATH = "/memories/allowed_emails.txt"
 def load_allowed_emails():
     try:
         with open(ALLOWED_EMAILS_PATH, "r") as f:
-            emails = [line.strip() for line in f if line.strip() and not line.startswith("#")]
+            emails = [line.strip().lower() for line in f if line.strip() and not line.startswith("#")]
         return set(emails)
     except Exception:
         return set()
@@ -74,9 +86,29 @@ def load_allowed_emails():
 ALLOWED_EMAILS = load_allowed_emails()
 
 
+def save_allowed_emails(emails):
+    """Persist the allowlist to disk. Raises on failure so callers can surface it."""
+    os.makedirs(os.path.dirname(ALLOWED_EMAILS_PATH), exist_ok=True)
+    with open(ALLOWED_EMAILS_PATH, "w") as f:
+        f.write("# Emails allowed to register/login. One per line.\n")
+        for email in sorted(emails):
+            f.write(email + "\n")
+
+
+def email_in_allowlist(email):
+    """Case-insensitive allowlist membership check."""
+    e = (email or "").strip().lower()
+    return any(e == a.strip().lower() for a in ALLOWED_EMAILS)
+
+
 def generate_class_code() -> str:
     """Generate a random 6-char alphanumeric class code."""
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+
+
+# Version string for the current Terms of Service + Privacy Policy text.
+# Bump this when the legal pages change in a way that requires re-consent.
+TERMS_VERSION = "2026-06-07"
 
 
 class UserCreate(BaseModel):
@@ -84,6 +116,7 @@ class UserCreate(BaseModel):
     password: str
     full_name: Optional[str] = None
     class_code: Optional[str] = None  # optional class code to join
+    accepted_terms: bool = False  # must be True to register
 
 
 class UserOut(BaseModel):
@@ -179,7 +212,7 @@ def authenticate_user(db: Session, username: str, password: str):
         return None
     # Allow login for all existing users (backward compatible)
     # For users in the allowlist, require password 'qwertyui'
-    if user.username in ALLOWED_EMAILS:
+    if email_in_allowlist(user.username):
         if password == "qwertyui":
             return user
         else:
@@ -250,7 +283,14 @@ def get_latest_neck_effort(current_user: User) -> Optional[Dict[str, Any]]:
     engine = neck_effort_engines.get(current_user.id)
     if engine is None:
         return None
-    return engine.state.last_valid_result
+    return engine.latest_result(max_age_seconds=10.0)
+
+
+def get_recording_neck_effort(current_user: User) -> Optional[Dict[str, Any]]:
+    engine = neck_effort_engines.get(current_user.id)
+    if engine is None:
+        return None
+    return engine.recording_summary(max_age_seconds=120.0)
 
 
 # =========================
@@ -352,12 +392,20 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     if not user_in.username or not user_in.password:
         raise HTTPException(status_code=400, detail="Username and password are required")
 
+    # Consent is a hard gate: refuse to create the account without it. This is
+    # the audit trail the ToS relies on ("the user actively agreed at signup").
+    if not user_in.accepted_terms:
+        raise HTTPException(
+            status_code=400,
+            detail="יש לאשר את תנאי השימוש ומדיניות הפרטיות לפני הרשמה",
+        )
+
     existing = db.query(User).filter(User.username == user_in.username).first()
     if existing:
         raise HTTPException(status_code=400, detail="Username already exists")
 
     # Only allow registration if email is in allowlist or is a legacy user
-    if user_in.username not in ALLOWED_EMAILS:
+    if not email_in_allowlist(user_in.username):
         raise HTTPException(status_code=403, detail="User not allowed to register")
 
     # Password is always 'qwertyui' for allowlist users
@@ -380,6 +428,8 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
         is_admin=False,
         role=3,
         joined_class_code=joined_class,
+        terms_accepted_at=datetime.utcnow(),
+        terms_version=TERMS_VERSION,
     )
     db.add(user)
     db.commit()
@@ -402,12 +452,33 @@ def me(current_user: User = Depends(get_current_user)):
     return current_user
 
 
+@app.delete("/api/me")
+def delete_my_account(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Right-to-be-forgotten: irreversibly delete the user and all their
+    results. The user must be authenticated; we trust the JWT as proof of
+    intent. Super admins cannot delete themselves via this route — they must
+    do it manually to avoid lock-out.
+    """
+    if current_user.role == 1:
+        raise HTTPException(
+            status_code=400,
+            detail="Super admin accounts must be deleted manually",
+        )
+    db.delete(current_user)
+    db.commit()
+    return {"status": "deleted"}
+
+
 # =========================
 # Voice Analysis
 # =========================
 @app.post("/api/analyze")
 async def analyze(
     audio: UploadFile = File(...),
+    session_id: Optional[str] = Form(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -437,7 +508,7 @@ async def analyze(
             "f3": round(features.get("f3_mean", 0), 1),
         }
 
-        latest_neck_effort = get_latest_neck_effort(current_user)
+        latest_neck_effort = get_recording_neck_effort(current_user)
         recs = recommend_with_context(scores, neck_effort=latest_neck_effort)
         recommendations = flatten_recommendations(recs)
 
@@ -460,6 +531,7 @@ async def analyze(
                     "neck_effort": latest_neck_effort,
                 }),
                 recommendation=json.dumps(recommendations) if recommendations else None,
+                session_id=session_id,
             )
         db.add(result)
         db.commit()
@@ -475,9 +547,62 @@ async def analyze(
 
 @app.post("/api/neck-effort/reset")
 def reset_neck_effort(current_user: User = Depends(get_current_user)):
-    engine = get_neck_effort_engine(current_user.id)
+    try:
+        engine = get_neck_effort_engine(current_user.id)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
     engine.reset_session()
     return {"status": "ok"}
+
+
+@app.post("/api/neck-effort/recording/start")
+def start_neck_effort_recording(current_user: User = Depends(get_current_user)):
+    try:
+        engine = get_neck_effort_engine(current_user.id)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    session_id = uuid.uuid4().hex
+    engine.start_recording_session(session_id)
+    return {"status": "ok", "session_id": session_id}
+
+
+@app.post("/api/neck-effort/recording/stop")
+def stop_neck_effort_recording(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        engine = get_neck_effort_engine(current_user.id)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    engine.stop_recording_session()
+    summary = engine.recording_summary(max_age_seconds=120.0)
+    session_id = engine.state.recording_session_id
+    series = engine.export_recording()
+
+    # Persist the anonymous neck-effort feature series for model training. This is
+    # best-effort: a storage failure must never break the user's recording flow.
+    if session_id and series:
+        try:
+            db.add(
+                NeckRecording(
+                    user_id=current_user.id,
+                    session_id=session_id,
+                    feature_series=json.dumps(series),
+                    summary=json.dumps(summary) if summary else None,
+                    frame_count=len(series),
+                    consent_research=False,
+                )
+            )
+            db.commit()
+        except Exception:
+            db.rollback()
+
+    return {
+        "status": "ok",
+        "session_id": session_id,
+        "neck_effort": summary,
+    }
 
 
 @app.post("/api/neck-effort", response_model=NeckEffortOut)
@@ -494,7 +619,22 @@ async def analyze_neck_effort_frame(
     if image_bgr is None:
         raise HTTPException(status_code=400, detail="Invalid image frame")
 
-    engine = get_neck_effort_engine(current_user.id)
+    try:
+        engine = get_neck_effort_engine(current_user.id)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    if not engine.state.recording_active:
+        return {
+            "ok": True,
+            "mode": "no_score",
+            "calibrated": engine.is_calibrated(),
+            "calibration_progress": engine.calibration_progress(),
+            "score": None,
+            "score_label": None,
+            "confidence": 0.0,
+            "features": None,
+            "reasons": ["recording_required"],
+        }
     return engine.process_frame(image_bgr)
 
 
@@ -719,6 +859,79 @@ def set_user_role(
         "role": target.role,
         "class_code": target.class_code,
     }
+
+
+@app.delete("/api/admin/users/{uid}")
+def admin_delete_user(
+    uid: int,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(get_super_admin_user),
+):
+    """Irreversibly delete a user and all their results. Super admin only.
+    Cannot delete yourself or another super admin."""
+    target = db.query(User).filter(User.id == uid).first()
+    if target is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if target.id == admin_user.id:
+        raise HTTPException(status_code=400, detail="לא ניתן למחוק את החשבון שלך")
+    if target.role == 1:
+        raise HTTPException(status_code=400, detail="לא ניתן למחוק סופר-אדמין")
+
+    db.delete(target)
+    db.commit()
+    return {"status": "deleted", "id": uid}
+
+
+# =========================
+# Allowlist management (super admin only)
+# =========================
+@app.get("/api/admin/allowed-emails")
+def list_allowed_emails(admin_user: User = Depends(get_super_admin_user)):
+    """Return the current registration allowlist."""
+    return {"emails": sorted(ALLOWED_EMAILS)}
+
+
+@app.post("/api/admin/allowed-emails")
+def add_allowed_email(
+    body: dict,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(get_super_admin_user),
+):
+    """Add an email to the registration allowlist. Body: {"email": "..."}"""
+    email = (body or {}).get("email", "").strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="כתובת אימייל לא תקינה")
+    if email in ALLOWED_EMAILS:
+        raise HTTPException(status_code=400, detail="האימייל כבר ברשימת המורשים")
+
+    ALLOWED_EMAILS.add(email)
+    try:
+        save_allowed_emails(ALLOWED_EMAILS)
+    except Exception as e:
+        ALLOWED_EMAILS.discard(email)
+        raise HTTPException(status_code=500, detail=f"שמירה נכשלה: {e}")
+
+    already_registered = db.query(User).filter(User.username == email).first() is not None
+    return {"status": "ok", "email": email, "already_registered": already_registered}
+
+
+@app.delete("/api/admin/allowed-emails")
+def remove_allowed_email(
+    body: dict,
+    admin_user: User = Depends(get_super_admin_user),
+):
+    """Remove an email from the registration allowlist. Body: {"email": "..."}"""
+    email = (body or {}).get("email", "").strip().lower()
+    if email not in ALLOWED_EMAILS:
+        raise HTTPException(status_code=404, detail="האימייל לא נמצא ברשימה")
+
+    ALLOWED_EMAILS.discard(email)
+    try:
+        save_allowed_emails(ALLOWED_EMAILS)
+    except Exception as e:
+        ALLOWED_EMAILS.add(email)
+        raise HTTPException(status_code=500, detail=f"שמירה נכשלה: {e}")
+    return {"status": "ok", "email": email}
 
 
 # =========================

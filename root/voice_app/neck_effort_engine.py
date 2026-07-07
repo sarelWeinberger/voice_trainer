@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import time
 from collections import deque
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
@@ -60,6 +61,7 @@ class NeckEffortConfig:
     calibration_frames: int = 45
     min_visibility: float = 0.45
     min_confidence_to_score: float = 0.45
+    min_view_quality_to_track: float = 0.35
     hysteresis_margin: float = 0.08
 
     # --- Forward head posture (FHP) — primary clinical marker ---
@@ -122,6 +124,12 @@ class NeckEffortState:
     ema_continuous_score: Optional[float] = None
     stable_score: Optional[int] = None
     last_valid_result: Optional[Dict[str, Any]] = None
+    last_valid_result_at: Optional[float] = None
+    recording_active: bool = False
+    recording_session_id: Optional[str] = None
+    recording_started_at: Optional[float] = None
+    recording_stopped_at: Optional[float] = None
+    recording_results: deque = field(default_factory=lambda: deque(maxlen=240))
 
 
 class NeckEffortEngine:
@@ -132,15 +140,22 @@ class NeckEffortEngine:
             head_anchor_history=deque(maxlen=self.cfg.smooth_window),
         )
 
-        self.mp_pose = mp.solutions.pose
-        self.mp_face_mesh = mp.solutions.face_mesh
+        mp_solutions = getattr(mp, "solutions", None)
+        if mp_solutions is None:
+            raise RuntimeError(
+                "Incompatible MediaPipe package: legacy Pose/FaceMesh solutions are unavailable. "
+                "Pin mediapipe==0.10.14 or adapt the neck-effort pipeline to the Tasks API before release."
+            )
+
+        self.mp_pose = mp_solutions.pose
+        self.mp_face_mesh = mp_solutions.face_mesh
 
         self.pose = self.mp_pose.Pose(
             static_image_mode=False,
-            model_complexity=1,
+            model_complexity=2,
             enable_segmentation=False,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5,
+            min_detection_confidence=0.6,
+            min_tracking_confidence=0.6,
         )
         self.face = self.mp_face_mesh.FaceMesh(
             static_image_mode=False,
@@ -154,13 +169,121 @@ class NeckEffortEngine:
         self.state = NeckEffortState(
             feature_history=deque(maxlen=self.cfg.smooth_window),
             head_anchor_history=deque(maxlen=self.cfg.smooth_window),
+            recording_results=deque(maxlen=240),
         )
+
+    def start_recording_session(self, session_id: Optional[str] = None):
+        self.state.recording_active = True
+        self.state.recording_session_id = session_id
+        self.state.recording_started_at = time.monotonic()
+        self.state.recording_stopped_at = None
+        self.state.recording_results.clear()
+
+    def stop_recording_session(self):
+        self.state.recording_active = False
+        self.state.recording_stopped_at = time.monotonic()
+
+    def export_recording(self) -> List[Dict[str, Any]]:
+        """Serialize recorded per-frame results into a feature time-series.
+
+        Timestamps (``t``) are relative seconds from the first recorded frame, so
+        the series can later be aligned with the audio clip captured in the same
+        session for cross-modal model training.
+        """
+        items = list(self.state.recording_results)
+        if not items:
+            return []
+        t0 = float(items[0]["at"])
+        series: List[Dict[str, Any]] = []
+        for item in items:
+            result = item.get("result", {})
+            series.append(
+                {
+                    "t": round(float(item["at"]) - t0, 3),
+                    "score": result.get("score"),
+                    "continuous_score": result.get("continuous_score"),
+                    "confidence": result.get("confidence"),
+                    "features": result.get("features"),
+                }
+            )
+        return series
+
+    def recording_summary(self, max_age_seconds: Optional[float] = None) -> Optional[Dict[str, Any]]:
+        if not self.state.recording_results:
+            return None
+
+        now = time.monotonic()
+        ended_at = self.state.recording_stopped_at or now
+        if max_age_seconds is not None and (now - ended_at) > max_age_seconds:
+            return None
+
+        items = [item["result"] for item in self.state.recording_results]
+        scores = [int(item["score"]) for item in items if isinstance(item.get("score"), int)]
+        if not scores:
+            return None
+
+        continuous_scores = [
+            float(item["continuous_score"])
+            for item in items
+            if isinstance(item.get("continuous_score"), (int, float))
+        ]
+        confidences = [
+            float(item["confidence"])
+            for item in items
+            if isinstance(item.get("confidence"), (int, float))
+        ]
+
+        summary_score = int(round(float(np.median(scores))))
+        summary_score = int(_clamp(summary_score, 0, 3))
+
+        reason_counts: Dict[str, int] = {}
+        for item in items:
+            for reason in item.get("reasons") or []:
+                reason_counts[reason] = reason_counts.get(reason, 0) + 1
+        reasons = [
+            reason
+            for reason, _count in sorted(reason_counts.items(), key=lambda kv: kv[1], reverse=True)
+            if reason != "minimal_visible_effort"
+        ][:3]
+        if not reasons:
+            reasons = ["minimal_visible_effort"]
+
+        representative = dict(items[-1])
+        representative.update(
+            {
+                "score": summary_score,
+                "score_label": self._score_label(summary_score),
+                "confidence": round(float(np.mean(confidences)), 3) if confidences else representative.get("confidence", 0.0),
+                "continuous_score": round(float(np.median(continuous_scores)), 4) if continuous_scores else representative.get("continuous_score"),
+                "reasons": reasons,
+                "recording_summary": True,
+                "captured_frame_count": len(scores),
+            }
+        )
+        return representative
 
     def is_calibrated(self) -> bool:
         return self.state.calibrated
 
     def calibration_progress(self) -> float:
         return min(1.0, self.state.calibration_count / max(1, self.cfg.calibration_frames))
+
+    def latest_result(self, max_age_seconds: Optional[float] = None) -> Optional[Dict[str, Any]]:
+        result = self.state.last_valid_result
+        if result is None:
+            return None
+
+        if max_age_seconds is None:
+            return result
+
+        captured_at = self.state.last_valid_result_at
+        if captured_at is None:
+            return None
+
+        if (time.monotonic() - captured_at) > max_age_seconds:
+            return None
+
+        return result
 
     def process_frame(self, frame_bgr: np.ndarray) -> Dict[str, Any]:
         if frame_bgr is None or frame_bgr.size == 0:
@@ -190,13 +313,28 @@ class NeckEffortEngine:
             feats = self._extract_features(pose_lm, face_lm, w, h, pose_world_lm)
             view_quality = self._estimate_view_quality(feats, visibility)
             confidence = float(_clamp(0.55 * visibility + 0.45 * view_quality, 0.0, 1.0))
+            trackable_frame = self._is_trackable_frame(visibility, view_quality)
 
-            self.state.feature_history.append(feats)
-            self.state.head_anchor_history.append(feats["head_anchor"])
-
-            smoothed = self._smooth_features()
+            if trackable_frame:
+                self.state.feature_history.append(feats)
+                self.state.head_anchor_history.append(feats["head_anchor"])
+                smoothed = self._smooth_features()
+            else:
+                smoothed = None
 
             if not self.state.calibrated:
+                if smoothed is None:
+                    return {
+                        "ok": True,
+                        "mode": "calibrating",
+                        "calibrated": False,
+                        "calibration_progress": self.calibration_progress(),
+                        "score": None,
+                        "score_label": None,
+                        "confidence": round(confidence, 3),
+                        "features": None,
+                        "reasons": ["Hold a relaxed neutral posture for calibration"],
+                    }
                 self._update_calibration(smoothed, confidence)
                 return {
                     "ok": True,
@@ -210,7 +348,7 @@ class NeckEffortEngine:
                     "reasons": ["Hold a relaxed neutral posture for calibration"],
                 }
 
-            if confidence < self.cfg.min_confidence_to_score:
+            if smoothed is None or confidence < self.cfg.min_confidence_to_score:
                 return self._no_score_result(
                     reason="low_confidence_view",
                     confidence=confidence,
@@ -247,6 +385,14 @@ class NeckEffortEngine:
                 "reasons": reasons,
             }
             self.state.last_valid_result = result
+            self.state.last_valid_result_at = time.monotonic()
+            if self.state.recording_active:
+                self.state.recording_results.append(
+                    {
+                        "at": self.state.last_valid_result_at,
+                        "result": dict(result),
+                    }
+                )
             return result
         except Exception as exc:
             return self._error_result(f"processing_exception: {str(exc)}")
@@ -280,6 +426,7 @@ class NeckEffortEngine:
         # Kendall clinical threshold: >2.5 cm anterior = abnormal
         # MediaPipe pose_world_landmarks origin: hip center, Y=up, Z=depth (meters)
         forward_head_m = 0.0
+        world_forward_head_available = False
         if pose_world_lm is not None:
             try:
                 lsw = pose_world_lm[self.mp_pose.PoseLandmark.LEFT_SHOULDER]
@@ -288,13 +435,15 @@ class NeckEffortEngine:
                 rew = pose_world_lm[self.mp_pose.PoseLandmark.RIGHT_EAR]
                 shoulder_z_m = (float(lsw.z) + float(rsw.z)) / 2.0
                 ear_z_m = (float(lew.z) + float(rew.z)) / 2.0
-                # Forward = ear z more negative than shoulder z (closer to camera)
-                forward_head_m = max(0.0, shoulder_z_m - ear_z_m)
+                if math.isfinite(shoulder_z_m) and math.isfinite(ear_z_m):
+                    world_forward_head_available = True
+                    # Forward = ear z more negative than shoulder z (closer to camera)
+                    forward_head_m = max(0.0, shoulder_z_m - ear_z_m)
             except Exception:
                 pass
 
         # Fallback to 2D z (normalized, noisy) if world landmarks missing
-        if forward_head_m == 0.0:
+        if not world_forward_head_available:
             try:
                 l_sh_z = float(pose_lm[self.mp_pose.PoseLandmark.LEFT_SHOULDER].z)
                 r_sh_z = float(pose_lm[self.mp_pose.PoseLandmark.RIGHT_SHOULDER].z)
@@ -373,27 +522,35 @@ class NeckEffortEngine:
         }
 
     def _estimate_view_quality(self, feats: Dict[str, float], visibility: float) -> float:
+        cfg = self.cfg
         penalties = []
-        penalties.append(_norm_bad(feats["head_rotation"], 0.10, 0.28))
+        penalties.append(_norm_bad(feats["head_rotation"], cfg.head_rotation_good, cfg.head_rotation_bad))
         penalties.append(_norm_bad(feats["neck_tilt_deg"], 25.0, 45.0))
-
-        weird_mouth = 0.0
-        if feats["mouth_open"] < 0.0 or feats["mouth_open"] > 0.35:
-            weird_mouth = 1.0
-        penalties.append(weird_mouth)
+        penalties.append(_norm_bad(feats["mouth_open"], cfg.mouth_open_bad, cfg.mouth_open_bad + 0.25))
 
         penalty = _safe_mean(penalties, 0.0)
         return float(_clamp((1.0 - penalty) * (0.6 + 0.4 * visibility), 0.0, 1.0))
+
+    def _is_trackable_frame(self, visibility: float, view_quality: float) -> bool:
+        return (
+            visibility >= self.cfg.min_visibility
+            and view_quality >= self.cfg.min_view_quality_to_track
+        )
 
     def _smooth_features(self) -> Dict[str, float]:
         hist = list(self.state.feature_history)
         keys = hist[0].keys()
         out = {}
         for key in keys:
-            out[key] = float(np.mean([item[key] for item in hist]))
+            out[key] = float(np.median([item[key] for item in hist]))
 
         head_anchors = list(self.state.head_anchor_history)
-        out["head_instability"] = float(np.std(head_anchors)) if len(head_anchors) >= 3 else 0.0
+        if len(head_anchors) >= 3:
+            anchor_median = float(np.median(head_anchors))
+            mad = float(np.median([abs(anchor - anchor_median) for anchor in head_anchors]))
+            out["head_instability"] = 1.4826 * mad
+        else:
+            out["head_instability"] = 0.0
         return out
 
     def _update_calibration(self, feats: Dict[str, float], confidence: float):
@@ -445,9 +602,14 @@ class NeckEffortEngine:
         """
         cfg = self.cfg
 
-        # Forward head: now in meters (from pose_world_landmarks)
-        nf = _norm_bad(feats.get("forward_head_m", feats.get("forward_head_z", 0)),
-                       cfg.forward_head_good, cfg.forward_head_bad)
+        # Forward-head posture is clinically scored with side-view CVA. From the
+        # app's mostly frontal camera, MediaPipe depth is useful as a change
+        # signal, but too unstable as an absolute diagnosis.
+        nf = 0.0
+        if self.state.calibrated and self.state.baseline:
+            fh_now = feats.get("forward_head_m", feats.get("forward_head_z", 0.0))
+            fh_base = self.state.baseline.get("forward_head_m", 0.0)
+            nf = _norm_bad(max(0.0, fh_now - fh_base), 0.015, 0.070)
         ht = _norm_bad(feats["head_tilt_deg"], cfg.head_tilt_good, cfg.head_tilt_bad)
         sa = _norm_bad(feats["shoulder_angle_deg"], cfg.shoulder_angle_good, cfg.shoulder_angle_bad)
 
@@ -520,16 +682,17 @@ class NeckEffortEngine:
         return float(max(continuous, min(continuous + boost, 1.0)))
 
     def _continuous_to_discrete(self, x: float) -> int:
-        # Calibrated boundaries based on synthetic clinical tests:
-        # 0 (normal):   max_severity < 0.15
-        # 1 (mild):     0.15 – 0.45 (mild single-metric or accumulated)
-        # 2 (moderate): 0.45 – 0.80 (moderate severity)
-        # 3 (severe):   ≥ 0.80 (severe — maxed out primary metric)
-        if x < 0.15:
+        # Slightly stricter boundaries: the UI was tending to rate neck effort
+        # as too relaxed, so mild/moderate/significant effort now appears sooner.
+        # 0 (normal):   max_severity < 0.12
+        # 1 (mild):     0.12 – 0.38
+        # 2 (moderate): 0.38 – 0.72
+        # 3 (severe):   ≥ 0.72
+        if x < 0.12:
             return 0
-        if x < 0.45:
+        if x < 0.38:
             return 1
-        if x < 0.80:
+        if x < 0.72:
             return 2
         return 3
 
@@ -540,10 +703,10 @@ class NeckEffortEngine:
 
         prev = self.state.stable_score
         bounds = {
-            0: (0.00, 0.15),
-            1: (0.15, 0.45),
-            2: (0.45, 0.80),
-            3: (0.80, 1.00),
+            0: (0.00, 0.12),
+            1: (0.12, 0.38),
+            2: (0.38, 0.72),
+            3: (0.72, 1.00),
         }
 
         lo, hi = bounds[prev]

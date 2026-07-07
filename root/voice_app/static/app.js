@@ -129,7 +129,6 @@ async function init() {
 
         initFaceMesh();
         await resetNeckEffortSession();
-        startNeckEffortMonitoring();
         setStatus("מצלמה ומיקרופון מוכנים.");
     } catch (err) {
         setStatus("שגיאה: " + err.message, true);
@@ -247,25 +246,66 @@ async function resetNeckEffortSession() {
             headers: headers,
         });
         updateNeckEffortUI({
-            mode: "calibrating",
+            mode: "waiting_recording",
             calibrated: false,
             calibration_progress: 0,
             score: null,
             score_label: null,
             confidence: 0,
-            reasons: ["החזיקו תנוחה נינוחה לכיול"],
+            reasons: ["recording_required"],
         });
     } catch (err) {
         console.warn("Neck effort reset failed:", err);
     }
 }
 
+// Links the neck-effort recording to the GRBAS audio analysis of the same
+// session, so the two modalities can be paired for model training.
+let neckEffortSessionId = null;
+
+async function startNeckEffortRecordingSession() {
+    neckEffortSessionId = null;
+    if (typeof getAuthHeaders !== "function") return;
+    const headers = getAuthHeaders();
+    if (!headers.Authorization) return;
+    try {
+        const resp = await fetch("/api/neck-effort/recording/start", {
+            method: "POST",
+            headers: headers,
+        });
+        if (resp.ok) {
+            const data = await resp.json();
+            neckEffortSessionId = data.session_id || null;
+        }
+    } catch (err) {
+        console.warn("Neck effort recording start failed:", err);
+    }
+}
+
+async function stopNeckEffortRecordingSession() {
+    if (typeof getAuthHeaders !== "function") return null;
+    const headers = getAuthHeaders();
+    if (!headers.Authorization) return null;
+    try {
+        const resp = await fetch("/api/neck-effort/recording/stop", {
+            method: "POST",
+            headers: headers,
+        });
+        if (!resp.ok) return null;
+        return await resp.json();
+    } catch (err) {
+        console.warn("Neck effort recording stop failed:", err);
+        return null;
+    }
+}
+
 function startNeckEffortMonitoring() {
     stopNeckEffortMonitoring();
     neckCaptureCanvas = document.createElement("canvas");
-    neckCaptureCanvas.width = 320;
-    neckCaptureCanvas.height = 240;
-    neckEffortInterval = window.setInterval(captureNeckEffortFrame, 900);
+    neckCaptureCanvas.width = 480;
+    neckCaptureCanvas.height = 360;
+    neckEffortInterval = window.setInterval(captureNeckEffortFrame, 350);
+    captureNeckEffortFrame();
 }
 
 function stopNeckEffortMonitoring() {
@@ -277,6 +317,9 @@ function stopNeckEffortMonitoring() {
 }
 
 async function captureNeckEffortFrame() {
+    if (!isRecording) {
+        return;
+    }
     if (neckEffortRequestInFlight || !neckCaptureCanvas || !video.videoWidth || !video.videoHeight) {
         return;
     }
@@ -286,6 +329,7 @@ async function captureNeckEffortFrame() {
 
     neckEffortRequestInFlight = true;
     try {
+        resizeNeckCaptureCanvas(video.videoWidth, video.videoHeight);
         const ctx = neckCaptureCanvas.getContext("2d");
         ctx.drawImage(video, 0, 0, neckCaptureCanvas.width, neckCaptureCanvas.height);
         const blob = await new Promise((resolve) => {
@@ -329,6 +373,18 @@ async function captureNeckEffortFrame() {
     }
 }
 
+function resizeNeckCaptureCanvas(sourceWidth, sourceHeight) {
+    if (!neckCaptureCanvas || !sourceWidth || !sourceHeight) return;
+    const maxLongEdge = 480;
+    const scale = Math.min(1, maxLongEdge / Math.max(sourceWidth, sourceHeight));
+    const width = Math.max(240, Math.round(sourceWidth * scale));
+    const height = Math.max(180, Math.round(sourceHeight * scale));
+    if (neckCaptureCanvas.width !== width || neckCaptureCanvas.height !== height) {
+        neckCaptureCanvas.width = width;
+        neckCaptureCanvas.height = height;
+    }
+}
+
 function updateNeckEffortUI(data) {
     if (!data) {
         neckEffortMode.textContent = "לא פעיל";
@@ -351,11 +407,21 @@ function updateNeckEffortUI(data) {
         return;
     }
 
+    if (data.mode === "waiting_recording") {
+        neckEffortMode.textContent = "מוכן";
+        neckEffortScore.textContent = "--";
+        neckEffortScore.className = "neck-effort-score";
+        neckEffortLabel.textContent = "הכיול יתחיל בזמן ההקלטה";
+        neckEffortConfidence.textContent = "איכות תמונה: --";
+        neckEffortReasons.textContent = "שבו מול המצלמה ולחצו על כפתור ההקלטה כשאתם מוכנים.";
+        return;
+    }
+
     if (data.mode === "running" && Number.isInteger(data.score)) {
         neckEffortMode.textContent = "פעיל";
         neckEffortScore.textContent = String(data.score);
         neckEffortScore.className = "neck-effort-score grade-" + data.score;
-        neckEffortLabel.textContent = (data.score_label || "לא ידוע").replace(/^./, (char) => char.toUpperCase());
+        neckEffortLabel.textContent = formatNeckEffortScoreLabel(data.score, data.score_label);
         neckEffortConfidence.textContent = "איכות תמונה: " + Math.round((data.confidence || 0) * 100) + "%";
         updateNeckEffortFeedback(data.score, data.reasons || []);
         neckEffortReasons.textContent = formatNeckEffortReasons(data.reasons || []);
@@ -382,18 +448,38 @@ function updateNeckEffortUI(data) {
     neckEffortReasons.textContent = formatNeckEffortReasons(data.reasons || []);
 }
 
+function formatNeckEffortScoreLabel(score, rawLabel) {
+    const byScore = {
+        0: "לא נראים סימני מאמץ בולטים",
+        1: "ייתכן מאמץ קל",
+        2: "ייתכן מאמץ בינוני",
+        3: "ייתכן מאמץ משמעותי",
+    };
+    const byRawLabel = {
+        appears_relaxed: byScore[0],
+        possible_mild_effort: byScore[1],
+        possible_moderate_effort: byScore[2],
+        possible_significant_effort: byScore[3],
+    };
+    if (Number.isInteger(score) && byScore[score]) {
+        return byScore[score];
+    }
+    return byRawLabel[rawLabel] || "לא ידוע";
+}
+
 function formatNeckEffortReasons(reasons) {
     const labels = {
-        head_forward_posture: "הראש נראה קדימה ביחס לכתפיים.",
-        neck_tilt: "הטיית הצוואר מוגבהת.",
-        shoulder_imbalance: "הכתפיים נראות לא מאוזנות.",
-        raised_shoulders: "הכתפיים נראות מורמות.",
-        head_instability: "מצב הראש לא יציב.",
+        head_forward_posture: "ייתכן שהראש ממוקם קדימה ביחס לכתפיים.",
+        neck_tilt: "ייתכן שקיימת הטיה צידית של הראש או הצוואר.",
+        shoulder_imbalance: "ייתכן שקיים חוסר איזון בקו הכתפיים.",
+        raised_shoulders: "ייתכן שהכתפיים מורמות.",
+        head_instability: "ייתכן שמנח הראש אינו יציב.",
         excess_mouth_opening: "פתיחת הפה גדולה מהצפוי.",
         head_rotation: "הפנים מופנות הצידה מהמצלמה.",
-        minimal_visible_effort: "לא נצפו סימני מאמץ בולטים.",
+        minimal_visible_effort: "לא נראים סימני מאמץ בולטים בתמונה.",
         no_face_or_pose: "ודאו שהפנים והכתפיים נראים למצלמה.",
         low_confidence_view: "התאימו את המיסגור והפנו ישירות למצלמה.",
+        recording_required: "ניתוח הצוואר פעיל רק בזמן הקלטה.",
         neck_effort_unavailable: "ניתוח מאמץ הצוואר אינו זמין זמנית.",
     };
     if (!reasons || reasons.length === 0) {
@@ -472,7 +558,7 @@ function toggleRecording() {
     }
 }
 
-function startRecording() {
+async function startRecording() {
     if (!audioStream) {
         setStatus("המיקרופון לא זמין.", true);
         return;
@@ -496,7 +582,10 @@ function startRecording() {
     source.connect(processor);
     processor.connect(audioContext.destination);
 
+    await resetNeckEffortSession();
+    await startNeckEffortRecordingSession();
     isRecording = true;
+    startNeckEffortMonitoring();
     recordingStart = Date.now();
     recordBtn.classList.add("recording");
     recordLabel.textContent = "עצור הקלטה";
@@ -515,7 +604,7 @@ function startRecording() {
     recordBtn._pcmChunks = pcmChunks;
 }
 
-function stopRecording() {
+async function stopRecording() {
     isRecording = false;
     clearInterval(timerInterval);
     recordBtn.classList.remove("recording");
@@ -534,6 +623,8 @@ function stopRecording() {
     audioContext.close();
 
     setStatus("מנתח...");
+    stopNeckEffortMonitoring();
+    await stopNeckEffortRecordingSession();
     sendAudio(wavBlob);
 }
 
@@ -585,6 +676,9 @@ function pcmToWav(pcmChunks, sampleRate) {
 async function sendAudio(blob) {
     const formData = new FormData();
     formData.append("audio", blob, "recording.wav");
+    if (neckEffortSessionId) {
+        formData.append("session_id", neckEffortSessionId);
+    }
 
     try {
         const headers = typeof getAuthHeaders === "function" ? getAuthHeaders() : {};
@@ -631,6 +725,30 @@ function displayResults(data) {
     }
 
     modelBadge.textContent = `מודל: ${data.model_type}`;
+
+    // Clinician referral: if any GRBAS dimension scores 2-3 (moderate/severe),
+    // surface a clear "see a clinician" notice. This is both clinically right
+    // (high scores warrant professional review) and a legal safety net — it
+    // prevents users treating high scores as a green light to self-manage.
+    const grbasMax = Math.max(...Array.from("GRBAS").map(d => data.scores[d] ?? 0));
+    let warningBox = document.getElementById("grbas-clinician-warning");
+    if (grbasMax >= 2) {
+        if (!warningBox) {
+            warningBox = document.createElement("div");
+            warningBox.id = "grbas-clinician-warning";
+            warningBox.className = "grbas-clinician-warning";
+            scoresList.parentElement.insertBefore(warningBox, scoresList.nextSibling);
+        }
+        warningBox.innerHTML = `
+            <strong>שימו לב:</strong> אחד או יותר מציוני GRBAS שלך גבוה (2 או 3).
+            ציון זה מאפיין קולות שלעיתים יש להם אתגרים שדורשים בדיקה מקצועית.
+            <strong>מומלץ לפנות לקלינאי תקשורת מוסמך או לרופא א.א.ג</strong> לבדיקה מעמיקה.
+            <br>זוהי המלצה, לא אבחנה — הכלי הזה הוא חינוכי בלבד.
+        `;
+        warningBox.style.display = "";
+    } else if (warningBox) {
+        warningBox.style.display = "none";
+    }
 
     // Radar chart
     drawRadarChart(data.scores);
@@ -706,19 +824,19 @@ function renderCombinedSummary(data) {
         2: {
             title: "עומס משולב בינוני",
             badge: "תשומת לב",
-            text: "הניתוח מראה מאמץ קולי או צווארי מורגש. התמקדו בשחרור תנוחה, הרפיית כתפיים והפקה יעילה.",
+            text: "המדדים שנצפו עשויים להתאים למאמץ קולי או צווארי מורגש. התמקדו בשחרור תנוחה, הרפיית כתפיים והפקה יעילה.",
         },
         3: {
             title: "עומס משולב גבוה",
             badge: "גבוה",
-            text: "הדגימה מראה מאמץ קולי ו/או צווארי חזק. מומלץ לתעדף הפחתת מתח לפני הגברת העומס הקולי.",
+            text: "המדדים שנצפו עשויים להתאים למאמץ קולי ו/או צווארי גבוה. מומלץ לתעדף הפחתת מתח לפני הגברת העומס הקולי.",
         },
     };
 
     const summary = summaryByLevel[overallLevel] || summaryByLevel[0];
     const neckText = neckEffort === null
         ? ""
-        : `מאמץ צוואר ${neckEffort}/3${data.neck_effort?.score_label ? ` (${data.neck_effort.score_label})` : ""}.`;
+        : `מאמץ צוואר ${neckEffort}/3${data.neck_effort ? ` (${formatNeckEffortScoreLabel(data.neck_effort.score, data.neck_effort.score_label)})` : ""}.`;
 
     combinedSummary.hidden = false;
     combinedSummaryTitle.textContent = summary.title;

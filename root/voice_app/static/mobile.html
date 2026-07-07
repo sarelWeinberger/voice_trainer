@@ -652,6 +652,17 @@
 </header>
 
 <div class="m-main">
+    <!-- Educational tool disclaimer banner -->
+    <div class="legal-banner" id="legal-banner" style="font-size:0.82em;padding:6px 10px;background:#fff8e6;border-bottom:1px solid #f0d586;color:#6b4a00;display:flex;align-items:center;gap:8px;line-height:1.5;">
+        <span style="flex:0 0 auto;">ℹ️</span>
+        <span style="flex:1 1 auto;">
+            כלי חינוכי וניסיוני בלבד &mdash; אינו אבחנה רפואית.
+            <a href="/terms.html" target="_blank" style="color:#4a7cff;">תנאי שימוש</a> &middot;
+            <a href="/privacy.html" target="_blank" style="color:#4a7cff;">פרטיות</a>
+        </span>
+        <button type="button" onclick="this.parentElement.style.display='none';localStorage.setItem('legalBannerHidden','1')" style="background:transparent;border:none;color:#6b4a00;font-size:1.4em;line-height:1;cursor:pointer;flex:0 0 auto;">×</button>
+    </div>
+
     <!-- Auth Section (shown when logged out) -->
     <div id="m-auth-section">
         <div class="m-card">
@@ -659,6 +670,10 @@
             <input type="text" id="auth-username" class="m-input" placeholder="אימייל" autocomplete="username">
             <input type="password" id="auth-password" class="m-input" placeholder="סיסמה" autocomplete="current-password">
             <input type="text" id="auth-class-code" class="m-input" placeholder="קוד כיתה (אופציונלי)">
+            <label id="auth-consent-wrap" style="display:none;align-items:flex-start;gap:6px;font-size:0.85em;color:#444;line-height:1.4;margin:8px 0;">
+                <input type="checkbox" id="auth-consent" style="margin-top:3px;">
+                <span>קראתי ואני מסכים/ה ל<a href="/terms.html" target="_blank" style="color:#4a7cff;">תנאי השימוש</a> ול<a href="/privacy.html" target="_blank" style="color:#4a7cff;">מדיניות הפרטיות</a>, ומבין/ה שזה כלי חינוכי ולא דיאגנוסטי.</span>
+            </label>
             <button id="login-btn" class="m-btn m-btn-primary">כניסה</button>
             <div id="auth-error" class="m-error"></div>
         </div>
@@ -725,7 +740,7 @@
                         <li>ודאו שהפנים, הצוואר <strong>והכתפיים</strong> נראים בתמונה</li>
                         <li>הרפו את הכתפיים ואל תרימו אותן</li>
                         <li>הביטו ישירות למצלמה, בלי להפנות את הראש הצידה</li>
-                        <li>המתינו לסיום הכיול (מופיע באחוזים)</li>
+                        <li>הכיול יתחיל בזמן ההקלטה ויימשך כמה שניות</li>
                     </ul>
                 </div>
                 <div class="m-video-container">
@@ -752,6 +767,7 @@
                         <li>אמרו <strong>"אааааааа"</strong> (תנועת /א/ ממושכת) למשך 5 שניות לפחות</li>
                         <li>שמרו על גובה קול אחיד ונוח — אל תשנו גובה</li>
                         <li>אל תצעקו ואל תלחשו — דברו בעוצמה רגילה</li>
+                        <li>בזמן ההקלטה שמרו על תנוחה נינוחה כדי לאפשר כיול צוואר</li>
                         <li>לחצו שוב על הכפתור לעצירה</li>
                     </ul>
                 </div>
@@ -921,8 +937,19 @@ document.getElementById("login-btn").addEventListener("click", async () => {
         const loggedIn = await loginWithCredentials(u, p);
         if (loggedIn) return;
 
-        // Login failed — try to register then login
-        const body = { username: u, password: p };
+        // Login failed — registration path requires consent. Two-step UX:
+        // first attempt reveals the checkbox; second attempt enforces it.
+        const consentWrap = document.getElementById("auth-consent-wrap");
+        const consentBox = document.getElementById("auth-consent");
+        if (consentWrap && consentWrap.style.display === "none") {
+            consentWrap.style.display = "flex";
+            return showAuthError("יש לאשר את התנאים ולחיצה חוזרת על 'כניסה'.");
+        }
+        if (!consentBox?.checked) {
+            return showAuthError("יש לאשר את תנאי השימוש ומדיניות הפרטיות.");
+        }
+
+        const body = { username: u, password: p, accepted_terms: true };
         if (c) body.class_code = c;
         const resp = await fetch("/api/register", {
             method: "POST",
@@ -1029,7 +1056,6 @@ async function initCameraAndMic() {
         mVideo.srcObject = mediaStream;
         initFaceMesh();
         await resetNeckEffortSession();
-        startNeckEffortMonitoring();
     } catch (e) {
         console.warn("Camera failed:", e);
     }
@@ -1072,26 +1098,58 @@ async function resetNeckEffortSession() {
     if (!headers.Authorization) return;
     try {
         await fetch("/api/neck-effort/reset", { method: "POST", headers });
-        updateNeckUI({ mode: "calibrating", calibration_progress: 0, score: null, confidence: 0, reasons: ["החזיקו תנוחה נינוחה לכיול"] });
+        updateNeckUI({ mode: "waiting_recording", score: null, confidence: 0, reasons: ["recording_required"] });
     } catch (_) {}
+}
+
+// Links the neck-effort recording to the GRBAS audio analysis of the same
+// session, so the two modalities can be paired for model training.
+let neckEffortSessionId = null;
+
+async function startNeckEffortRecordingSession() {
+    neckEffortSessionId = null;
+    const headers = getAuthHeaders();
+    if (!headers.Authorization) return;
+    try {
+        const resp = await fetch("/api/neck-effort/recording/start", { method: "POST", headers });
+        if (resp.ok) {
+            const data = await resp.json();
+            neckEffortSessionId = data.session_id || null;
+        }
+    } catch (_) {}
+}
+
+async function stopNeckEffortRecordingSession() {
+    const headers = getAuthHeaders();
+    if (!headers.Authorization) return null;
+    try {
+        const resp = await fetch("/api/neck-effort/recording/stop", { method: "POST", headers });
+        if (!resp.ok) return null;
+        return await resp.json();
+    } catch (_) {
+        return null;
+    }
 }
 
 function startNeckEffortMonitoring() {
     if (neckEffortInterval) clearInterval(neckEffortInterval);
     neckCaptureCanvas = document.createElement("canvas");
-    neckCaptureCanvas.width = 320;
-    neckCaptureCanvas.height = 240;
-    neckEffortInterval = setInterval(captureNeckFrame, 900);
+    neckCaptureCanvas.width = 480;
+    neckCaptureCanvas.height = 360;
+    neckEffortInterval = setInterval(captureNeckFrame, 350);
+    captureNeckFrame();
 }
 
 async function captureNeckFrame() {
+    if (!isRecording) return;
     if (neckEffortRequestInFlight || !neckCaptureCanvas || !mVideo.videoWidth) return;
     const headers = getAuthHeaders();
     if (!headers.Authorization) return;
     neckEffortRequestInFlight = true;
     try {
+        resizeNeckCaptureCanvas(mVideo.videoWidth, mVideo.videoHeight);
         const ctx = neckCaptureCanvas.getContext("2d");
-        ctx.drawImage(mVideo, 0, 0, 320, 240);
+        ctx.drawImage(mVideo, 0, 0, neckCaptureCanvas.width, neckCaptureCanvas.height);
         const blob = await new Promise(r => neckCaptureCanvas.toBlob(r, "image/jpeg", 0.8));
         if (!blob) return;
         const fd = new FormData();
@@ -1108,6 +1166,18 @@ async function captureNeckFrame() {
     } catch (_) {} finally { neckEffortRequestInFlight = false; }
 }
 
+function resizeNeckCaptureCanvas(sourceWidth, sourceHeight) {
+    if (!neckCaptureCanvas || !sourceWidth || !sourceHeight) return;
+    const maxLongEdge = 480;
+    const scale = Math.min(1, maxLongEdge / Math.max(sourceWidth, sourceHeight));
+    const width = Math.max(240, Math.round(sourceWidth * scale));
+    const height = Math.max(180, Math.round(sourceHeight * scale));
+    if (neckCaptureCanvas.width !== width || neckCaptureCanvas.height !== height) {
+        neckCaptureCanvas.width = width;
+        neckCaptureCanvas.height = height;
+    }
+}
+
 const NECK_REASONS = {
     head_forward_posture: "הראש נוטה קדימה ביחס לכתפיים.",
     neck_tilt: "הצוואר נוטה הצידה.",
@@ -1119,6 +1189,7 @@ const NECK_REASONS = {
     minimal_visible_effort: "מאמץ צוואר מינימלי — מצוין!",
     no_face_or_pose: "ודאו שהפנים והכתפיים נראים למצלמה.",
     low_confidence_view: "שפרו את המיסגור — הביטו ישירות למצלמה.",
+    recording_required: "ניתוח הצוואר פעיל רק בזמן הקלטה.",
 };
 
 function updateNeckUI(data) {
@@ -1136,6 +1207,14 @@ function updateNeckUI(data) {
         score.className = "m-neck-score";
         label.textContent = "החזיקו תנוחה נינוחה — הרפו כתפיים";
         reasons.textContent = "הכיול נמשך מספר שניות. אל תזוזו.";
+        return;
+    }
+    if (data.mode === "waiting_recording") {
+        mode.textContent = "מוכן";
+        score.textContent = "--";
+        score.className = "m-neck-score";
+        label.textContent = "הכיול יתחיל בזמן ההקלטה";
+        reasons.textContent = "שבו מול המצלמה ולחצו על כפתור ההקלטה כשאתם מוכנים.";
         return;
     }
     if (data.mode === "running" && Number.isInteger(data.score)) {
@@ -1184,7 +1263,7 @@ recordBtn.addEventListener("click", () => {
     else startRecording();
 });
 
-function startRecording() {
+async function startRecording() {
     if (!audioStream) { setStatus("המיקרופון לא זמין.", true); return; }
 
     const audioContext = new AudioContext({ sampleRate: 44100 });
@@ -1198,7 +1277,10 @@ function startRecording() {
     source.connect(processor);
     processor.connect(audioContext.destination);
 
+    await resetNeckEffortSession();
+    await startNeckEffortRecordingSession();
     isRecording = true;
+    startNeckEffortMonitoring();
     recordingStart = Date.now();
     recordBtn.classList.add("recording");
     recordLabel.textContent = "לחצו לעצירה";
@@ -1215,7 +1297,7 @@ function startRecording() {
     recordBtn._pcm = pcmChunks;
 }
 
-function stopRecording() {
+async function stopRecording() {
     isRecording = false;
     clearInterval(timerInterval);
     recordBtn.classList.remove("recording");
@@ -1230,6 +1312,9 @@ function stopRecording() {
 
     setStatus("מנתח...");
     timerEl.hidden = true;
+    if (neckEffortInterval) { clearInterval(neckEffortInterval); neckEffortInterval = null; }
+    neckEffortRequestInFlight = false;
+    await stopNeckEffortRecordingSession();
     sendAudio(wavBlob);
 }
 
@@ -1269,6 +1354,9 @@ function pcmToWav(pcmChunks, sampleRate) {
 async function sendAudio(blob) {
     const formData = new FormData();
     formData.append("audio", blob, "recording.wav");
+    if (neckEffortSessionId) {
+        formData.append("session_id", neckEffortSessionId);
+    }
     try {
         const resp = await fetch("/api/analyze", {
             method: "POST",
@@ -1323,6 +1411,26 @@ function displayResults(data) {
         grid.appendChild(card);
     }
 
+    // Clinician referral warning (mirrors desktop behavior)
+    const grbasMax = Math.max(...Array.from("GRBAS").map(d => data.scores[d] ?? 0));
+    let warningBox = document.getElementById("m-grbas-clinician-warning");
+    if (grbasMax >= 2) {
+        if (!warningBox) {
+            warningBox = document.createElement("div");
+            warningBox.id = "m-grbas-clinician-warning";
+            warningBox.style.cssText = "background:#fff0f0;border-right:4px solid #d9534f;color:#842029;padding:12px 14px;border-radius:8px;margin-top:14px;font-size:0.92em;line-height:1.55;";
+            grid.parentElement.insertBefore(warningBox, grid.nextSibling);
+        }
+        warningBox.innerHTML = `
+            <strong>שימו לב:</strong> אחד מציוני GRBAS שלך גבוה (2 או 3).
+            <strong>מומלץ לפנות לקלינאי תקשורת או רופא א.א.ג</strong> לבדיקה.
+            <br><span style="font-size:0.88em;">המלצה בלבד — לא אבחנה.</span>
+        `;
+        warningBox.style.display = "";
+    } else if (warningBox) {
+        warningBox.style.display = "none";
+    }
+
     // Neck effort card
     const neckCard = document.getElementById("m-neck-result-card");
     const ne = data.neck_effort;
@@ -1342,13 +1450,13 @@ function displayResults(data) {
         const reasonsEl = document.getElementById("m-neck-result-reasons");
         if (ne.reasons && ne.reasons.length) {
             const NECK_REASONS_RESULT = {
-                head_forward_posture: "• נראה שהראש נוטה קדימה ביחס לכתפיים",
-                neck_tilt: "• נראה שהצוואר או הראש נוטים הצידה",
-                shoulder_imbalance: "• נראה שהכתפיים לא מאוזנות",
-                raised_shoulders: "• נראה שהכתפיים מורמות — נסו להרפות",
-                head_instability: "• נראה שהראש לא יציב",
-                excess_mouth_opening: "• נראה שפתיחת הפה גדולה מהרגיל",
-                head_rotation: "• נראה שהפנים מופנות הצידה",
+                head_forward_posture: "• ייתכן שהראש נוטה קדימה ביחס לכתפיים",
+                neck_tilt: "• ייתכן שהצוואר או הראש נוטים הצידה",
+                shoulder_imbalance: "• ייתכן שקיים חוסר איזון בקו הכתפיים",
+                raised_shoulders: "• ייתכן שהכתפיים מורמות — נסו להרפות",
+                head_instability: "• ייתכן שמנח הראש אינו יציב",
+                excess_mouth_opening: "• ייתכן שפתיחת הפה גדולה מהרגיל",
+                head_rotation: "• ייתכן שהפנים מופנות הצידה",
                 minimal_visible_effort: "• לא נצפו סימני מאמץ בולטים",
             };
             reasonsEl.innerHTML = ne.reasons.map(r => NECK_REASONS_RESULT[r] || "").filter(Boolean).join("<br>");
@@ -1403,6 +1511,8 @@ function saveToHistory(data) {
     history.unshift({
         date: new Date().toISOString(),
         scores: data.scores,
+        neck_effort: data.neck_effort || null,
+        recommendations: data.recommendations || [],
         title: data.title || "",
     });
     if (history.length > 50) history.pop();
@@ -1419,20 +1529,23 @@ function loadHistory() {
 
 async function loadCloudHistory() {
     try {
-        const resp = await fetch("/api/results", { headers: getAuthHeaders() });
+        const resp = await fetch("/api/history", { headers: getAuthHeaders() });
         if (!resp.ok) return;
-        const cloudResults = await resp.json();
+        const payload = await resp.json();
+        const cloudResults = payload.history || [];
         if (!cloudResults.length) return;
         const key = historyKey();
         const local = JSON.parse(localStorage.getItem(key) || "[]");
         // Merge cloud into local (avoid duplicates by date)
         const localDates = new Set(local.map(h => h.date));
         for (const cr of cloudResults) {
-            const d = cr.created_at || cr.date;
+            const d = cr.timestamp || cr.created_at || cr.date;
             if (!localDates.has(d)) {
                 local.push({
                     date: d,
-                    scores: typeof cr.raw_scores === "string" ? JSON.parse(cr.raw_scores) : cr.raw_scores,
+                    scores: cr.scores || {},
+                    neck_effort: cr.neck_effort || null,
+                    recommendations: cr.recommendations || [],
                     title: cr.title || "",
                 });
             }
@@ -1461,6 +1574,9 @@ function renderHistory(history) {
         for (const dim of "GRBAS") {
             if (scores[dim] !== undefined) scoreParts.push(dim + ":" + Number(scores[dim]).toFixed(1));
         }
+        if (entry.neck_effort && Number.isInteger(entry.neck_effort.score)) {
+            scoreParts.push("N:" + entry.neck_effort.score);
+        }
         item.innerHTML = `
             <div>
                 <div class="date">${dateStr} ${timeStr}</div>
@@ -1469,7 +1585,11 @@ function renderHistory(history) {
             <div class="scores-mini">${scoreParts.join("  ")}</div>
         `;
         item.addEventListener("click", () => {
-            displayResults({ scores: scores, recommendations: [] });
+            displayResults({
+                scores: scores,
+                neck_effort: entry.neck_effort || null,
+                recommendations: entry.recommendations || [],
+            });
             document.querySelectorAll(".m-nav-item").forEach(b => b.classList.remove("active"));
             document.querySelectorAll(".m-section").forEach(s => s.classList.remove("active"));
             document.querySelector('[data-tab="results"]').classList.add("active");
