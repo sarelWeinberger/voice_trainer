@@ -1,0 +1,66 @@
+[
+  {
+    "mobile": false,
+    "role": 3,
+    "debug_present": false,
+    "debug_closed": true,
+    "reference_present": false,
+    "rule_present": false,
+    "grades_present": true,
+    "visible_reference": false
+  },
+  {
+    "mobile": false,
+    "role": 2,
+    "debug_present": true,
+    "debug_closed": true,
+    "reference_present": true,
+    "rule_present": true,
+    "grades_present": true,
+    "visible_reference": false,
+    "reference_opens": true
+  },
+  {
+    "mobile": false,
+    "role": 1,
+    "debug_present": true,
+    "debug_closed": true,
+    "reference_present": true,
+    "rule_present": true,
+    "grades_present": true,
+    "visible_reference": false,
+    "reference_opens": true
+  },
+  {
+    "mobile": true,
+    "role": 3,
+    "debug_present": false,
+    "debug_closed": true,
+    "reference_present": false,
+    "rule_present": false,
+    "grades_present": true,
+    "visible_reference": false
+  },
+  {
+    "mobile": true,
+    "role": 2,
+    "debug_present": true,
+    "debug_closed": true,
+    "reference_present": true,
+    "rule_present": true,
+    "grades_present": true,
+    "visible_reference": false,
+    "reference_opens": true
+  },
+  {
+    "mobile": true,
+    "role": 1,
+    "debug_present": true,
+    "debug_closed": true,
+    "reference_present": true,
+    "rule_present": true,
+    "grades_present": true,
+    "visible_reference": false,
+    "reference_opens": true
+  }
+]

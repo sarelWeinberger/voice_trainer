@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מדיניות פרטיות - אימון קולי</title>
+    <link rel="stylesheet" href="style.css?v=10">
+    <style>
+        .legal-page { max-width: 820px; margin: 32px auto; padding: 32px 28px; background: #fff; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); line-height: 1.75; color: #222; }
+        .legal-page h1 { font-size: 1.8em; margin-bottom: 4px; }
+        .legal-page .updated { color: #666; font-size: 0.9em; margin-bottom: 24px; }
+        .legal-page h2 { font-size: 1.2em; margin-top: 28px; color: #1a3b8a; }
+        .legal-page p, .legal-page li { font-size: 1em; }
+        .legal-page ul, .legal-page ol { padding-right: 22px; }
+        .legal-page .callout { background: #eef5ff; border-right: 4px solid #4a7cff; padding: 14px 18px; margin: 18px 0; border-radius: 6px; }
+        .legal-page table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+        .legal-page th, .legal-page td { border: 1px solid #ddd; padding: 8px 10px; text-align: right; font-size: 0.95em; }
+        .legal-page th { background: #f7f7f7; }
+        .legal-page .back-link { display: inline-block; margin-top: 28px; color: #4a7cff; text-decoration: none; }
+        .legal-page .back-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="legal-page">
+        <h1>מדיניות פרטיות</h1>
+        <p class="updated">עודכן לאחרונה: 2026-06-07</p>
+
+        <div class="callout">
+            המדיניות הזו מסבירה אילו נתונים אנחנו אוספים, איך אנחנו משתמשים בהם, ואילו זכויות יש לך כמשתמש לפי חוק הגנת הפרטיות תשמ"א-1981.
+        </div>
+
+        <h2>1. הנתונים שאנחנו אוספים</h2>
+        <table>
+            <thead>
+                <tr><th>סוג נתון</th><th>איך מגיע</th><th>מטרה</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>כתובת מייל</td><td>בעת הרשמה</td><td>זיהוי המשתמש, התחברות</td></tr>
+                <tr><td>שם מלא (אופציונלי)</td><td>בעת הרשמה</td><td>הצגה למורה במידה והמשתמש שייך לכיתה</td></tr>
+                <tr><td>סיסמה</td><td>בעת הרשמה</td><td>נשמרת מוצפנת (bcrypt) בלבד — לא ניתן לשחזרה</td></tr>
+                <tr><td>תוצאות ניתוח GRBAS</td><td>בעת ניתוח קולי באפליקציה</td><td>הצגת היסטוריה, מעקב התקדמות</td></tr>
+                <tr><td>פיצ'רים אקוסטיים (f0, jitter, shimmer וכו')</td><td>בעת ניתוח קולי</td><td>חישוב הציון, מחקר אנונימי לשיפור המודל</td></tr>
+                <tr><td>נתוני זיהוי גופניים (זוויות צוואר, נטיית ראש)</td><td>בעת ניתוח באמצעות מצלמה</td><td>הצגת ציון מאמץ צוואר בזמן אמת</td></tr>
+                <tr><td>קוד כיתה</td><td>אם המשתמש מצטרף לכיתה של מורה</td><td>שיוך לקבוצה לימודית</td></tr>
+            </tbody>
+        </table>
+
+        <h2>2. מה אנחנו <em>לא</em> אוספים</h2>
+        <ul>
+            <li><strong>הקלטות אודיו עצמן</strong> — נמחקות מהשרת מיד עם סיום הניתוח. רק הפיצ'רים האקוסטיים המספריים שמופקים מהן נשמרים.</li>
+            <li><strong>תמונות או וידאו</strong> — עיבוד המצלמה מתבצע <em>בדפדפן שלך</em> או בזיכרון השרת ולא נשמר.</li>
+            <li><strong>נתוני מיקום</strong>, פרטי כרטיס אשראי, או נתונים בריאותיים נוספים שלא הוזכרו לעיל.</li>
+        </ul>
+
+        <h2>3. איפה הנתונים מאוחסנים</h2>
+        <ul>
+            <li>הנתונים נשמרים במסד נתונים מסוג PostgreSQL המופעל על־ידי ספק תשתית חיצוני (Neon Inc. או דומה), עם הצפנה במנוחה (encryption at rest) והצפנה במעבר (TLS).</li>
+            <li>שרתי האפליקציה רצים בענן ציבורי (Hugging Face Spaces או דומה), עם גישה מוגבלת לבעל השירות בלבד.</li>
+        </ul>
+
+        <h2>4. מי יכול לראות את הנתונים שלך</h2>
+        <ul>
+            <li><strong>אתה</strong> — דרך הממשק הרגיל של האפליקציה.</li>
+            <li><strong>המורה שלך</strong> (אם הצטרפת לכיתה) — רואה את שמך וההיסטוריה שלך במסגרת לוח הניהול של הכיתה.</li>
+            <li><strong>בעל השירות (super admin)</strong> — לצרכי תחזוקה, פתרון תקלות, ושיפור המודל.</li>
+            <li><strong>ספקי תשתית</strong> (Neon, Hugging Face) — בהתאם להסכמי שירות סטנדרטיים שלהם; אין להם גישה לתוכן הנתונים בפועל.</li>
+            <li><strong>אנחנו לא מוכרים ולא משתפים את הנתונים שלך עם צדדים שלישיים</strong> למטרות שיווק.</li>
+        </ul>
+
+        <h2>5. מטרות העיבוד</h2>
+        <ol>
+            <li>הפעלת השירות עבורך (התחברות, הצגת תוצאות, מעקב היסטוריה).</li>
+            <li>שיפור איכות מודל ה־GRBAS — באמצעות שימוש <strong>אנונימי</strong> בפיצ'רים האקוסטיים שלך (ללא מייל או שם).</li>
+            <li>אבטחת מידע ומניעת שימוש לרעה.</li>
+        </ol>
+
+        <h2>6. זכויותיך</h2>
+        <p>לפי חוק הגנת הפרטיות, יש לך הזכויות הבאות:</p>
+        <ul>
+            <li><strong>זכות עיון</strong> — לקבל עותק של הנתונים השמורים עליך.</li>
+            <li><strong>זכות תיקון</strong> — לדרוש תיקון של נתונים שגויים.</li>
+            <li><strong>זכות מחיקה</strong> — לדרוש מחיקה מוחלטת של החשבון וההיסטוריה שלך. ניתן לעשות זאת בעצמך דרך עמוד החשבון, או על־ידי פנייה למייל בעל השירות.</li>
+            <li><strong>זכות התנגדות</strong> — להתנגד לשימוש בנתוניך לצורכי שיפור המודל.</li>
+        </ul>
+
+        <h2>7. שמירת נתונים</h2>
+        <p>הנתונים נשמרים כל עוד החשבון פעיל. עם מחיקת חשבון, כל הנתונים נמחקים בתוך 30 ימים, למעט נתונים אנונימיים שכבר שולבו בסטים לאימון המודל ולא ניתן לבודד אותם.</p>
+
+        <h2>8. עוגיות (Cookies) ואחסון מקומי</h2>
+        <p>השירות משתמש ב־localStorage של הדפדפן לשמירת JWT token (לצורך מצב התחברות) ולשמירת העדפת ממשק (מחשב/נייד). אין שימוש בעוגיות מעקב צד שלישי.</p>
+
+        <h2>9. אבטחה</h2>
+        <ul>
+            <li>סיסמאות נשמרות כ־hash (bcrypt) ולא בטקסט גלוי.</li>
+            <li>תקשורת בין הדפדפן לשרת מוצפנת ב־HTTPS.</li>
+            <li>גישה למסד הנתונים מוגנת בפרטי גישה ייעודיים שלא חשופים בקוד.</li>
+        </ul>
+
+        <h2>10. שינויים במדיניות</h2>
+        <p>שינויים מהותיים יוצגו למשתמש בעת ההתחברות הבאה אחרי השינוי, ויחייבו אישור מחודש.</p>
+
+        <h2>11. יצירת קשר</h2>
+        <p>למימוש זכויות או לשאלות, ניתן לפנות לבעל השירות בכתובת המייל המופיעה בעמוד "אודות".</p>
+
+        <a href="/" class="back-link">← חזרה לאפליקציה</a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,197 @@
+{
+  "status": 200,
+  "analysis_status": "complete",
+  "overall": {
+    "continuous_score": 0,
+    "category": 0,
+    "confidence": 0.3121,
+    "label": "Minimal observable load"
+  },
+  "dimensions": {
+    "posture_compensation": {
+      "observable": true,
+      "score": 0,
+      "continuous_score": 0,
+      "confidence": 0.3313,
+      "label": "Minimal / none observed",
+      "evidence": [
+        "לא נראית תזוזה חריגה של הראש או שינוי בזווית הצוואר בין הפריימים שנבחרו.",
+        "הראש נשאר במנח דומה לאורך כל הרצף."
+      ]
+    },
+    "scm_lateral_recruitment": {
+      "observable": true,
+      "score": 0,
+      "continuous_score": 0,
+      "confidence": 0.3079,
+      "label": "Minimal / none observed",
+      "evidence": [
+        "לא נראית בולטות או שינוי בצידי הצוואר לאורך הפריימים.",
+        "קווי המתאר הלטרליים של הצוואר יציבים."
+      ]
+    },
+    "anterior_submental_activity": {
+      "observable": true,
+      "score": 0,
+      "continuous_score": 0,
+      "confidence": 0.3053,
+      "label": "Minimal / none observed",
+      "evidence": [
+        "אין שינוי חריג או בולטות באזור התת-סנטרי מעבר למה שמצופה מדיבור רגיל.",
+        "העור והמבנה הקדמי של הצוואר נראים יציבים."
+      ]
+    },
+    "shoulder_recruitment": {
+      "observable": true,
+      "score": 0,
+      "continuous_score": 0,
+      "confidence": 0.2844,
+      "label": "Minimal / none observed",
+      "evidence": [
+        "הכתפיים אינן מתרוממות או נעות באופן חוזר או חריג.",
+        "גובה הכתפיים נשאר דומה לאורך כל הפריימים."
+      ]
+    },
+    "jaw_compensation": {
+      "observable": true,
+      "score": 0,
+      "continuous_score": 0,
+      "confidence": 0.3272,
+      "label": "Minimal / none observed",
+      "evidence": [
+        "פתיחת הלסת ותנועתה תואמות דיבור רגיל ללא תנועות מוגזמות או מאומצות.",
+        "אין סימן להידוק או פתיחה חריגה של הלסת."
+      ]
+    }
+  },
+  "diagnostics": {
+    "captured_frames": 25,
+    "selected_frames": 8,
+    "feature_available_frames": {
+      "head_pitch_deg": 25,
+      "shoulder_motion": 0,
+      "shoulders_head_relative_motion": 24
+    },
+    "observed_span_seconds": 4.801,
+    "effective_fps": 4.999,
+    "target_fps": 5,
+    "temporal_quality": 0.768,
+    "speech_status": "unknown",
+    "audio_timing": "unverified",
+    "usable_speech_duration": null,
+    "vad_available": false,
+    "audio_offset_seconds": null,
+    "dimension_quality": {
+      "posture_compensation": 0.5392000157038347,
+      "scm_lateral_recruitment": 0.5346153690819345,
+      "anterior_submental_activity": 0.5300132525000976,
+      "shoulder_recruitment": 0.5290738373982782,
+      "jaw_compensation": 0.5325839263166284
+    },
+    "mean_cv_processing_seconds": 0.0547,
+    "dimensions": {
+      "posture_compensation": {
+        "tracking_quality": 0.5392,
+        "model_observable": true,
+        "model_confidence": 0.8,
+        "model_evidence": [
+          "לא נראית תזוזה חריגה של הראש או שינוי בזווית הצוואר בין הפריימים שנבחרו.",
+          "הראש נשאר במנח דומה לאורך כל הרצף."
+        ],
+        "model_confounds": [
+          "קצב דגימה דל יחסית",
+          "חוסר אימות תזמון דיבור"
+        ],
+        "temporal_quality": 0.768,
+        "required_confidence": 0.15,
+        "rejection_reason": null,
+        "adjusted_confidence": 0.3313
+      },
+      "scm_lateral_recruitment": {
+        "tracking_quality": 0.5346,
+        "model_observable": true,
+        "model_confidence": 0.75,
+        "model_evidence": [
+          "לא נראית בולטות או שינוי בצידי הצוואר לאורך הפריימים.",
+          "קווי המתאר הלטרליים של הצוואר יציבים."
+        ],
+        "model_confounds": [
+          "הצללה קלה באזור הצוואר",
+          "קצב דגימה דל יחסית"
+        ],
+        "temporal_quality": 0.768,
+        "required_confidence": 0.15,
+        "rejection_reason": null,
+        "adjusted_confidence": 0.3079
+      },
+      "anterior_submental_activity": {
+        "tracking_quality": 0.53,
+        "model_observable": true,
+        "model_confidence": 0.75,
+        "model_evidence": [
+          "אין שינוי חריג או בולטות באזור התת-סנטרי מעבר למה שמצופה מדיבור רגיל.",
+          "העור והמבנה הקדמי של הצוואר נראים יציבים."
+        ],
+        "model_confounds": [
+          "הצללה קלה באזור התת-סנטרי",
+          "חוסר אימות תזמון דיבור"
+        ],
+        "temporal_quality": 0.768,
+        "required_confidence": 0.15,
+        "rejection_reason": null,
+        "adjusted_confidence": 0.3053
+      },
+      "shoulder_recruitment": {
+        "tracking_quality": 0.5291,
+        "model_observable": true,
+        "model_confidence": 0.7,
+        "model_evidence": [
+          "הכתפיים אינן מתרוממות או נעות באופן חוזר או חריג.",
+          "גובה הכתפיים נשאר דומה לאורך כל הפריימים."
+        ],
+        "model_confounds": [
+          "מדידת תנועה יחסית לראש בלבד",
+          "קצב דגימה דל יחסית"
+        ],
+        "temporal_quality": 0.768,
+        "required_confidence": 0.15,
+        "rejection_reason": null,
+        "adjusted_confidence": 0.2844
+      },
+      "jaw_compensation": {
+        "tracking_quality": 0.5326,
+        "model_observable": true,
+        "model_confidence": 0.8,
+        "model_evidence": [
+          "פתיחת הלסת ותנועתה תואמות דיבור רגיל ללא תנועות מוגזמות או מאומצות.",
+          "אין סימן להידוק או פתיחה חריגה של הלסת."
+        ],
+        "model_confounds": [
+          "קצב דגימה דל יחסית",
+          "חוסר אימות תזמון דיבור"
+        ],
+        "temporal_quality": 0.768,
+        "required_confidence": 0.15,
+        "rejection_reason": null,
+        "adjusted_confidence": 0.3272
+      }
+    },
+    "aggregation": {
+      "assessed_dimensions": [
+        "posture_compensation",
+        "scm_lateral_recruitment",
+        "anterior_submental_activity",
+        "shoulder_recruitment",
+        "jaw_compensation"
+      ],
+      "assessed_dimension_count": 5,
+      "total_dimension_count": 5,
+      "original_weight_coverage": 1,
+      "partial": false
+    }
+  },
+  "reasons": [],
+  "finalize_seconds": 10.38130000001192,
+  "rendered": true,
+  "javascript_errors": []
+}

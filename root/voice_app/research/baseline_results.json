@@ -1,0 +1,48 @@
+{
+  "gain_falsification": {
+    "rms_change_db": 6.020000000000003,
+    "spectral_ratio_change": 0.0,
+    "conclusion": "Recording gain changes intensity without any change in vocal production; intensity cannot identify effort."
+  },
+  "lombard_proxy": {
+    "samples": 5390,
+    "speakers": 54,
+    "class_counts": [
+      2691,
+      2699
+    ],
+    "baselines": {
+      "intensity_only": {
+        "fold_balanced_accuracy": [
+          0.6554545454545454,
+          0.760909090909091,
+          0.7636363636363637,
+          0.8472727272727273,
+          0.7128568514274056
+        ],
+        "mean": 0.7480259157400265
+      },
+      "spectral_balance_only": {
+        "fold_balanced_accuracy": [
+          0.7181818181818183,
+          0.7018181818181819,
+          0.68,
+          0.6848148148148148,
+          0.7290129160516642
+        ],
+        "mean": 0.7027655461732958
+      },
+      "combined": {
+        "fold_balanced_accuracy": [
+          0.7454545454545455,
+          0.8172727272727273,
+          0.7909090909090909,
+          0.8548316498316498,
+          0.7819271277085108
+        ],
+        "mean": 0.7980790282353049
+      }
+    },
+    "limitation": "Lombard condition is not muscle tension, self-perceived effort, strain or clinical diagnosis. No visual or physiological validation."
+  }
+}

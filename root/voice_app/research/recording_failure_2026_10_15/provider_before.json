@@ -1,0 +1,2761 @@
+{
+  "source_file": "WIN_20261015_21_04_57_Pro.mp4",
+  "source_fps": 15.03572709465611,
+  "duration": 7.2494,
+  "max_edge": 480,
+  "provider_timeout_seconds": 45,
+  "stages": [
+    {
+      "start": 0.0,
+      "end": 7.2494,
+      "elapsed_seconds": 26.771496339002624,
+      "result": {
+        "ok": true,
+        "mode": "complete",
+        "calibrated": true,
+        "calibration_progress": 1.0,
+        "score": 0,
+        "score_label": "Minimal observable load",
+        "continuous_score": 0.0,
+        "confidence": 0.3706,
+        "features": null,
+        "reasons": [],
+        "model_version": "neck-analysis-v1",
+        "neckAnalysis": {
+          "version": "neck-analysis-v1",
+          "status": "complete",
+          "dimensions": {
+            "posture_compensation": {
+              "observable": true,
+              "score": 0,
+              "continuous_score": 0.0,
+              "confidence": 0.3986,
+              "label": "Minimal / none observed",
+              "evidence": [
+                "לא נראית הטיית ראש, הרמת סנטר או שינוי יישור בולט בין פריימים 0, 1, 7, 14, 21, 28, 33, 35.",
+                "תנועות הראש מינוריות ומתאימות לדיבור רגיל ללא פיצוי יציב או חוזר."
+              ]
+            },
+            "scm_lateral_recruitment": {
+              "observable": true,
+              "score": 0,
+              "continuous_score": 0.0,
+              "confidence": 0.3629,
+              "label": "Minimal / none observed",
+              "evidence": [
+                "לא נראית בולטות או שינוי קווי מתאר בצידי הצוואר לאורך הפריימים הנבחרים.",
+                "הצוואר הלטראלי נשאר יציב ללא שינוי מקומי עצמאי."
+              ]
+            },
+            "anterior_submental_activity": {
+              "observable": true,
+              "score": 0,
+              "continuous_score": 0.0,
+              "confidence": 0.3625,
+              "label": "Minimal / none observed",
+              "evidence": [
+                "אין שינוי בולט או דפורמציה באזור התת-סנטרי מעבר למה שמצופה מדיבור רגיל.",
+                "העור והקווים הקדמיים של הצוואר נראים יציבים בין הפריימים."
+              ]
+            },
+            "shoulder_recruitment": {
+              "observable": true,
+              "score": 0,
+              "continuous_score": 0.0,
+              "confidence": 0.3369,
+              "label": "Minimal / none observed",
+              "evidence": [
+                "לא נראית הרמה, קיבוע או תנועה חוזרת של הכתפיים לאורך הדיבור.",
+                "גובה הכתפיים נשאר דומה בין הפריימים."
+              ]
+            },
+            "jaw_compensation": {
+              "observable": true,
+              "score": 0,
+              "continuous_score": 0.0,
+              "confidence": 0.3882,
+              "label": "Minimal / none observed",
+              "evidence": [
+                "תנועות הלסת קטנות וסימטריות, ללא פתיחה מוגזמת או קיבוע בולט.",
+                "הפרש פתיחת הלסת בין הפריימים תואם דיבור רגיל."
+              ]
+            }
+          },
+          "overall": {
+            "continuous_score": 0.0,
+            "category": 0,
+            "confidence": 0.3706,
+            "label": "Minimal observable load"
+          },
+          "quality": {
+            "overall": 0.8418,
+            "face_visibility": 0.7726287750883973,
+            "neck_visibility": 0.7495499999999998,
+            "shoulder_visibility": 0.746313888888889,
+            "camera_stability": 0.952986646195039,
+            "lighting_quality": 0.9092483281893003,
+            "warnings": [
+              "shoulder_motion_not_torso_referenced",
+              "speech_timing_unverified"
+            ]
+          },
+          "summary": "לא נצפתה פעילות משמעותית באזורים שניתן היה להעריך.",
+          "limitations": [
+            "הערכת הצוואר מבוססת על תמונה חיצונית בלבד ללא מדידת כוח או מתח פנימי.",
+            "הצללות, תנאי תאורה ותנועות ראש רגילות עלולות להשפיע על הזיהוי.",
+            "המדידה אינה מזהה שינויים פנימיים או מאמץ שאינו גלוי לעין.",
+            "Observational engineering rubric; not clinically validated; confidence is not accuracy probability"
+          ],
+          "versions": {
+            "analyzer": "neck-analysis-v1",
+            "preprocessing": "neck-cv-v1.1",
+            "prompt": "neck-rubric-v1.4",
+            "weights": "neck-weights-v1.0",
+            "scoring": "neck-scoring-v1.1",
+            "observable_change": "neck-observable-change-v1",
+            "selection": "temporal-coverage-v2",
+            "model": "gpt-4.1-2025-04-14"
+          },
+          "effective_weights": {
+            "posture_compensation": 0.15,
+            "scm_lateral_recruitment": 0.25,
+            "anterior_submental_activity": 0.3,
+            "shoulder_recruitment": 0.1,
+            "jaw_compensation": 0.2
+          },
+          "timeline": [
+            {
+              "start": 0,
+              "end": 1,
+              "neck_activity": 0.15886396455909957
+            },
+            {
+              "start": 1,
+              "end": 2,
+              "neck_activity": 0.07753806352675804
+            },
+            {
+              "start": 2,
+              "end": 3,
+              "neck_activity": 0.11235780954193345
+            },
+            {
+              "start": 3,
+              "end": 4,
+              "neck_activity": 0.08181260796735361
+            },
+            {
+              "start": 4,
+              "end": 5,
+              "neck_activity": 0.09412425490309347
+            },
+            {
+              "start": 5,
+              "end": 6,
+              "neck_activity": 0.07867827722419354
+            },
+            {
+              "start": 6,
+              "end": 7,
+              "neck_activity": 0.07388770079586018
+            }
+          ],
+          "diagnostics": {
+            "captured_frames": 36,
+            "selected_frames": 8,
+            "selected_frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "selected_frame_times": [
+              0.0,
+              0.2,
+              1.397,
+              2.793,
+              4.19,
+              5.587,
+              6.584,
+              6.983
+            ],
+            "frame_selection": "temporal_coverage_then_extrema_v2",
+            "feature_available_frames": {
+              "head_pitch_deg": 36,
+              "shoulder_motion": 0,
+              "shoulders_head_relative_motion": 35
+            },
+            "observed_span_seconds": 6.983,
+            "effective_fps": 5.012,
+            "target_fps": 5,
+            "temporal_quality": 0.8,
+            "speech_status": "active",
+            "audio_timing": "container_estimated_offset",
+            "usable_speech_duration": 6.983,
+            "vad_available": true,
+            "audio_offset_seconds": 0.0,
+            "dimension_quality": {
+              "posture_compensation": 0.6228538789130413,
+              "scm_lateral_recruitment": 0.6047751846373657,
+              "anterior_submental_activity": 0.6042489485145773,
+              "shoulder_recruitment": 0.6016401609271382,
+              "jaw_compensation": 0.6066002162972483
+            },
+            "mean_cv_processing_seconds": 0.0584,
+            "dimensions": {
+              "posture_compensation": {
+                "tracking_quality": 0.6229,
+                "model_observable": true,
+                "model_confidence": 0.8,
+                "model_frame_indices": [
+                  0,
+                  1,
+                  7,
+                  14,
+                  21,
+                  28,
+                  33,
+                  35
+                ],
+                "model_speech_related": true,
+                "model_independent_local_activity": false,
+                "model_evidence": [
+                  "לא נראית הטיית ראש, הרמת סנטר או שינוי יישור בולט בין פריימים 0, 1, 7, 14, 21, 28, 33, 35.",
+                  "תנועות הראש מינוריות ומתאימות לדיבור רגיל ללא פיצוי יציב או חוזר."
+                ],
+                "model_confounds": [
+                  "תנועות ראש רגילות בדיבור",
+                  "שינויי תאורה קלים"
+                ],
+                "temporal_quality": 0.8,
+                "required_confidence": 0.15,
+                "rejection_reason": null,
+                "agreement_factor": 1.0,
+                "adjusted_confidence": 0.3986264825043465
+              },
+              "scm_lateral_recruitment": {
+                "tracking_quality": 0.6048,
+                "model_observable": true,
+                "model_confidence": 0.75,
+                "model_frame_indices": [
+                  0,
+                  1,
+                  7,
+                  14,
+                  21,
+                  28,
+                  33,
+                  35
+                ],
+                "model_speech_related": true,
+                "model_independent_local_activity": false,
+                "model_evidence": [
+                  "לא נראית בולטות או שינוי קווי מתאר בצידי הצוואר לאורך הפריימים הנבחרים.",
+                  "הצוואר הלטראלי נשאר יציב ללא שינוי מקומי עצמאי."
+                ],
+                "model_confounds": [
+                  "מבנה אנטומי קבוע",
+                  "הצללות קלות"
+                ],
+                "temporal_quality": 0.8,
+                "required_confidence": 0.15,
+                "rejection_reason": null,
+                "agreement_factor": 1.0,
+                "adjusted_confidence": 0.36286511078241945
+              },
+              "anterior_submental_activity": {
+                "tracking_quality": 0.6042,
+                "model_observable": true,
+                "model_confidence": 0.75,
+                "model_frame_indices": [
+                  0,
+                  1,
+                  7,
+                  14,
+                  21,
+                  28,
+                  33,
+                  35
+                ],
+                "model_speech_related": true,
+                "model_independent_local_activity": false,
+                "model_evidence": [
+                  "אין שינוי בולט או דפורמציה באזור התת-סנטרי מעבר למה שמצופה מדיבור רגיל.",
+                  "העור והקווים הקדמיים של הצוואר נראים יציבים בין הפריימים."
+                ],
+                "model_confounds": [
+                  "הצללות באזור הסנטר",
+                  "תנועות לסת רגילות"
+                ],
+                "temporal_quality": 0.8,
+                "required_confidence": 0.15,
+                "rejection_reason": null,
+                "agreement_factor": 1.0,
+                "adjusted_confidence": 0.36254936910874647
+              },
+              "shoulder_recruitment": {
+                "tracking_quality": 0.6016,
+                "model_observable": true,
+                "model_confidence": 0.7,
+                "model_frame_indices": [
+                  0,
+                  1,
+                  7,
+                  14,
+                  21,
+                  28,
+                  33,
+                  35
+                ],
+                "model_speech_related": true,
+                "model_independent_local_activity": false,
+                "model_evidence": [
+                  "לא נראית הרמה, קיבוע או תנועה חוזרת של הכתפיים לאורך הדיבור.",
+                  "גובה הכתפיים נשאר דומה בין הפריימים."
+                ],
+                "model_confounds": [
+                  "מדידת כתפיים יחסית לראש בלבד",
+                  "שינויי תנוחה מינוריים"
+                ],
+                "temporal_quality": 0.8,
+                "required_confidence": 0.15,
+                "rejection_reason": null,
+                "agreement_factor": 1.0,
+                "adjusted_confidence": 0.33691849011919744
+              },
+              "jaw_compensation": {
+                "tracking_quality": 0.6066,
+                "model_observable": true,
+                "model_confidence": 0.8,
+                "model_frame_indices": [
+                  0,
+                  1,
+                  7,
+                  14,
+                  21,
+                  28,
+                  33,
+                  35
+                ],
+                "model_speech_related": true,
+                "model_independent_local_activity": false,
+                "model_evidence": [
+                  "תנועות הלסת קטנות וסימטריות, ללא פתיחה מוגזמת או קיבוע בולט.",
+                  "הפרש פתיחת הלסת בין הפריימים תואם דיבור רגיל."
+                ],
+                "model_confounds": [
+                  "תנועות דיבור רגילות",
+                  "שונות מינורית בין פריימים"
+                ],
+                "temporal_quality": 0.8,
+                "required_confidence": 0.15,
+                "rejection_reason": null,
+                "agreement_factor": 1.0,
+                "adjusted_confidence": 0.38822413843023895
+              }
+            },
+            "aggregation": {
+              "assessed_dimensions": [
+                "posture_compensation",
+                "scm_lateral_recruitment",
+                "anterior_submental_activity",
+                "shoulder_recruitment",
+                "jaw_compensation"
+              ],
+              "assessed_dimension_count": 5,
+              "total_dimension_count": 5,
+              "original_weight_coverage": 1.0,
+              "partial": false
+            }
+          },
+          "observable_change": {
+            "version": "neck-observable-change-v1",
+            "status": "complete",
+            "reference": {
+              "start": 0.0,
+              "end": 2.0,
+              "frame_count": 11,
+              "speech_active": true,
+              "measurements": {
+                "head_pitch_deg": {
+                  "value": 4.1756,
+                  "iqr": 1.3985,
+                  "unit": "degrees",
+                  "valid_frames": 11,
+                  "expected_frames": 10,
+                  "coverage": 1,
+                  "reason": null
+                },
+                "head_roll_deg": {
+                  "value": 4.5922,
+                  "iqr": 1.1745,
+                  "unit": "degrees",
+                  "valid_frames": 11,
+                  "expected_frames": 10,
+                  "coverage": 1,
+                  "reason": null
+                },
+                "jaw_opening": {
+                  "value": 0.0906,
+                  "iqr": 0.0171,
+                  "unit": "eye_distance_ratio",
+                  "valid_frames": 11,
+                  "expected_frames": 10,
+                  "coverage": 1,
+                  "reason": null
+                },
+                "shoulder_height": {
+                  "value": 1.4686,
+                  "iqr": 0.0576,
+                  "unit": "eye_distance_ratio",
+                  "valid_frames": 11,
+                  "expected_frames": 10,
+                  "coverage": 1,
+                  "reason": null
+                },
+                "anterior_motion": {
+                  "value": 0.2965,
+                  "iqr": 0.2249,
+                  "unit": "eye_distances_per_second",
+                  "valid_frames": 10,
+                  "expected_frames": 10,
+                  "coverage": 1,
+                  "reason": null
+                },
+                "lateral_motion": {
+                  "value": 0.2924,
+                  "iqr": 0.2183,
+                  "unit": "eye_distances_per_second",
+                  "valid_frames": 10,
+                  "expected_frames": 10,
+                  "coverage": 1,
+                  "reason": null
+                }
+              },
+              "assumed_relaxed": false,
+              "kind": "initial_recording_reference"
+            },
+            "window_seconds": 2,
+            "windows": [
+              {
+                "start": 2.0,
+                "end": 4.0,
+                "frame_count": 10,
+                "speech_active": true,
+                "measurements": {
+                  "head_pitch_deg": {
+                    "value": 3.7198,
+                    "iqr": 3.6741,
+                    "unit": "degrees",
+                    "valid_frames": 10,
+                    "expected_frames": 10,
+                    "coverage": 1,
+                    "reason": null,
+                    "delta_from_reference": -0.4558
+                  },
+                  "head_roll_deg": {
+                    "value": 3.9997,
+                    "iqr": 0.8684,
+                    "unit": "degrees",
+                    "valid_frames": 10,
+                    "expected_frames": 10,
+                    "coverage": 1,
+                    "reason": null,
+                    "delta_from_reference": -0.5925
+                  },
+                  "jaw_opening": {
+                    "value": 0.0641,
+                    "iqr": 0.0128,
+                    "unit": "eye_distance_ratio",
+                    "valid_frames": 10,
+                    "expected_frames": 10,
+                    "coverage": 1,
+                    "reason": null,
+                    "delta_from_reference": -0.0266
+                  },
+                  "shoulder_height": {
+                    "value": 1.4455,
+                    "iqr": 0.0418,
+                    "unit": "eye_distance_ratio",
+                    "valid_frames": 10,
+                    "expected_frames": 10,
+                    "coverage": 1,
+                    "reason": null,
+                    "delta_from_reference": -0.0231
+                  },
+                  "anterior_motion": {
+                    "value": 0.2595,
+                    "iqr": 0.1701,
+                    "unit": "eye_distances_per_second",
+                    "valid_frames": 10,
+                    "expected_frames": 10,
+                    "coverage": 1,
+                    "reason": null,
+                    "delta_from_reference": -0.037
+                  },
+                  "lateral_motion": {
+                    "value": 0.2467,
+                    "iqr": 0.1926,
+                    "unit": "eye_distances_per_second",
+                    "valid_frames": 10,
+                    "expected_frames": 10,
+                    "coverage": 1,
+                    "reason": null,
+                    "delta_from_reference": -0.0458
+                  }
+                }
+              },
+              {
+                "start": 4.0,
+                "end": 6.0,
+                "frame_count": 10,
+                "speech_active": true,
+                "measurements": {
+                  "head_pitch_deg": {
+                    "value": 6.4715,
+                    "iqr": 1.5643,
+                    "unit": "degrees",
+                    "valid_frames": 10,
+                    "expected_frames": 10,
+                    "coverage": 1,
+                    "reason": null,
+                    "delta_from_reference": 2.2959
+                  },
+                  "head_roll_deg": {
+                    "value": 4.3265,
+                    "iqr": 1.4054,
+                    "unit": "degrees",
+                    "valid_frames": 10,
+                    "expected_frames": 10,
+                    "coverage": 1,
+                    "reason": null,
+                    "delta_from_reference": -0.2657
+                  },
+                  "jaw_opening": {
+                    "value": 0.0619,
+                    "iqr": 0.0208,
+                    "unit": "eye_distance_ratio",
+                    "valid_frames": 10,
+                    "expected_frames": 10,
+                    "coverage": 1,
+                    "reason": null,
+                    "delta_from_reference": -0.0287
+                  },
+                  "shoulder_height": {
+                    "value": 1.4098,
+                    "iqr": 0.0326,
+                    "unit": "eye_distance_ratio",
+                    "valid_frames": 10,
+                    "expected_frames": 10,
+                    "coverage": 1,
+                    "reason": null,
+                    "delta_from_reference": -0.0588
+                  },
+                  "anterior_motion": {
+                    "value": 0.2292,
+                    "iqr": 0.1776,
+                    "unit": "eye_distances_per_second",
+                    "valid_frames": 10,
+                    "expected_frames": 10,
+                    "coverage": 1,
+                    "reason": null,
+                    "delta_from_reference": -0.0673
+                  },
+                  "lateral_motion": {
+                    "value": 0.239,
+                    "iqr": 0.13,
+                    "unit": "eye_distances_per_second",
+                    "valid_frames": 10,
+                    "expected_frames": 10,
+                    "coverage": 1,
+                    "reason": null,
+                    "delta_from_reference": -0.0535
+                  }
+                }
+              },
+              {
+                "start": 6.0,
+                "end": 7.183,
+                "frame_count": 5,
+                "speech_active": true,
+                "measurements": {
+                  "head_pitch_deg": {
+                    "value": 4.7653,
+                    "iqr": 1.825,
+                    "unit": "degrees",
+                    "valid_frames": 5,
+                    "expected_frames": 6,
+                    "coverage": 0.833,
+                    "reason": null,
+                    "delta_from_reference": 0.5897
+                  },
+                  "head_roll_deg": {
+                    "value": 2.7869,
+                    "iqr": 2.5114,
+                    "unit": "degrees",
+                    "valid_frames": 5,
+                    "expected_frames": 6,
+                    "coverage": 0.833,
+                    "reason": null,
+                    "delta_from_reference": -1.8053
+                  },
+                  "jaw_opening": {
+                    "value": 0.0808,
+                    "iqr": 0.0127,
+                    "unit": "eye_distance_ratio",
+                    "valid_frames": 5,
+                    "expected_frames": 6,
+                    "coverage": 0.833,
+                    "reason": null,
+                    "delta_from_reference": -0.0098
+                  },
+                  "shoulder_height": {
+                    "value": 1.3749,
+                    "iqr": 0.0526,
+                    "unit": "eye_distance_ratio",
+                    "valid_frames": 5,
+                    "expected_frames": 6,
+                    "coverage": 0.833,
+                    "reason": null,
+                    "delta_from_reference": -0.0936
+                  },
+                  "anterior_motion": {
+                    "value": 0.329,
+                    "iqr": 0.1395,
+                    "unit": "eye_distances_per_second",
+                    "valid_frames": 5,
+                    "expected_frames": 6,
+                    "coverage": 0.833,
+                    "reason": null,
+                    "delta_from_reference": 0.0325
+                  },
+                  "lateral_motion": {
+                    "value": 0.3864,
+                    "iqr": 0.3145,
+                    "unit": "eye_distances_per_second",
+                    "valid_frames": 5,
+                    "expected_frames": 6,
+                    "coverage": 0.833,
+                    "reason": null,
+                    "delta_from_reference": 0.0939
+                  }
+                }
+              }
+            ],
+            "audio_timing": "container_estimated_offset",
+            "effort_score": null,
+            "limitations": [
+              "Initial reference is not known to be relaxed or physiologically normal",
+              "Changes include ordinary articulation, head movement, camera and lighting confounds",
+              "Local optical-flow speed is not contour prominence, muscle activation or effort",
+              "Values and dispersion describe samples, not calibrated confidence or clinical thresholds",
+              "Contour or static muscle shape changes are not directly measured by this module"
+            ]
+          },
+          "movement_stability": {},
+          "validation_status": "not_clinically_validated",
+          "confidence_kind": "uncalibrated_evidence_index"
+        },
+        "recording_summary": true,
+        "captured_frame_count": 36,
+        "timeline": [
+          {
+            "t": 0.0,
+            "features": {
+              "jaw_opening": 0.1323806494474411,
+              "head_roll_deg": 2.3696516352745975,
+              "head_yaw_proxy": 0.03293247148394585,
+              "head_pitch_deg": 4.944960445279857,
+              "shoulder_height": 1.4872233867645264,
+              "shoulder_asymmetry": 0.033573564141988754
+            },
+            "visibility": {
+              "face": 0.7387640977200167,
+              "shoulders": 0.7087,
+              "left_lateral": 0.7008,
+              "right_lateral": 0.7008,
+              "anterior": 0.7066,
+              "submental": 0.7253,
+              "jaw": 0.7038
+            },
+            "processing_seconds": 0.08986123600334395
+          },
+          {
+            "t": 0.19952477064220184,
+            "features": {
+              "jaw_opening": 0.08591124415397644,
+              "head_roll_deg": 4.268749992906127,
+              "head_yaw_proxy": 0.0761803686618805,
+              "head_pitch_deg": 2.9041491613157,
+              "shoulder_height": 1.4858812093734741,
+              "shoulder_asymmetry": 0.01154390349984169,
+              "head_motion": 0.14475238194907192,
+              "jaw_velocity": -0.23290043208116754,
+              "camera_motion": 0.012197858653962612,
+              "left_lateral_motion": 0.5177860260009766,
+              "left_lateral_motion_variance": 0.03063342161476612,
+              "left_lateral_deformation": 0.8849664330482483,
+              "right_lateral_motion": 0.29210594296455383,
+              "right_lateral_motion_variance": 0.01949153281748295,
+              "right_lateral_deformation": 0.9186682105064392,
+              "anterior_motion": 0.5592675060033798,
+              "anterior_motion_variance": 0.04090238735079765,
+              "anterior_deformation": 0.6622055172920227,
+              "submental_motion": 0.21316610276699066,
+              "submental_motion_variance": 0.008948286063969135,
+              "submental_deformation": 0.682940661907196,
+              "jaw_motion": 0.1955619901418686,
+              "jaw_motion_variance": 0.011218883097171783,
+              "jaw_deformation": 0.568834125995636,
+              "shoulders_motion": 0.09049880504608154,
+              "shoulders_motion_variance": 0.06347610801458359,
+              "shoulders_deformation": 1.0488144159317017,
+              "lateral_motion": 0.5177860260009766,
+              "lateral_asymmetry": 0.22568008303642273,
+              "shoulders_head_relative_motion": 0.7649972438812256
+            },
+            "visibility": {
+              "face": 0.7424708849819976,
+              "shoulders": 0.6782,
+              "left_lateral": 0.6968,
+              "right_lateral": 0.6968,
+              "anterior": 0.7029,
+              "submental": 0.6914,
+              "jaw": 0.6875
+            },
+            "processing_seconds": 0.056068602003506385
+          },
+          {
+            "t": 0.3990495412844037,
+            "features": {
+              "jaw_opening": 0.0906345471739769,
+              "head_roll_deg": 3.342374091555178,
+              "head_yaw_proxy": 0.10005482286214828,
+              "head_pitch_deg": 3.608032040760926,
+              "shoulder_height": 1.4955708980560303,
+              "shoulder_asymmetry": 0.0023940764367580414,
+              "head_motion": 0.18479548517804634,
+              "jaw_velocity": 0.023672765064697305,
+              "camera_motion": 0.0016591293970122933,
+              "left_lateral_motion": 0.09893286228179932,
+              "left_lateral_motion_variance": 0.0008248588419519365,
+              "left_lateral_deformation": 0.3066462576389313,
+              "right_lateral_motion": 0.09116720408201218,
+              "right_lateral_motion_variance": 0.00151071697473526,
+              "right_lateral_deformation": 0.3339541554450989,
+              "anterior_motion": 0.14636678993701935,
+              "anterior_motion_variance": 0.0019433981506153941,
+              "anterior_deformation": 0.3252081274986267,
+              "submental_motion": 0.05487966537475586,
+              "submental_motion_variance": 0.0010749740758910775,
+              "submental_deformation": 0.3211328387260437,
+              "jaw_motion": 0.06094910949468613,
+              "jaw_motion_variance": 0.0016355529660359025,
+              "jaw_deformation": 0.3512256145477295,
+              "shoulders_motion": 0.045867156237363815,
+              "shoulders_motion_variance": 0.0019111892906948924,
+              "shoulders_deformation": 0.37806400656700134,
+              "lateral_motion": 0.09893286228179932,
+              "lateral_asymmetry": 0.00776565819978714,
+              "shoulders_head_relative_motion": 0.11045050621032715
+            },
+            "visibility": {
+              "face": 0.7335150320305783,
+              "shoulders": 0.6582,
+              "left_lateral": 0.6654,
+              "right_lateral": 0.6654,
+              "anterior": 0.655,
+              "submental": 0.6481,
+              "jaw": 0.672
+            },
+            "processing_seconds": 0.05953710099856835
+          },
+          {
+            "t": 0.5985743119266055,
+            "features": {
+              "jaw_opening": 0.05086283013224602,
+              "head_roll_deg": 4.720563682357918,
+              "head_yaw_proxy": 0.07652118802070618,
+              "head_pitch_deg": 0.7116784615919726,
+              "shoulder_height": 1.4998502731323242,
+              "shoulder_asymmetry": 0.004886584356427193,
+              "head_motion": 0.26459944490913223,
+              "jaw_velocity": -0.19933222784178306,
+              "camera_motion": 0.019899431616067886,
+              "left_lateral_motion": 0.14161795377731323,
+              "left_lateral_motion_variance": 0.0017791899153962731,
+              "left_lateral_deformation": 0.33989638090133667,
+              "right_lateral_motion": 0.10205256938934326,
+              "right_lateral_motion_variance": 0.001844192505814135,
+              "right_lateral_deformation": 0.3729696571826935,
+              "anterior_motion": 0.1914687305688858,
+              "anterior_motion_variance": 0.0012999785831198096,
+              "anterior_deformation": 0.3413364887237549,
+              "submental_motion": 0.0739772617816925,
+              "submental_motion_variance": 0.002934337593615055,
+              "submental_deformation": 0.42034709453582764,
+              "jaw_motion": 0.06258751451969147,
+              "jaw_motion_variance": 0.005839095916599035,
+              "jaw_deformation": 0.44370904564857483,
+              "shoulders_motion": 0.0395454466342926,
+              "shoulders_motion_variance": 0.0026415400207042694,
+              "shoulders_deformation": 0.31432080268859863,
+              "lateral_motion": 0.14161795377731323,
+              "lateral_asymmetry": 0.03956538438796997,
+              "shoulders_head_relative_motion": 0.16709432005882263
+            },
+            "visibility": {
+              "face": 0.7331482883781224,
+              "shoulders": 0.677,
+              "left_lateral": 0.6731,
+              "right_lateral": 0.6731,
+              "anterior": 0.6786,
+              "submental": 0.6649,
+              "jaw": 0.6656
+            },
+            "processing_seconds": 0.05184368399932282
+          },
+          {
+            "t": 0.7980990825688073,
+            "features": {
+              "jaw_opening": 0.08758794516324997,
+              "head_roll_deg": 5.218172191356932,
+              "head_yaw_proxy": 0.004377579316496849,
+              "head_pitch_deg": 4.547946252660466,
+              "shoulder_height": 1.4396166801452637,
+              "shoulder_asymmetry": 0.006663799751549959,
+              "head_motion": 0.4603041385632138,
+              "jaw_velocity": 0.18406293570867613,
+              "camera_motion": 0.006507126614451408,
+              "left_lateral_motion": 0.4880278706550598,
+              "left_lateral_motion_variance": 0.025929994881153107,
+              "left_lateral_deformation": 0.7287889122962952,
+              "right_lateral_motion": 0.24263912439346313,
+              "right_lateral_motion_variance": 0.029670339077711105,
+              "right_lateral_deformation": 0.9320303797721863,
+              "anterior_motion": 0.5069149136543274,
+              "anterior_motion_variance": 0.032541438937187195,
+              "anterior_deformation": 0.6562963724136353,
+              "submental_motion": 0.14355546236038208,
+              "submental_motion_variance": 0.024492565542459488,
+              "submental_deformation": 0.7618222832679749,
+              "jaw_motion": 0.1303577721118927,
+              "jaw_motion_variance": 0.04507678747177124,
+              "jaw_deformation": 0.8834797143936157,
+              "shoulders_motion": 0.04587698355317116,
+              "shoulders_motion_variance": 0.04103507846593857,
+              "shoulders_deformation": 0.6282960772514343,
+              "lateral_motion": 0.4880278706550598,
+              "lateral_asymmetry": 0.24538874626159668,
+              "shoulders_head_relative_motion": 0.6319554448127747
+            },
+            "visibility": {
+              "face": 0.7589345742313498,
+              "shoulders": 0.7421,
+              "left_lateral": 0.7337,
+              "right_lateral": 0.7547,
+              "anterior": 0.7482,
+              "submental": 0.754,
+              "jaw": 0.7628
+            },
+            "processing_seconds": 0.053145707002840936
+          },
+          {
+            "t": 0.9976238532110091,
+            "features": {
+              "jaw_opening": 0.10955081135034561,
+              "head_roll_deg": 5.173602267318369,
+              "head_yaw_proxy": 0.017931414768099785,
+              "head_pitch_deg": 2.701471074047551,
+              "shoulder_height": 1.444251298904419,
+              "shoulder_asymmetry": 0.015261687338352203,
+              "head_motion": 0.06448947488762828,
+              "jaw_velocity": 0.11007588740187353,
+              "camera_motion": 0.06055177375674248,
+              "left_lateral_motion": 0.08896232396364212,
+              "left_lateral_motion_variance": 0.0018810032634064555,
+              "left_lateral_deformation": 0.35983824729919434,
+              "right_lateral_motion": 0.04117216914892197,
+              "right_lateral_motion_variance": 0.0014562716241925955,
+              "right_lateral_deformation": 0.38023948669433594,
+              "anterior_motion": 0.12599868327379227,
+              "anterior_motion_variance": 0.002433261601254344,
+              "anterior_deformation": 0.2727627158164978,
+              "submental_motion": 0.04385865479707718,
+              "submental_motion_variance": 0.0007008506217971444,
+              "submental_deformation": 0.3407052457332611,
+              "jaw_motion": 0.035983145236968994,
+              "jaw_motion_variance": 0.0005340215284377337,
+              "jaw_deformation": 0.3772708773612976,
+              "shoulders_motion": 0.04209354147315025,
+              "shoulders_motion_variance": 0.003996430430561304,
+              "shoulders_deformation": 0.4251832365989685,
+              "lateral_motion": 0.08896232396364212,
+              "lateral_asymmetry": 0.047790154814720154,
+              "shoulders_head_relative_motion": 0.12703585624694824
+            },
+            "visibility": {
+              "face": 0.756562476860492,
+              "shoulders": 0.741,
+              "left_lateral": 0.7404,
+              "right_lateral": 0.7404,
+              "anterior": 0.7422,
+              "submental": 0.7485,
+              "jaw": 0.7356
+            },
+            "processing_seconds": 0.05621429099846864
+          },
+          {
+            "t": 1.197148623853211,
+            "features": {
+              "jaw_opening": 0.14699377119541168,
+              "head_roll_deg": 5.57633406893361,
+              "head_yaw_proxy": 0.02164994366466999,
+              "head_pitch_deg": 4.545964201144687,
+              "shoulder_height": 1.4685832262039185,
+              "shoulder_asymmetry": 0.020707344636321068,
+              "head_motion": 0.25742903001389056,
+              "jaw_velocity": 0.18766070861552686,
+              "camera_motion": 0.006932341959327459,
+              "left_lateral_motion": 0.3776250183582306,
+              "left_lateral_motion_variance": 0.02134314924478531,
+              "left_lateral_deformation": 0.7446377873420715,
+              "right_lateral_motion": 0.18545418977737427,
+              "right_lateral_motion_variance": 0.016230404376983643,
+              "right_lateral_deformation": 0.7690366506576538,
+              "anterior_motion": 0.4276212751865387,
+              "anterior_motion_variance": 0.03398212790489197,
+              "anterior_deformation": 0.6194530725479126,
+              "submental_motion": 0.13695299625396729,
+              "submental_motion_variance": 0.009698852896690369,
+              "submental_deformation": 0.6714718341827393,
+              "jaw_motion": 0.14412127435207367,
+              "jaw_motion_variance": 0.016063600778579712,
+              "jaw_deformation": 0.6701814532279968,
+              "shoulders_motion": 0.08968755602836609,
+              "shoulders_motion_variance": 0.03616667166352272,
+              "shoulders_deformation": 1.1438430547714233,
+              "lateral_motion": 0.3776250183582306,
+              "lateral_asymmetry": 0.19217082858085632,
+              "shoulders_head_relative_motion": 0.44229766726493835
+            },
+            "visibility": {
+              "face": 0.7468787171480662,
+              "shoulders": 0.7386,
+              "left_lateral": 0.715,
+              "right_lateral": 0.736,
+              "anterior": 0.7183,
+              "submental": 0.7457,
+              "jaw": 0.731
+            },
+            "processing_seconds": 0.05343491700477898
+          },
+          {
+            "t": 1.3966733944954128,
+            "features": {
+              "jaw_opening": 0.09114217013120651,
+              "head_roll_deg": 5.712317889448693,
+              "head_yaw_proxy": 0.009885928593575954,
+              "head_pitch_deg": 3.8791946244020266,
+              "shoulder_height": 1.4224234819412231,
+              "shoulder_asymmetry": 0.01395716518163681,
+              "head_motion": 0.16085701572954356,
+              "jaw_velocity": -0.2799231438003312,
+              "camera_motion": 0.0021555686835199594,
+              "left_lateral_motion": 0.32989469170570374,
+              "left_lateral_motion_variance": 0.017966069281101227,
+              "left_lateral_deformation": 0.6843053102493286,
+              "right_lateral_motion": 0.18278592824935913,
+              "right_lateral_motion_variance": 0.010684519074857235,
+              "right_lateral_deformation": 0.6209919452667236,
+              "anterior_motion": 0.30636167526245117,
+              "anterior_motion_variance": 0.017057504504919052,
+              "anterior_deformation": 0.5198321342468262,
+              "submental_motion": 0.13253170251846313,
+              "submental_motion_variance": 0.0057761152274906635,
+              "submental_deformation": 0.618931770324707,
+              "jaw_motion": 0.1419711709022522,
+              "jaw_motion_variance": 0.00690643023699522,
+              "jaw_deformation": 0.48206478357315063,
+              "shoulders_motion": 0.054494962096214294,
+              "shoulders_motion_variance": 0.025577731430530548,
+              "shoulders_deformation": 0.5991003513336182,
+              "lateral_motion": 0.32989469170570374,
+              "lateral_asymmetry": 0.1471087634563446,
+              "shoulders_head_relative_motion": 0.4571419358253479
+            },
+            "visibility": {
+              "face": 0.7654629776240074,
+              "shoulders": 0.7482,
+              "left_lateral": 0.752,
+              "right_lateral": 0.752,
+              "anterior": 0.7538,
+              "submental": 0.7474,
+              "jaw": 0.7747
+            },
+            "processing_seconds": 0.058694241000921465
+          },
+          {
+            "t": 1.5961981651376147,
+            "features": {
+              "jaw_opening": 0.08927176892757416,
+              "head_roll_deg": 3.9786536633446143,
+              "head_yaw_proxy": 0.021288204938173294,
+              "head_pitch_deg": 4.175597222527273,
+              "shoulder_height": 1.3907873630523682,
+              "shoulder_asymmetry": 0.013734683394432068,
+              "head_motion": 0.10135792324402916,
+              "jaw_velocity": -0.009374280685110797,
+              "camera_motion": 0.0058562373742461205,
+              "left_lateral_motion": 0.3110356032848358,
+              "left_lateral_motion_variance": 0.017107339575886726,
+              "left_lateral_deformation": 0.6829721927642822,
+              "right_lateral_motion": 0.18885597586631775,
+              "right_lateral_motion_variance": 0.007953496649861336,
+              "right_lateral_deformation": 0.6968051195144653,
+              "anterior_motion": 0.29589611291885376,
+              "anterior_motion_variance": 0.012445204891264439,
+              "anterior_deformation": 0.5379598736763,
+              "submental_motion": 0.1267012506723404,
+              "submental_motion_variance": 0.006195324473083019,
+              "submental_deformation": 0.5994580388069153,
+              "jaw_motion": 0.12354335188865662,
+              "jaw_motion_variance": 0.006029738113284111,
+              "jaw_deformation": 0.4772639274597168,
+              "shoulders_motion": 0.03592868894338608,
+              "shoulders_motion_variance": 0.0345870666205883,
+              "shoulders_deformation": 0.6166538596153259,
+              "lateral_motion": 0.3110356032848358,
+              "lateral_asymmetry": 0.12217962741851807,
+              "shoulders_head_relative_motion": 0.547704815864563
+            },
+            "visibility": {
+              "face": 0.7737096795591987,
+              "shoulders": 0.7595,
+              "left_lateral": 0.7626,
+              "right_lateral": 0.7414,
+              "anterior": 0.7738,
+              "submental": 0.7576,
+              "jaw": 0.7703
+            },
+            "processing_seconds": 0.05788981999648968
+          },
+          {
+            "t": 1.7957229357798163,
+            "features": {
+              "jaw_opening": 0.09823914617300034,
+              "head_roll_deg": 4.592219127982632,
+              "head_yaw_proxy": 0.04537928104400635,
+              "head_pitch_deg": 4.761177474740222,
+              "shoulder_height": 1.408608317375183,
+              "shoulder_asymmetry": 0.016392428427934647,
+              "head_motion": 0.1410580342459854,
+              "jaw_velocity": 0.04494367900568573,
+              "camera_motion": 0.015102274715900421,
+              "left_lateral_motion": 0.1645185500383377,
+              "left_lateral_motion_variance": 0.003633876796811819,
+              "left_lateral_deformation": 0.37907928228378296,
+              "right_lateral_motion": 0.052772313356399536,
+              "right_lateral_motion_variance": 0.002628958085551858,
+              "right_lateral_deformation": 0.35882365703582764,
+              "anterior_motion": 0.16603749245405197,
+              "anterior_motion_variance": 0.003214192809537053,
+              "anterior_deformation": 0.29140549898147583,
+              "submental_motion": 0.059948258101940155,
+              "submental_motion_variance": 0.002193802734836936,
+              "submental_deformation": 0.40945976972579956,
+              "jaw_motion": 0.060904908925294876,
+              "jaw_motion_variance": 0.0028907526284456253,
+              "jaw_deformation": 0.39316892623901367,
+              "shoulders_motion": 0.04714788496494293,
+              "shoulders_motion_variance": 0.008630483411252499,
+              "shoulders_deformation": 0.6039560437202454,
+              "lateral_motion": 0.1645185500383377,
+              "lateral_asymmetry": 0.11174623668193817,
+              "shoulders_head_relative_motion": 0.21170128881931305
+            },
+            "visibility": {
+              "face": 0.7701703943472641,
+              "shoulders": 0.7403,
+              "left_lateral": 0.7481,
+              "right_lateral": 0.7273,
+              "anterior": 0.7482,
+              "submental": 0.7575,
+              "jaw": 0.7335
+            },
+            "processing_seconds": 0.0527141579950694
+          },
+          {
+            "t": 1.9952477064220182,
+            "features": {
+              "jaw_opening": 0.08141110092401505,
+              "head_roll_deg": 4.064125063628069,
+              "head_yaw_proxy": 0.029728133231401443,
+              "head_pitch_deg": 5.436921262942574,
+              "shoulder_height": 1.489929437637329,
+              "shoulder_asymmetry": 0.014166007749736309,
+              "head_motion": 0.17234098660815544,
+              "jaw_velocity": -0.0843406319667557,
+              "camera_motion": 0.002371670911088586,
+              "left_lateral_motion": 0.27383825182914734,
+              "left_lateral_motion_variance": 0.014143822714686394,
+              "left_lateral_deformation": 0.5876149535179138,
+              "right_lateral_motion": 0.1587676703929901,
+              "right_lateral_motion_variance": 0.016515154391527176,
+              "right_lateral_deformation": 0.6710529923439026,
+              "anterior_motion": 0.2970439940690994,
+              "anterior_motion_variance": 0.020261259749531746,
+              "anterior_deformation": 0.5350582599639893,
+              "submental_motion": 0.1039791852235794,
+              "submental_motion_variance": 0.0052748676389455795,
+              "submental_deformation": 0.528485119342804,
+              "jaw_motion": 0.10661362111568451,
+              "jaw_motion_variance": 0.007292391266673803,
+              "jaw_deformation": 0.5121510624885559,
+              "shoulders_motion": 0.10225160419940948,
+              "shoulders_motion_variance": 0.07259118556976318,
+              "shoulders_deformation": 1.5356212854385376,
+              "lateral_motion": 0.27383825182914734,
+              "lateral_asymmetry": 0.11507058143615723,
+              "shoulders_head_relative_motion": 0.463630348443985
+            },
+            "visibility": {
+              "face": 0.7568498378660378,
+              "shoulders": 0.7326,
+              "left_lateral": 0.7298,
+              "right_lateral": 0.7298,
+              "anterior": 0.7358,
+              "submental": 0.7428,
+              "jaw": 0.7258
+            },
+            "processing_seconds": 0.05312491099903127
+          },
+          {
+            "t": 2.19477247706422,
+            "features": {
+              "jaw_opening": 0.04098518192768097,
+              "head_roll_deg": 3.0848117662644343,
+              "head_yaw_proxy": 0.04017616808414459,
+              "head_pitch_deg": 3.123187328968357,
+              "shoulder_height": 1.4439802169799805,
+              "shoulder_asymmetry": 0.01594882272183895,
+              "head_motion": 0.372384535201412,
+              "jaw_velocity": -0.20261102852651777,
+              "camera_motion": 0.006393929943442345,
+              "left_lateral_motion": 0.6299324035644531,
+              "left_lateral_motion_variance": 0.07244443148374557,
+              "left_lateral_deformation": 1.1406009197235107,
+              "right_lateral_motion": 0.24515940248966217,
+              "right_lateral_motion_variance": 0.030693206936120987,
+              "right_lateral_deformation": 1.0817537307739258,
+              "anterior_motion": 0.3431161120533943,
+              "anterior_motion_variance": 0.05524534732103348,
+              "anterior_deformation": 0.7838645577430725,
+              "submental_motion": 0.22530177235603333,
+              "submental_motion_variance": 0.022248851135373116,
+              "submental_deformation": 0.9493670463562012,
+              "jaw_motion": 0.22593262791633606,
+              "jaw_motion_variance": 0.03240536153316498,
+              "jaw_deformation": 0.765771210193634,
+              "shoulders_motion": 0.037312544882297516,
+              "shoulders_motion_variance": 0.08023224025964737,
+              "shoulders_deformation": 0.9800716638565063,
+              "lateral_motion": 0.6299324035644531,
+              "lateral_asymmetry": 0.38477300107479095,
+              "shoulders_head_relative_motion": 0.7103667259216309
+            },
+            "visibility": {
+              "face": 0.7810393781974445,
+              "shoulders": 0.7429,
+              "left_lateral": 0.7429,
+              "right_lateral": 0.7429,
+              "anterior": 0.7474,
+              "submental": 0.7693,
+              "jaw": 0.7455
+            },
+            "processing_seconds": 0.058669849997386336
+          },
+          {
+            "t": 2.394297247706422,
+            "features": {
+              "jaw_opening": 0.07033846527338028,
+              "head_roll_deg": 3.915360439566008,
+              "head_yaw_proxy": 0.012022595852613449,
+              "head_pitch_deg": 1.9194399025415967,
+              "shoulder_height": 1.4747726917266846,
+              "shoulder_asymmetry": 0.025900404900312424,
+              "head_motion": 0.15006955964524427,
+              "jaw_velocity": 0.14711598590601632,
+              "camera_motion": 0.004665783606469631,
+              "left_lateral_motion": 0.239835724234581,
+              "left_lateral_motion_variance": 0.00675312802195549,
+              "left_lateral_deformation": 0.5209655165672302,
+              "right_lateral_motion": 0.08509353548288345,
+              "right_lateral_motion_variance": 0.003078782232478261,
+              "right_lateral_deformation": 0.4118379056453705,
+              "anterior_motion": 0.18393832445144653,
+              "anterior_motion_variance": 0.006616605445742607,
+              "anterior_deformation": 0.3807731866836548,
+              "submental_motion": 0.06927546858787537,
+              "submental_motion_variance": 0.004685026593506336,
+              "submental_deformation": 0.4919198453426361,
+              "jaw_motion": 0.0851205587387085,
+              "jaw_motion_variance": 0.003772296477109194,
+              "jaw_deformation": 0.4195181429386139,
+              "shoulders_motion": 0.058675941079854965,
+              "shoulders_motion_variance": 0.014584386721253395,
+              "shoulders_deformation": 0.6810729503631592,
+              "lateral_motion": 0.239835724234581,
+              "lateral_asymmetry": 0.15474218875169754,
+              "shoulders_head_relative_motion": 0.2781217098236084
+            },
+            "visibility": {
+              "face": 0.7705453037649591,
+              "shoulders": 0.7441,
+              "left_lateral": 0.7489,
+              "right_lateral": 0.7703,
+              "anterior": 0.7643,
+              "submental": 0.7762,
+              "jaw": 0.7682
+            },
+            "processing_seconds": 0.05349012499937089
+          },
+          {
+            "t": 2.593822018348624,
+            "features": {
+              "jaw_opening": 0.06037771329283714,
+              "head_roll_deg": 2.884107637544088,
+              "head_yaw_proxy": 0.007770164404064417,
+              "head_pitch_deg": 2.2030259143548303,
+              "shoulder_height": 1.4622515439987183,
+              "shoulder_asymmetry": 0.03036969155073166,
+              "head_motion": 0.023164181369758872,
+              "jaw_velocity": -0.04992238281233397,
+              "camera_motion": 0.027028171345591545,
+              "left_lateral_motion": 0.21596738696098328,
+              "left_lateral_motion_variance": 0.005539356265217066,
+              "left_lateral_deformation": 0.5492770671844482,
+              "right_lateral_motion": 0.12384802103042603,
+              "right_lateral_motion_variance": 0.004813767038285732,
+              "right_lateral_deformation": 0.5476770997047424,
+              "anterior_motion": 0.26573456823825836,
+              "anterior_motion_variance": 0.009960144758224487,
+              "anterior_deformation": 0.45360249280929565,
+              "submental_motion": 0.1339917629957199,
+              "submental_motion_variance": 0.002481732750311494,
+              "submental_deformation": 0.5488824844360352,
+              "jaw_motion": 0.13342860341072083,
+              "jaw_motion_variance": 0.0012595253065228462,
+              "jaw_deformation": 0.45770618319511414,
+              "shoulders_motion": 0.0480952188372612,
+              "shoulders_motion_variance": 0.016520120203495026,
+              "shoulders_deformation": 0.5160277485847473,
+              "lateral_motion": 0.21596738696098328,
+              "lateral_asymmetry": 0.09211936593055725,
+              "shoulders_head_relative_motion": 0.3351404666900635
+            },
+            "visibility": {
+              "face": 0.7669030867139158,
+              "shoulders": 0.7476,
+              "left_lateral": 0.7698,
+              "right_lateral": 0.7484,
+              "anterior": 0.7545,
+              "submental": 0.7493,
+              "jaw": 0.7636
+            },
+            "processing_seconds": 0.05924517899984494
+          },
+          {
+            "t": 2.7933467889908257,
+            "features": {
+              "jaw_opening": 0.06694494932889938,
+              "head_roll_deg": 4.135070809483748,
+              "head_yaw_proxy": 0.028657639399170876,
+              "head_pitch_deg": 3.0542367183344767,
+              "shoulder_height": 1.4405465126037598,
+              "shoulder_asymmetry": 0.035313572734594345,
+              "head_motion": 0.05893521983642348,
+              "jaw_velocity": 0.03291438960147433,
+              "camera_motion": 0.007025907747447491,
+              "left_lateral_motion": 0.314302921295166,
+              "left_lateral_motion_variance": 0.017309900373220444,
+              "left_lateral_deformation": 0.6909409165382385,
+              "right_lateral_motion": 0.20737235248088837,
+              "right_lateral_motion_variance": 0.013388249091804028,
+              "right_lateral_deformation": 0.8475989699363708,
+              "anterior_motion": 0.3876368850469589,
+              "anterior_motion_variance": 0.017353080213069916,
+              "anterior_deformation": 0.6498267650604248,
+              "submental_motion": 0.19447480142116547,
+              "submental_motion_variance": 0.004721734672784805,
+              "submental_deformation": 0.7282029390335083,
+              "jaw_motion": 0.18082498013973236,
+              "jaw_motion_variance": 0.0016713616205379367,
+              "jaw_deformation": 0.48912137746810913,
+              "shoulders_motion": 0.03360702097415924,
+              "shoulders_motion_variance": 0.03479965031147003,
+              "shoulders_deformation": 0.747931957244873,
+              "lateral_motion": 0.314302921295166,
+              "lateral_asymmetry": 0.10693056881427765,
+              "shoulders_head_relative_motion": 0.5420029163360596
+            },
+            "visibility": {
+              "face": 0.7824771294607396,
+              "shoulders": 0.7514,
+              "left_lateral": 0.7602,
+              "right_lateral": 0.7602,
+              "anterior": 0.7668,
+              "submental": 0.7405,
+              "jaw": 0.7684
+            },
+            "processing_seconds": 0.06309291099751135
+          },
+          {
+            "t": 2.9928715596330275,
+            "features": {
+              "jaw_opening": 0.05977615714073181,
+              "head_roll_deg": 5.717807931396302,
+              "head_yaw_proxy": 0.0340326689183712,
+              "head_pitch_deg": 6.544449596004645,
+              "shoulder_height": 1.397094964981079,
+              "shoulder_asymmetry": 0.0202773567289114,
+              "head_motion": 0.6608322508465064,
+              "jaw_velocity": -0.03592933431319673,
+              "camera_motion": 0.010903685353696346,
+              "left_lateral_motion": 0.5000529289245605,
+              "left_lateral_motion_variance": 0.0370442271232605,
+              "left_lateral_deformation": 0.8791478276252747,
+              "right_lateral_motion": 0.21745148301124573,
+              "right_lateral_motion_variance": 0.03429481387138367,
+              "right_lateral_deformation": 1.0284643173217773,
+              "anterior_motion": 0.47883692383766174,
+              "anterior_motion_variance": 0.027451563626527786,
+              "anterior_deformation": 0.6102132797241211,
+              "submental_motion": 0.1997881829738617,
+              "submental_motion_variance": 0.02476917766034603,
+              "submental_deformation": 0.9829416871070862,
+              "jaw_motion": 0.25534787774086,
+              "jaw_motion_variance": 0.04658748209476471,
+              "jaw_deformation": 0.9948936104774475,
+              "shoulders_motion": 0.024010440334677696,
+              "shoulders_motion_variance": 0.043856143951416016,
+              "shoulders_deformation": 0.6462132334709167,
+              "lateral_motion": 0.5000529289245605,
+              "lateral_asymmetry": 0.2826014459133148,
+              "shoulders_head_relative_motion": 0.55182945728302
+            },
+            "visibility": {
+              "face": 0.7791702935815651,
+              "shoulders": 0.7469,
+              "left_lateral": 0.7504,
+              "right_lateral": 0.7504,
+              "anterior": 0.7506,
+              "submental": 0.7591,
+              "jaw": 0.7572
+            },
+            "processing_seconds": 0.05657304100168403
+          },
+          {
+            "t": 3.1923963302752294,
+            "features": {
+              "jaw_opening": 0.0901317149400711,
+              "head_roll_deg": 6.321506244073658,
+              "head_yaw_proxy": 0.02429833635687828,
+              "head_pitch_deg": 3.4031043512381385,
+              "shoulder_height": 1.39989173412323,
+              "shoulder_asymmetry": 0.03484402596950531,
+              "head_motion": 0.27518719794451124,
+              "jaw_velocity": 0.15213929429230844,
+              "camera_motion": 0.017408279702067375,
+              "left_lateral_motion": 0.4158603549003601,
+              "left_lateral_motion_variance": 0.03096197359263897,
+              "left_lateral_deformation": 0.8976075053215027,
+              "right_lateral_motion": 0.22936755418777466,
+              "right_lateral_motion_variance": 0.027334164828062057,
+              "right_lateral_deformation": 0.8850143551826477,
+              "anterior_motion": 0.3762585073709488,
+              "anterior_motion_variance": 0.027003636583685875,
+              "anterior_deformation": 0.6998434662818909,
+              "submental_motion": 0.16984060406684875,
+              "submental_motion_variance": 0.014967055059969425,
+              "submental_deformation": 0.7997039556503296,
+              "jaw_motion": 0.18894828855991364,
+              "jaw_motion_variance": 0.015906542539596558,
+              "jaw_deformation": 0.6259635090827942,
+              "shoulders_motion": 0.03386097028851509,
+              "shoulders_motion_variance": 0.041992995887994766,
+              "shoulders_deformation": 0.8434448838233948,
+              "lateral_motion": 0.4158603549003601,
+              "lateral_asymmetry": 0.18649280071258545,
+              "shoulders_head_relative_motion": 0.6432237029075623
+            },
+            "visibility": {
+              "face": 0.7860860983213694,
+              "shoulders": 0.7756,
+              "left_lateral": 0.7708,
+              "right_lateral": 0.75,
+              "anterior": 0.7501,
+              "submental": 0.7713,
+              "jaw": 0.7706
+            },
+            "processing_seconds": 0.05928137799492106
+          },
+          {
+            "t": 3.3919211009174313,
+            "features": {
+              "jaw_opening": 0.07559267431497574,
+              "head_roll_deg": 3.34424757154206,
+              "head_yaw_proxy": 0.01967875100672245,
+              "head_pitch_deg": 7.691372624800695,
+              "shoulder_height": 1.418029546737671,
+              "shoulder_asymmetry": 0.04503004997968674,
+              "head_motion": 0.355651002987105,
+              "jaw_velocity": -0.07286834901901743,
+              "camera_motion": 0.013811541721224785,
+              "left_lateral_motion": 0.2535353899002075,
+              "left_lateral_motion_variance": 0.012482880614697933,
+              "left_lateral_deformation": 0.8298975825309753,
+              "right_lateral_motion": 0.16486017405986786,
+              "right_lateral_motion_variance": 0.015601515769958496,
+              "right_lateral_deformation": 0.888764500617981,
+              "anterior_motion": 0.2532927840948105,
+              "anterior_motion_variance": 0.02042761631309986,
+              "anterior_deformation": 0.6189621686935425,
+              "submental_motion": 0.08949710428714752,
+              "submental_motion_variance": 0.0032541463151574135,
+              "submental_deformation": 0.6978649497032166,
+              "jaw_motion": 0.09550032019615173,
+              "jaw_motion_variance": 0.0027863860595971346,
+              "jaw_deformation": 0.7804592847824097,
+              "shoulders_motion": 0.08773703873157501,
+              "shoulders_motion_variance": 0.07078536599874496,
+              "shoulders_deformation": 1.1328089237213135,
+              "lateral_motion": 0.2535353899002075,
+              "lateral_asymmetry": 0.08867521584033966,
+              "shoulders_head_relative_motion": 0.6397367715835571
+            },
+            "visibility": {
+              "face": 0.7912181087124383,
+              "shoulders": 0.7617,
+              "left_lateral": 0.7831,
+              "right_lateral": 0.7831,
+              "anterior": 0.7861,
+              "submental": 0.787,
+              "jaw": 0.7658
+            },
+            "processing_seconds": 0.05748649899760494
+          },
+          {
+            "t": 3.5914458715596327,
+            "features": {
+              "jaw_opening": 0.06116732582449913,
+              "head_roll_deg": 4.084118148037429,
+              "head_yaw_proxy": 0.006241832859814167,
+              "head_pitch_deg": 4.036468457485645,
+              "shoulder_height": 1.4469588994979858,
+              "shoulder_asymmetry": 0.04688386619091034,
+              "head_motion": 0.13891100242030044,
+              "jaw_velocity": -0.07229853438270539,
+              "camera_motion": 0.011193639598786831,
+              "left_lateral_motion": 0.19188329577445984,
+              "left_lateral_motion_variance": 0.006421436555683613,
+              "left_lateral_deformation": 0.4778624475002289,
+              "right_lateral_motion": 0.1441320776939392,
+              "right_lateral_motion_variance": 0.008988036774098873,
+              "right_lateral_deformation": 0.538212239742279,
+              "anterior_motion": 0.2079806700348854,
+              "anterior_motion_variance": 0.007058140356093645,
+              "anterior_deformation": 0.4516671895980835,
+              "submental_motion": 0.08986324071884155,
+              "submental_motion_variance": 0.003813882591202855,
+              "submental_deformation": 0.5667758584022522,
+              "jaw_motion": 0.13070045411586761,
+              "jaw_motion_variance": 0.004902398679405451,
+              "jaw_deformation": 0.5983044505119324,
+              "shoulders_motion": 0.049973636865615845,
+              "shoulders_motion_variance": 0.016607288271188736,
+              "shoulders_deformation": 0.6593548059463501,
+              "lateral_motion": 0.19188329577445984,
+              "lateral_asymmetry": 0.04775121808052063,
+              "shoulders_head_relative_motion": 0.39482760429382324
+            },
+            "visibility": {
+              "face": 0.7702143544888111,
+              "shoulders": 0.7709,
+              "left_lateral": 0.7547,
+              "right_lateral": 0.7763,
+              "anterior": 0.7609,
+              "submental": 0.7545,
+              "jaw": 0.7736
+            },
+            "processing_seconds": 0.05534617300145328
+          },
+          {
+            "t": 3.7909706422018346,
+            "features": {
+              "jaw_opening": 0.04374401643872261,
+              "head_roll_deg": 3.4338707918744023,
+              "head_yaw_proxy": 0.021285951137542725,
+              "head_pitch_deg": 6.812660448775929,
+              "shoulder_height": 1.478587031364441,
+              "shoulder_asymmetry": 0.05307350680232048,
+              "head_motion": 0.13860392350803477,
+              "jaw_velocity": -0.08732404167009869,
+              "camera_motion": 0.014678741805255413,
+              "left_lateral_motion": 0.17754095792770386,
+              "left_lateral_motion_variance": 0.004179868381470442,
+              "left_lateral_deformation": 0.47068965435028076,
+              "right_lateral_motion": 0.1092035323381424,
+              "right_lateral_motion_variance": 0.006931498181074858,
+              "right_lateral_deformation": 0.5828904509544373,
+              "anterior_motion": 0.19453862309455872,
+              "anterior_motion_variance": 0.005872097797691822,
+              "anterior_deformation": 0.49929073452949524,
+              "submental_motion": 0.05947190523147583,
+              "submental_motion_variance": 0.0035085000563412905,
+              "submental_deformation": 0.5475728511810303,
+              "jaw_motion": 0.053833670914173126,
+              "jaw_motion_variance": 0.00807058997452259,
+              "jaw_deformation": 0.4818379580974579,
+              "shoulders_motion": 0.045104071497917175,
+              "shoulders_motion_variance": 0.008159283548593521,
+              "shoulders_deformation": 0.544385552406311,
+              "lateral_motion": 0.17754095792770386,
+              "lateral_asymmetry": 0.06833742558956146,
+              "shoulders_head_relative_motion": 0.2966330647468567
+            },
+            "visibility": {
+              "face": 0.7753901751609723,
+              "shoulders": 0.7576,
+              "left_lateral": 0.7638,
+              "right_lateral": 0.7638,
+              "anterior": 0.7601,
+              "submental": 0.7596,
+              "jaw": 0.7614
+            },
+            "processing_seconds": 0.05890319799800636
+          },
+          {
+            "t": 3.9904954128440364,
+            "features": {
+              "jaw_opening": 0.07346987724304199,
+              "head_roll_deg": 4.2684094008586095,
+              "head_yaw_proxy": 0.026752062141895294,
+              "head_pitch_deg": 6.8343731135204395,
+              "shoulder_height": 1.4664705991744995,
+              "shoulder_asymmetry": 0.05451550334692001,
+              "head_motion": 0.0981152785946566,
+              "jaw_velocity": 0.14898331023582698,
+              "camera_motion": 0.00670966412872076,
+              "left_lateral_motion": 0.039324093610048294,
+              "left_lateral_motion_variance": 0.0012851296924054623,
+              "left_lateral_deformation": 0.4351522624492645,
+              "right_lateral_motion": 0.026888782158493996,
+              "right_lateral_motion_variance": 0.0010580653324723244,
+              "right_lateral_deformation": 0.3258650600910187,
+              "anterior_motion": 0.07528886198997498,
+              "anterior_motion_variance": 0.00020581684657372534,
+              "anterior_deformation": 0.25583183765411377,
+              "submental_motion": 0.05663542449474335,
+              "submental_motion_variance": 0.0016660656547173858,
+              "submental_deformation": 0.437872976064682,
+              "jaw_motion": 0.10642362385988235,
+              "jaw_motion_variance": 0.0010205648140981793,
+              "jaw_deformation": 0.46886304020881653,
+              "shoulders_motion": 0.01507648266851902,
+              "shoulders_motion_variance": 0.002115808892995119,
+              "shoulders_deformation": 0.28723740577697754,
+              "lateral_motion": 0.039324093610048294,
+              "lateral_asymmetry": 0.012435311451554298,
+              "shoulders_head_relative_motion": 0.14348597824573517
+            },
+            "visibility": {
+              "face": 0.7704006382271095,
+              "shoulders": 0.7523,
+              "left_lateral": 0.7578,
+              "right_lateral": 0.7578,
+              "anterior": 0.7448,
+              "submental": 0.7278,
+              "jaw": 0.7649
+            },
+            "processing_seconds": 0.06196336900029564
+          },
+          {
+            "t": 4.190020183486238,
+            "features": {
+              "jaw_opening": 0.06188494712114334,
+              "head_roll_deg": 5.2492798239697125,
+              "head_yaw_proxy": 0.03374764695763588,
+              "head_pitch_deg": 6.452890772987365,
+              "shoulder_height": 1.477191686630249,
+              "shoulder_asymmetry": 0.052272263914346695,
+              "head_motion": 0.031179196303294868,
+              "jaw_velocity": -0.058062615907843076,
+              "camera_motion": 0.015047982335090637,
+              "left_lateral_motion": 0.15847022831439972,
+              "left_lateral_motion_variance": 0.004521532449871302,
+              "left_lateral_deformation": 0.4569638967514038,
+              "right_lateral_motion": 0.0877348855137825,
+              "right_lateral_motion_variance": 0.0024063843302428722,
+              "right_lateral_deformation": 0.404442697763443,
+              "anterior_motion": 0.14792880415916443,
+              "anterior_motion_variance": 0.003862046869471669,
+              "anterior_deformation": 0.3791058361530304,
+              "submental_motion": 0.06327830255031586,
+              "submental_motion_variance": 0.0017882464453577995,
+              "submental_deformation": 0.4532318115234375,
+              "jaw_motion": 0.09740360081195831,
+              "jaw_motion_variance": 0.0019634088966995478,
+              "jaw_deformation": 0.47802698612213135,
+              "shoulders_motion": 0.04476648196578026,
+              "shoulders_motion_variance": 0.007542346138507128,
+              "shoulders_deformation": 0.494031697511673,
+              "lateral_motion": 0.15847022831439972,
+              "lateral_asymmetry": 0.07073534280061722,
+              "shoulders_head_relative_motion": 0.2628592550754547
+            },
+            "visibility": {
+              "face": 0.7615530545487363,
+              "shoulders": 0.7474,
+              "left_lateral": 0.7267,
+              "right_lateral": 0.7267,
+              "anterior": 0.7326,
+              "submental": 0.7513,
+              "jaw": 0.7269
+            },
+            "processing_seconds": 0.05915797999477945
+          },
+          {
+            "t": 4.38954495412844,
+            "features": {
+              "jaw_opening": 0.04027866944670677,
+              "head_roll_deg": 3.1744553386812466,
+              "head_yaw_proxy": 0.007673776242882013,
+              "head_pitch_deg": 4.39335002910227,
+              "shoulder_height": 1.4028923511505127,
+              "shoulder_asymmetry": 0.050343263894319534,
+              "head_motion": 0.42702553735223253,
+              "jaw_velocity": -0.10828869821472975,
+              "camera_motion": 0.017778411507606506,
+              "left_lateral_motion": 0.5687975883483887,
+              "left_lateral_motion_variance": 0.05536483973264694,
+              "left_lateral_deformation": 1.1656779050827026,
+              "right_lateral_motion": 0.2086268812417984,
+              "right_lateral_motion_variance": 0.020103013142943382,
+              "right_lateral_deformation": 0.8050892353057861,
+              "anterior_motion": 0.3681022673845291,
+              "anterior_motion_variance": 0.03458906337618828,
+              "anterior_deformation": 0.8346715569496155,
+              "submental_motion": 0.19439005851745605,
+              "submental_motion_variance": 0.01583178900182247,
+              "submental_deformation": 1.0572993755340576,
+              "jaw_motion": 0.19661319255828857,
+              "jaw_motion_variance": 0.02223849669098854,
+              "jaw_deformation": 0.9235619902610779,
+              "shoulders_motion": 0.06808162480592728,
+              "shoulders_motion_variance": 0.09833928197622299,
+              "shoulders_deformation": 0.9872114062309265,
+              "lateral_motion": 0.5687975883483887,
+              "lateral_asymmetry": 0.36017070710659027,
+              "shoulders_head_relative_motion": 0.7420149445533752
+            },
+            "visibility": {
+              "face": 0.7982868330870372,
+              "shoulders": 0.7913,
+              "left_lateral": 0.793,
+              "right_lateral": 0.793,
+              "anterior": 0.7961,
+              "submental": 0.7958,
+              "jaw": 0.8041
+            },
+            "processing_seconds": 0.06438651999633294
+          },
+          {
+            "t": 4.589069724770642,
+            "features": {
+              "jaw_opening": 0.07155030965805054,
+              "head_roll_deg": 3.852806609029913,
+              "head_yaw_proxy": 0.0197916217148304,
+              "head_pitch_deg": 6.664868977187471,
+              "shoulder_height": 1.4103516340255737,
+              "shoulder_asymmetry": 0.04647757112979889,
+              "head_motion": 0.16993103235026258,
+              "jaw_velocity": 0.15673061600667962,
+              "camera_motion": 0.011807262897491455,
+              "left_lateral_motion": 0.23570215702056885,
+              "left_lateral_motion_variance": 0.006733303889632225,
+              "left_lateral_deformation": 0.5143017172813416,
+              "right_lateral_motion": 0.09354442358016968,
+              "right_lateral_motion_variance": 0.003812200389802456,
+              "right_lateral_deformation": 0.46056315302848816,
+              "anterior_motion": 0.20117918401956558,
+              "anterior_motion_variance": 0.007111965678632259,
+              "anterior_deformation": 0.4135642349720001,
+              "submental_motion": 0.06384653598070145,
+              "submental_motion_variance": 0.004629616159945726,
+              "submental_deformation": 0.5042067766189575,
+              "jaw_motion": 0.0736856535077095,
+              "jaw_motion_variance": 0.005830291658639908,
+              "jaw_deformation": 0.4635638892650604,
+              "shoulders_motion": 0.08721698820590973,
+              "shoulders_motion_variance": 0.017396507784724236,
+              "shoulders_deformation": 0.7314026355743408,
+              "lateral_motion": 0.23570215702056885,
+              "lateral_asymmetry": 0.14215773344039917,
+              "shoulders_head_relative_motion": 0.24843905866146088
+            },
+            "visibility": {
+              "face": 0.7922647251919803,
+              "shoulders": 0.7808,
+              "left_lateral": 0.7853,
+              "right_lateral": 0.7853,
+              "anterior": 0.7883,
+              "submental": 0.7886,
+              "jaw": 0.7699
+            },
+            "processing_seconds": 0.06166753800061997
+          },
+          {
+            "t": 4.788594495412844,
+            "features": {
+              "jaw_opening": 0.06764186918735504,
+              "head_roll_deg": 4.361202965213922,
+              "head_yaw_proxy": 0.015590033493936062,
+              "head_pitch_deg": 6.490155424271665,
+              "shoulder_height": 1.4122700691223145,
+              "shoulder_asymmetry": 0.04752899706363678,
+              "head_motion": 0.05798066036060718,
+              "jaw_velocity": -0.019588748094362243,
+              "camera_motion": 0.0009508068906143308,
+              "left_lateral_motion": 0.1605638861656189,
+              "left_lateral_motion_variance": 0.006014721933752298,
+              "left_lateral_deformation": 0.402665913105011,
+              "right_lateral_motion": 0.07482504099607468,
+              "right_lateral_motion_variance": 0.0019446194637566805,
+              "right_lateral_deformation": 0.3716886341571808,
+              "anterior_motion": 0.1649252474308014,
+              "anterior_motion_variance": 0.004333678167313337,
+              "anterior_deformation": 0.329233318567276,
+              "submental_motion": 0.06410492956638336,
+              "submental_motion_variance": 0.0008924552239477634,
+              "submental_deformation": 0.3769950568675995,
+              "jaw_motion": 0.06100502237677574,
+              "jaw_motion_variance": 0.0013421170879155397,
+              "jaw_deformation": 0.3117494583129883,
+              "shoulders_motion": 0.07426361739635468,
+              "shoulders_motion_variance": 0.01425192877650261,
+              "shoulders_deformation": 0.6662009358406067,
+              "lateral_motion": 0.1605638861656189,
+              "lateral_asymmetry": 0.08573884516954422,
+              "shoulders_head_relative_motion": 0.24516169726848602
+            },
+            "visibility": {
+              "face": 0.7813256944727015,
+              "shoulders": 0.763,
+              "left_lateral": 0.7585,
+              "right_lateral": 0.7585,
+              "anterior": 0.7587,
+              "submental": 0.7684,
+              "jaw": 0.7545
+            },
+            "processing_seconds": 0.056747508999251295
+          },
+          {
+            "t": 4.988119266055046,
+            "features": {
+              "jaw_opening": 0.07352233678102493,
+              "head_roll_deg": 2.8243513849375983,
+              "head_yaw_proxy": 0.0030083274468779564,
+              "head_pitch_deg": 6.094309576840481,
+              "shoulder_height": 1.381736159324646,
+              "shoulder_asymmetry": 0.04847947880625725,
+              "head_motion": 0.19366673673600607,
+              "jaw_velocity": 0.029472368642463196,
+              "camera_motion": 0.003713794518262148,
+              "left_lateral_motion": 0.188108891248703,
+              "left_lateral_motion_variance": 0.00627335486933589,
+              "left_lateral_deformation": 0.45255547761917114,
+              "right_lateral_motion": 0.03144165873527527,
+              "right_lateral_motion_variance": 0.0007247997564263642,
+              "right_lateral_deformation": 0.2857021987438202,
+              "anterior_motion": 0.07568104565143585,
+              "anterior_motion_variance": 0.0027987200301140547,
+              "anterior_deformation": 0.2898990213871002,
+              "submental_motion": 0.033064935356378555,
+              "submental_motion_variance": 0.0031656858045607805,
+              "submental_deformation": 0.43411850929260254,
+              "jaw_motion": 0.06651477515697479,
+              "jaw_motion_variance": 0.005513939540833235,
+              "jaw_deformation": 0.5700221657752991,
+              "shoulders_motion": 0.03737903758883476,
+              "shoulders_motion_variance": 0.01325473003089428,
+              "shoulders_deformation": 0.36649611592292786,
+              "lateral_motion": 0.188108891248703,
+              "lateral_asymmetry": 0.15666723251342773,
+              "shoulders_head_relative_motion": 0.2508891820907593
+            },
+            "visibility": {
+              "face": 0.7941004864583101,
+              "shoulders": 0.7938,
+              "left_lateral": 0.796,
+              "right_lateral": 0.7745,
+              "anterior": 0.7746,
+              "submental": 0.795,
+              "jaw": 0.7926
+            },
+            "processing_seconds": 0.05423848899954464
+          },
+          {
+            "t": 5.187644036697248,
+            "features": {
+              "jaw_opening": 0.06191704049706459,
+              "head_roll_deg": 3.1036878629736036,
+              "head_yaw_proxy": 0.005741619970649481,
+              "head_pitch_deg": 4.73915176774109,
+              "shoulder_height": 1.4221066236495972,
+              "shoulder_asymmetry": 0.04685777425765991,
+              "head_motion": 0.0902242822231598,
+              "jaw_velocity": -0.05816468925941812,
+              "camera_motion": 0.004198472946882248,
+              "left_lateral_motion": 0.24221833050251007,
+              "left_lateral_motion_variance": 0.008581746369600296,
+              "left_lateral_deformation": 0.553739070892334,
+              "right_lateral_motion": 0.10963144898414612,
+              "right_lateral_motion_variance": 0.007332162465900183,
+              "right_lateral_deformation": 0.5212289690971375,
+              "anterior_motion": 0.2571292892098427,
+              "anterior_motion_variance": 0.010547196492552757,
+              "anterior_deformation": 0.47679784893989563,
+              "submental_motion": 0.10277233272790909,
+              "submental_motion_variance": 0.003510774578899145,
+              "submental_deformation": 0.5373179316520691,
+              "jaw_motion": 0.13604184985160828,
+              "jaw_motion_variance": 0.0033802115358412266,
+              "jaw_deformation": 0.5013315081596375,
+              "shoulders_motion": 0.10883103311061859,
+              "shoulders_motion_variance": 0.0409681536257267,
+              "shoulders_deformation": 1.1315995454788208,
+              "lateral_motion": 0.24221833050251007,
+              "lateral_asymmetry": 0.13258688151836395,
+              "shoulders_head_relative_motion": 0.38310229778289795
+            },
+            "visibility": {
+              "face": 0.7698644617584243,
+              "shoulders": 0.7524,
+              "left_lateral": 0.7746,
+              "right_lateral": 0.7531,
+              "anterior": 0.7549,
+              "submental": 0.7726,
+              "jaw": 0.7642
+            },
+            "processing_seconds": 0.05748198099900037
+          },
+          {
+            "t": 5.3871688073394495,
+            "features": {
+              "jaw_opening": 0.04290284588932991,
+              "head_roll_deg": 5.002571576374791,
+              "head_yaw_proxy": 0.04522920027375221,
+              "head_pitch_deg": 8.277141442848619,
+              "shoulder_height": 1.4275814294815063,
+              "shoulder_asymmetry": 0.04553407430648804,
+              "head_motion": 0.36702940907153264,
+              "jaw_velocity": -0.09529741368219347,
+              "camera_motion": 0.007715477142482996,
+              "left_lateral_motion": 0.14674803614616394,
+              "left_lateral_motion_variance": 0.005304266698658466,
+              "left_lateral_deformation": 0.5364681482315063,
+              "right_lateral_motion": 0.07975766807794571,
+              "right_lateral_motion_variance": 0.0057140737771987915,
+              "right_lateral_deformation": 0.510189950466156,
+              "anterior_motion": 0.16035331040620804,
+              "anterior_motion_variance": 0.0008486544247716665,
+              "anterior_deformation": 0.39951804280281067,
+              "submental_motion": 0.06655468046665192,
+              "submental_motion_variance": 0.005901227239519358,
+              "submental_deformation": 0.6763231754302979,
+              "jaw_motion": 0.09636744856834412,
+              "jaw_motion_variance": 0.011603901162743568,
+              "jaw_deformation": 0.6552836894989014,
+              "shoulders_motion": 0.024623524397611618,
+              "shoulders_motion_variance": 0.0034456229768693447,
+              "shoulders_deformation": 0.335232675075531,
+              "lateral_motion": 0.14674803614616394,
+              "lateral_asymmetry": 0.06699036806821823,
+              "shoulders_head_relative_motion": 0.2033536434173584
+            },
+            "visibility": {
+              "face": 0.7792673897131895,
+              "shoulders": 0.721,
+              "left_lateral": 0.7431,
+              "right_lateral": 0.7431,
+              "anterior": 0.7455,
+              "submental": 0.7433,
+              "jaw": 0.7587
+            },
+            "processing_seconds": 0.054348025005310774
+          },
+          {
+            "t": 5.586693577981651,
+            "features": {
+              "jaw_opening": 0.045783091336488724,
+              "head_roll_deg": 4.81121335840723,
+              "head_yaw_proxy": 0.04513447731733322,
+              "head_pitch_deg": 8.255546245925858,
+              "shoulder_height": 1.3538424968719482,
+              "shoulder_asymmetry": 0.037566907703876495,
+              "head_motion": 0.10881520589311652,
+              "jaw_velocity": 0.01443552816970189,
+              "camera_motion": 0.008691845461726189,
+              "left_lateral_motion": 0.3895684480667114,
+              "left_lateral_motion_variance": 0.027475882321596146,
+              "left_lateral_deformation": 0.8749733567237854,
+              "right_lateral_motion": 0.2136555314064026,
+              "right_lateral_motion_variance": 0.022762171924114227,
+              "right_lateral_deformation": 0.8554966449737549,
+              "anterior_motion": 0.36570049822330475,
+              "anterior_motion_variance": 0.02158445119857788,
+              "anterior_deformation": 0.6658937335014343,
+              "submental_motion": 0.16060441732406616,
+              "submental_motion_variance": 0.007956906221807003,
+              "submental_deformation": 0.7590944170951843,
+              "jaw_motion": 0.17110127210617065,
+              "jaw_motion_variance": 0.00770369591191411,
+              "jaw_deformation": 0.6599169969558716,
+              "shoulders_motion": 0.07460524141788483,
+              "shoulders_motion_variance": 0.055907703936100006,
+              "shoulders_deformation": 0.8632919192314148,
+              "lateral_motion": 0.3895684480667114,
+              "lateral_asymmetry": 0.17591291666030884,
+              "shoulders_head_relative_motion": 0.7219751477241516
+            },
+            "visibility": {
+              "face": 0.8087870055657846,
+              "shoulders": 0.7644,
+              "left_lateral": 0.7859,
+              "right_lateral": 0.7859,
+              "anterior": 0.7638,
+              "submental": 0.7867,
+              "jaw": 0.7733
+            },
+            "processing_seconds": 0.06197519399574958
+          },
+          {
+            "t": 5.786218348623853,
+            "features": {
+              "jaw_opening": 0.06678301841020584,
+              "head_roll_deg": 4.291892726104437,
+              "head_yaw_proxy": 0.011437940411269665,
+              "head_pitch_deg": 3.074365920107238,
+              "shoulder_height": 1.4091647863388062,
+              "shoulder_asymmetry": 0.043314378708601,
+              "head_motion": 0.11950051394257638,
+              "jaw_velocity": 0.10524972416269693,
+              "camera_motion": 0.004267759155482054,
+              "left_lateral_motion": 0.28949370980262756,
+              "left_lateral_motion_variance": 0.017083074897527695,
+              "left_lateral_deformation": 0.6316322088241577,
+              "right_lateral_motion": 0.16729719936847687,
+              "right_lateral_motion_variance": 0.016921425238251686,
+              "right_lateral_deformation": 0.8355181217193604,
+              "anterior_motion": 0.37829625606536865,
+              "anterior_motion_variance": 0.017191333696246147,
+              "anterior_deformation": 0.6142983436584473,
+              "submental_motion": 0.17336782813072205,
+              "submental_motion_variance": 0.0071057043969631195,
+              "submental_deformation": 0.7641940712928772,
+              "jaw_motion": 0.21389487385749817,
+              "jaw_motion_variance": 0.0036497614346444607,
+              "jaw_deformation": 0.6792328357696533,
+              "shoulders_motion": 0.14902479946613312,
+              "shoulders_motion_variance": 0.055270612239837646,
+              "shoulders_deformation": 1.6218721866607666,
+              "lateral_motion": 0.28949370980262756,
+              "lateral_asymmetry": 0.1221965104341507,
+              "shoulders_head_relative_motion": 0.5865646600723267
+            },
+            "visibility": {
+              "face": 0.7713701094806704,
+              "shoulders": 0.7471,
+              "left_lateral": 0.7651,
+              "right_lateral": 0.7438,
+              "anterior": 0.7564,
+              "submental": 0.749,
+              "jaw": 0.7693
+            },
+            "processing_seconds": 0.0557184569988749
+          },
+          {
+            "t": 5.985743119266055,
+            "features": {
+              "jaw_opening": 0.04935431107878685,
+              "head_roll_deg": 4.563999332448181,
+              "head_yaw_proxy": 0.056305479258298874,
+              "head_pitch_deg": 6.574354946959217,
+              "shoulder_height": 1.3774396181106567,
+              "shoulder_asymmetry": 0.044364143162965775,
+              "head_motion": 0.2322652509177172,
+              "jaw_velocity": -0.08735109568261602,
+              "camera_motion": 0.009138685651123524,
+              "left_lateral_motion": 0.3001595735549927,
+              "left_lateral_motion_variance": 0.013724854215979576,
+              "left_lateral_deformation": 0.6826106905937195,
+              "right_lateral_motion": 0.19271698594093323,
+              "right_lateral_motion_variance": 0.015302951447665691,
+              "right_lateral_deformation": 0.8376379013061523,
+              "anterior_motion": 0.2591956630349159,
+              "anterior_motion_variance": 0.012605681084096432,
+              "anterior_deformation": 0.563923180103302,
+              "submental_motion": 0.11113514751195908,
+              "submental_motion_variance": 0.007480931933969259,
+              "submental_deformation": 0.7500125169754028,
+              "jaw_motion": 0.13803374767303467,
+              "jaw_motion_variance": 0.011239069513976574,
+              "jaw_deformation": 0.6777064204216003,
+              "shoulders_motion": 0.040938228368759155,
+              "shoulders_motion_variance": 0.02163250371813774,
+              "shoulders_deformation": 0.557166576385498,
+              "lateral_motion": 0.3001595735549927,
+              "lateral_asymmetry": 0.10744258761405945,
+              "shoulders_head_relative_motion": 0.4169557988643646
+            },
+            "visibility": {
+              "face": 0.7828496453211857,
+              "shoulders": 0.7341,
+              "left_lateral": 0.7344,
+              "right_lateral": 0.7548,
+              "anterior": 0.7323,
+              "submental": 0.7521,
+              "jaw": 0.7355
+            },
+            "processing_seconds": 0.052405410999199376
+          },
+          {
+            "t": 6.185267889908257,
+            "features": {
+              "jaw_opening": 0.07795412838459015,
+              "head_roll_deg": 4.189759497252402,
+              "head_yaw_proxy": 0.02541842870414257,
+              "head_pitch_deg": 5.817823097180208,
+              "shoulder_height": 1.3749440908432007,
+              "shoulder_asymmetry": 0.05054944381117821,
+              "head_motion": 0.21891614019477743,
+              "jaw_velocity": 0.14333968265569377,
+              "camera_motion": 0.009566936641931534,
+              "left_lateral_motion": 0.2056274116039276,
+              "left_lateral_motion_variance": 0.00855112262070179,
+              "left_lateral_deformation": 0.539165198802948,
+              "right_lateral_motion": 0.14068502187728882,
+              "right_lateral_motion_variance": 0.006205185316503048,
+              "right_lateral_deformation": 0.530256450176239,
+              "anterior_motion": 0.17135481536388397,
+              "anterior_motion_variance": 0.004371831193566322,
+              "anterior_deformation": 0.41647300124168396,
+              "submental_motion": 0.05736933648586273,
+              "submental_motion_variance": 0.006149597000330687,
+              "submental_deformation": 0.5461218357086182,
+              "jaw_motion": 0.0994749367237091,
+              "jaw_motion_variance": 0.009245666675269604,
+              "jaw_deformation": 0.6021408438682556,
+              "shoulders_motion": 0.04258346930146217,
+              "shoulders_motion_variance": 0.008819191716611385,
+              "shoulders_deformation": 0.4254315197467804,
+              "lateral_motion": 0.2056274116039276,
+              "lateral_asymmetry": 0.0649423897266388,
+              "shoulders_head_relative_motion": 0.23263892531394958
+            },
+            "visibility": {
+              "face": 0.7863522962966876,
+              "shoulders": 0.7576,
+              "left_lateral": 0.7668,
+              "right_lateral": 0.7881,
+              "anterior": 0.767,
+              "submental": 0.7866,
+              "jaw": 0.7672
+            },
+            "processing_seconds": 0.05733132400200702
+          },
+          {
+            "t": 6.384792660550459,
+            "features": {
+              "jaw_opening": 0.11528581380844116,
+              "head_roll_deg": 4.1062319624538635,
+              "head_yaw_proxy": 0.013409354723989964,
+              "head_pitch_deg": 4.765251224318413,
+              "shoulder_height": 1.399724006652832,
+              "shoulder_asymmetry": 0.05144263058900833,
+              "head_motion": 0.08468143970829128,
+              "jaw_velocity": 0.18710301133885837,
+              "camera_motion": 0.006891940254718065,
+              "left_lateral_motion": 0.17520028352737427,
+              "left_lateral_motion_variance": 0.007537578232586384,
+              "left_lateral_deformation": 0.44031646847724915,
+              "right_lateral_motion": 0.1423620879650116,
+              "right_lateral_motion_variance": 0.0064688511192798615,
+              "right_lateral_deformation": 0.5539754033088684,
+              "anterior_motion": 0.26130859553813934,
+              "anterior_motion_variance": 0.007071534637361765,
+              "anterior_deformation": 0.4926925003528595,
+              "submental_motion": 0.119572713971138,
+              "submental_motion_variance": 0.0022482825443148613,
+              "submental_deformation": 0.49262189865112305,
+              "jaw_motion": 0.11802825331687927,
+              "jaw_motion_variance": 0.0025969170965254307,
+              "jaw_deformation": 0.49731600284576416,
+              "shoulders_motion": 0.08616858720779419,
+              "shoulders_motion_variance": 0.025090284645557404,
+              "shoulders_deformation": 0.9642969965934753,
+              "lateral_motion": 0.17520028352737427,
+              "lateral_asymmetry": 0.03283819556236267,
+              "shoulders_head_relative_motion": 0.363190233707428
+            },
+            "visibility": {
+              "face": 0.7685468227390098,
+              "shoulders": 0.7434,
+              "left_lateral": 0.7485,
+              "right_lateral": 0.7699,
+              "anterior": 0.7612,
+              "submental": 0.753,
+              "jaw": 0.7776
+            },
+            "processing_seconds": 0.062213921002694406
+          },
+          {
+            "t": 6.584317431192661,
+            "features": {
+              "jaw_opening": 0.052534669637680054,
+              "head_roll_deg": 2.7869179251200644,
+              "head_yaw_proxy": 0.01090477965772152,
+              "head_pitch_deg": 5.549454953189108,
+              "shoulder_height": 1.3237799406051636,
+              "shoulder_asymmetry": 0.05110263079404831,
+              "head_motion": 0.4195905943345993,
+              "jaw_velocity": -0.3145030262096615,
+              "camera_motion": 0.0049067107029259205,
+              "left_lateral_motion": 0.6723791360855103,
+              "left_lateral_motion_variance": 0.10990536957979202,
+              "left_lateral_deformation": 1.5990734100341797,
+              "right_lateral_motion": 0.2779078781604767,
+              "right_lateral_motion_variance": 0.03672539070248604,
+              "right_lateral_deformation": 1.1616530418395996,
+              "anterior_motion": 0.40077751874923706,
+              "anterior_motion_variance": 0.043913278728723526,
+              "anterior_deformation": 1.0686877965927124,
+              "submental_motion": 0.31039518117904663,
+              "submental_motion_variance": 0.025108464062213898,
+              "submental_deformation": 1.156471848487854,
+              "jaw_motion": 0.29893654584884644,
+              "jaw_motion_variance": 0.01755939982831478,
+              "jaw_deformation": 0.8867744207382202,
+              "shoulders_motion": 0.09598404169082642,
+              "shoulders_motion_variance": 0.17050856351852417,
+              "shoulders_deformation": 1.479020357131958,
+              "lateral_motion": 0.6723791360855103,
+              "lateral_asymmetry": 0.39447125792503357,
+              "shoulders_head_relative_motion": 0.9146409630775452
+            },
+            "visibility": {
+              "face": 0.8131211122855162,
+              "shoulders": 0.8105,
+              "left_lateral": 0.8144,
+              "right_lateral": 0.793,
+              "anterior": 0.823,
+              "submental": 0.8243,
+              "jaw": 0.8049
+            },
+            "processing_seconds": 0.059586912000668235
+          },
+          {
+            "t": 6.7838422018348625,
+            "features": {
+              "jaw_opening": 0.0906926691532135,
+              "head_roll_deg": 1.4192162053970117,
+              "head_yaw_proxy": 0.004323866683989763,
+              "head_pitch_deg": 3.2624111393546467,
+              "shoulder_height": 1.3325278759002686,
+              "shoulder_asymmetry": 0.05428682640194893,
+              "head_motion": 0.027655051759703002,
+              "jaw_velocity": 0.1912444223978603,
+              "camera_motion": 0.007426065392792225,
+              "left_lateral_motion": 0.3863765299320221,
+              "left_lateral_motion_variance": 0.029790809378027916,
+              "left_lateral_deformation": 1.0075796842575073,
+              "right_lateral_motion": 0.15728580951690674,
+              "right_lateral_motion_variance": 0.015288924798369408,
+              "right_lateral_deformation": 0.9202668070793152,
+              "anterior_motion": 0.41448521614074707,
+              "anterior_motion_variance": 0.0334872268140316,
+              "anterior_deformation": 0.9463950991630554,
+              "submental_motion": 0.202765554189682,
+              "submental_motion_variance": 0.01127324253320694,
+              "submental_deformation": 0.8370077610015869,
+              "jaw_motion": 0.2209358662366867,
+              "jaw_motion_variance": 0.004283694084733725,
+              "jaw_deformation": 0.5962173342704773,
+              "shoulders_motion": 0.175103098154068,
+              "shoulders_motion_variance": 0.07325892895460129,
+              "shoulders_deformation": 1.5081427097320557,
+              "lateral_motion": 0.3863765299320221,
+              "lateral_asymmetry": 0.22909072041511536,
+              "shoulders_head_relative_motion": 0.5689431428909302
+            },
+            "visibility": {
+              "face": 0.7887855432216937,
+              "shoulders": 0.7722,
+              "left_lateral": 0.7834,
+              "right_lateral": 0.8051,
+              "anterior": 0.7788,
+              "submental": 0.7977,
+              "jaw": 0.7693
+            },
+            "processing_seconds": 0.0590463330008788
+          },
+          {
+            "t": 6.9833669724770635,
+            "features": {
+              "jaw_opening": 0.080833800137043,
+              "head_roll_deg": 1.5948753937848765,
+              "head_yaw_proxy": 0.08287467807531357,
+              "head_pitch_deg": 3.724439249342041,
+              "shoulder_height": 1.385108232498169,
+              "shoulder_asymmetry": 0.06828290224075317,
+              "head_motion": 0.2985157478437375,
+              "jaw_velocity": -0.04941175466303369,
+              "camera_motion": 0.005736937280744314,
+              "left_lateral_motion": 0.5201371908187866,
+              "left_lateral_motion_variance": 0.050511687994003296,
+              "left_lateral_deformation": 1.0977439880371094,
+              "right_lateral_motion": 0.21675774455070496,
+              "right_lateral_motion_variance": 0.052207328379154205,
+              "right_lateral_deformation": 1.3525162935256958,
+              "anterior_motion": 0.3289945721626282,
+              "anterior_motion_variance": 0.0637039914727211,
+              "anterior_deformation": 0.9361470341682434,
+              "submental_motion": 0.16200679540634155,
+              "submental_motion_variance": 0.02775595895946026,
+              "submental_deformation": 1.1213297843933105,
+              "jaw_motion": 0.19172567129135132,
+              "jaw_motion_variance": 0.04395535960793495,
+              "jaw_deformation": 1.0787348747253418,
+              "shoulders_motion": 0.0878281444311142,
+              "shoulders_motion_variance": 0.08359834551811218,
+              "shoulders_deformation": 1.4801713228225708,
+              "lateral_motion": 0.5201371908187866,
+              "lateral_asymmetry": 0.30337944626808167,
+              "shoulders_head_relative_motion": 0.7575612664222717
+            },
+            "visibility": {
+              "face": 0.768249195664923,
+              "shoulders": 0.7129,
+              "left_lateral": 0.6919,
+              "right_lateral": 0.7116,
+              "anterior": 0.7016,
+              "submental": 0.7052,
+              "jaw": 0.719
+            },
+            "processing_seconds": 0.058427629999641795
+          }
+        ]
+      },
+      "acoustic_timeline": [
+        {
+          "t": 0.0,
+          "duration": 1.0,
+          "rms_dbfs": -39.994,
+          "high_frequency_energy_ratio": 0.09174365185976077,
+          "clipped_fraction": 0.0,
+          "usable": true,
+          "limitations": [
+            "microphone_gain_distance_noise_and_phonetic_content_confounded"
+          ],
+          "speech_active": true,
+          "speech_method": "energy_activity_only_not_verified_speech",
+          "effort": null
+        },
+        {
+          "t": 1.0,
+          "duration": 1.0,
+          "rms_dbfs": -34.785,
+          "high_frequency_energy_ratio": 0.022088013487201817,
+          "clipped_fraction": 0.0,
+          "usable": true,
+          "limitations": [
+            "microphone_gain_distance_noise_and_phonetic_content_confounded"
+          ],
+          "speech_active": true,
+          "speech_method": "energy_activity_only_not_verified_speech",
+          "effort": null
+        },
+        {
+          "t": 2.0,
+          "duration": 1.0,
+          "rms_dbfs": -29.53,
+          "high_frequency_energy_ratio": 0.006335451047879677,
+          "clipped_fraction": 0.0,
+          "usable": true,
+          "limitations": [
+            "microphone_gain_distance_noise_and_phonetic_content_confounded"
+          ],
+          "speech_active": true,
+          "speech_method": "energy_activity_only_not_verified_speech",
+          "effort": null
+        },
+        {
+          "t": 3.0,
+          "duration": 1.0,
+          "rms_dbfs": -32.45,
+          "high_frequency_energy_ratio": 0.013761084415733048,
+          "clipped_fraction": 0.0,
+          "usable": true,
+          "limitations": [
+            "microphone_gain_distance_noise_and_phonetic_content_confounded"
+          ],
+          "speech_active": true,
+          "speech_method": "energy_activity_only_not_verified_speech",
+          "effort": null
+        },
+        {
+          "t": 4.0,
+          "duration": 1.0,
+          "rms_dbfs": -37.837,
+          "high_frequency_energy_ratio": 0.054011618448812124,
+          "clipped_fraction": 0.0,
+          "usable": true,
+          "limitations": [
+            "microphone_gain_distance_noise_and_phonetic_content_confounded"
+          ],
+          "speech_active": true,
+          "speech_method": "energy_activity_only_not_verified_speech",
+          "effort": null
+        },
+        {
+          "t": 5.0,
+          "duration": 1.0,
+          "rms_dbfs": -30.883,
+          "high_frequency_energy_ratio": 0.011953677667464517,
+          "clipped_fraction": 0.0,
+          "usable": true,
+          "limitations": [
+            "microphone_gain_distance_noise_and_phonetic_content_confounded"
+          ],
+          "speech_active": true,
+          "speech_method": "energy_activity_only_not_verified_speech",
+          "effort": null
+        },
+        {
+          "t": 6.0,
+          "duration": 1.0,
+          "rms_dbfs": -32.191,
+          "high_frequency_energy_ratio": 0.0022652359044509547,
+          "clipped_fraction": 0.0,
+          "usable": true,
+          "limitations": [
+            "microphone_gain_distance_noise_and_phonetic_content_confounded"
+          ],
+          "speech_active": true,
+          "speech_method": "energy_activity_only_not_verified_speech",
+          "effort": null
+        },
+        {
+          "t": 7.0,
+          "duration": 0.168,
+          "rms_dbfs": -47.659,
+          "high_frequency_energy_ratio": 0.06568315176173309,
+          "clipped_fraction": 0.0,
+          "usable": true,
+          "limitations": [
+            "microphone_gain_distance_noise_and_phonetic_content_confounded"
+          ],
+          "speech_active": true,
+          "speech_method": "energy_activity_only_not_verified_speech",
+          "effort": null
+        }
+      ],
+      "vad_windows": [
+        {
+          "t": 0.0,
+          "duration": 1.0,
+          "rms_dbfs": -39.994,
+          "high_frequency_energy_ratio": 0.09174365185976077,
+          "clipped_fraction": 0.0,
+          "usable": true,
+          "limitations": [
+            "microphone_gain_distance_noise_and_phonetic_content_confounded"
+          ],
+          "speech_active": true,
+          "speech_method": "webrtcvad_30ms_mode2",
+          "effort": null,
+          "vad_available": true
+        },
+        {
+          "t": 1.0,
+          "duration": 1.0,
+          "rms_dbfs": -34.785,
+          "high_frequency_energy_ratio": 0.022088013487201817,
+          "clipped_fraction": 0.0,
+          "usable": true,
+          "limitations": [
+            "microphone_gain_distance_noise_and_phonetic_content_confounded"
+          ],
+          "speech_active": true,
+          "speech_method": "webrtcvad_30ms_mode2",
+          "effort": null,
+          "vad_available": true
+        },
+        {
+          "t": 2.0,
+          "duration": 1.0,
+          "rms_dbfs": -29.53,
+          "high_frequency_energy_ratio": 0.006335451047879677,
+          "clipped_fraction": 0.0,
+          "usable": true,
+          "limitations": [
+            "microphone_gain_distance_noise_and_phonetic_content_confounded"
+          ],
+          "speech_active": true,
+          "speech_method": "webrtcvad_30ms_mode2",
+          "effort": null,
+          "vad_available": true
+        },
+        {
+          "t": 3.0,
+          "duration": 1.0,
+          "rms_dbfs": -32.45,
+          "high_frequency_energy_ratio": 0.013761084415733048,
+          "clipped_fraction": 0.0,
+          "usable": true,
+          "limitations": [
+            "microphone_gain_distance_noise_and_phonetic_content_confounded"
+          ],
+          "speech_active": true,
+          "speech_method": "webrtcvad_30ms_mode2",
+          "effort": null,
+          "vad_available": true
+        },
+        {
+          "t": 4.0,
+          "duration": 1.0,
+          "rms_dbfs": -37.837,
+          "high_frequency_energy_ratio": 0.054011618448812124,
+          "clipped_fraction": 0.0,
+          "usable": true,
+          "limitations": [
+            "microphone_gain_distance_noise_and_phonetic_content_confounded"
+          ],
+          "speech_active": true,
+          "speech_method": "webrtcvad_30ms_mode2",
+          "effort": null,
+          "vad_available": true
+        },
+        {
+          "t": 5.0,
+          "duration": 1.0,
+          "rms_dbfs": -30.883,
+          "high_frequency_energy_ratio": 0.011953677667464517,
+          "clipped_fraction": 0.0,
+          "usable": true,
+          "limitations": [
+            "microphone_gain_distance_noise_and_phonetic_content_confounded"
+          ],
+          "speech_active": true,
+          "speech_method": "webrtcvad_30ms_mode2",
+          "effort": null,
+          "vad_available": true
+        },
+        {
+          "t": 6.0,
+          "duration": 1.0,
+          "rms_dbfs": -32.191,
+          "high_frequency_energy_ratio": 0.0022652359044509547,
+          "clipped_fraction": 0.0,
+          "usable": true,
+          "limitations": [
+            "microphone_gain_distance_noise_and_phonetic_content_confounded"
+          ],
+          "speech_active": true,
+          "speech_method": "webrtcvad_30ms_mode2",
+          "effort": null,
+          "vad_available": true
+        },
+        {
+          "t": 7.0,
+          "duration": 0.168,
+          "rms_dbfs": -47.659,
+          "high_frequency_energy_ratio": 0.06568315176173309,
+          "clipped_fraction": 0.0,
+          "usable": true,
+          "limitations": [
+            "microphone_gain_distance_noise_and_phonetic_content_confounded"
+          ],
+          "speech_active": true,
+          "speech_method": "webrtcvad_30ms_mode2",
+          "effort": null,
+          "vad_available": true
+        }
+      ],
+      "selected_indices": [
+        0,
+        1,
+        7,
+        14,
+        21,
+        28,
+        33,
+        35
+      ],
+      "images_sent": 10,
+      "provider_seconds": 22.364002538000932,
+      "usage": {
+        "input_tokens": 14831,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 1018,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 15849
+      },
+      "provider_status": "completed",
+      "provider_calls": [
+        {
+          "seconds": 22.364002538000932,
+          "usage": {
+            "input_tokens": 14831,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 1018,
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            },
+            "total_tokens": 15849
+          },
+          "status": "completed"
+        }
+      ],
+      "model_output": {
+        "dimensions": {
+          "posture_compensation": {
+            "observable": true,
+            "score": 0,
+            "continuous_score": 0.0,
+            "confidence": 0.8,
+            "evidence": [
+              "לא נראית הטיית ראש, הרמת סנטר או שינוי יישור בולט בין פריימים 0, 1, 7, 14, 21, 28, 33, 35.",
+              "תנועות הראש מינוריות ומתאימות לדיבור רגיל ללא פיצוי יציב או חוזר."
+            ],
+            "frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "speech_related": true,
+            "independent_local_activity": false,
+            "confounds": [
+              "תנועות ראש רגילות בדיבור",
+              "שינויי תאורה קלים"
+            ]
+          },
+          "scm_lateral_recruitment": {
+            "observable": true,
+            "score": 0,
+            "continuous_score": 0.0,
+            "confidence": 0.75,
+            "evidence": [
+              "לא נראית בולטות או שינוי קווי מתאר בצידי הצוואר לאורך הפריימים הנבחרים.",
+              "הצוואר הלטראלי נשאר יציב ללא שינוי מקומי עצמאי."
+            ],
+            "frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "speech_related": true,
+            "independent_local_activity": false,
+            "confounds": [
+              "מבנה אנטומי קבוע",
+              "הצללות קלות"
+            ]
+          },
+          "anterior_submental_activity": {
+            "observable": true,
+            "score": 0,
+            "continuous_score": 0.0,
+            "confidence": 0.75,
+            "evidence": [
+              "אין שינוי בולט או דפורמציה באזור התת-סנטרי מעבר למה שמצופה מדיבור רגיל.",
+              "העור והקווים הקדמיים של הצוואר נראים יציבים בין הפריימים."
+            ],
+            "frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "speech_related": true,
+            "independent_local_activity": false,
+            "confounds": [
+              "הצללות באזור הסנטר",
+              "תנועות לסת רגילות"
+            ]
+          },
+          "shoulder_recruitment": {
+            "observable": true,
+            "score": 0,
+            "continuous_score": 0.0,
+            "confidence": 0.7,
+            "evidence": [
+              "לא נראית הרמה, קיבוע או תנועה חוזרת של הכתפיים לאורך הדיבור.",
+              "גובה הכתפיים נשאר דומה בין הפריימים."
+            ],
+            "frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "speech_related": true,
+            "independent_local_activity": false,
+            "confounds": [
+              "מדידת כתפיים יחסית לראש בלבד",
+              "שינויי תנוחה מינוריים"
+            ]
+          },
+          "jaw_compensation": {
+            "observable": true,
+            "score": 0,
+            "continuous_score": 0.0,
+            "confidence": 0.8,
+            "evidence": [
+              "תנועות הלסת קטנות וסימטריות, ללא פתיחה מוגזמת או קיבוע בולט.",
+              "הפרש פתיחת הלסת בין הפריימים תואם דיבור רגיל."
+            ],
+            "frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "speech_related": true,
+            "independent_local_activity": false,
+            "confounds": [
+              "תנועות דיבור רגילות",
+              "שונות מינורית בין פריימים"
+            ]
+          }
+        },
+        "summary": "לא נצפתה גיוס צוואר חיצוני או פיצוי בולט במהלך הדיבור בפריימים שנבדקו.",
+        "limitations": [
+          "הערכת הצוואר מבוססת על תמונה חיצונית בלבד ללא מדידת כוח או מתח פנימי.",
+          "הצללות, תנאי תאורה ותנועות ראש רגילות עלולות להשפיע על הזיהוי.",
+          "המדידה אינה מזהה שינויים פנימיים או מאמץ שאינו גלוי לעין."
+        ]
+      },
+      "jaw_explained_fraction": 0.15589732534512513,
+      "threshold_comparison": {
+        "0.15": {
+          "posture_compensation": {
+            "score": 0,
+            "reason": null
+          },
+          "scm_lateral_recruitment": {
+            "score": 0,
+            "reason": null
+          },
+          "anterior_submental_activity": {
+            "score": 0,
+            "reason": null
+          },
+          "shoulder_recruitment": {
+            "score": 0,
+            "reason": null
+          },
+          "jaw_compensation": {
+            "score": 0,
+            "reason": null
+          }
+        },
+        "0.1": {
+          "posture_compensation": {
+            "score": 0,
+            "reason": null
+          },
+          "scm_lateral_recruitment": {
+            "score": 0,
+            "reason": null
+          },
+          "anterior_submental_activity": {
+            "score": 0,
+            "reason": null
+          },
+          "shoulder_recruitment": {
+            "score": 0,
+            "reason": null
+          },
+          "jaw_compensation": {
+            "score": 0,
+            "reason": null
+          }
+        },
+        "0.05": {
+          "posture_compensation": {
+            "score": 0,
+            "reason": null
+          },
+          "scm_lateral_recruitment": {
+            "score": 0,
+            "reason": null
+          },
+          "anterior_submental_activity": {
+            "score": 0,
+            "reason": null
+          },
+          "shoulder_recruitment": {
+            "score": 0,
+            "reason": null
+          },
+          "jaw_compensation": {
+            "score": 0,
+            "reason": null
+          }
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "One participant; no physiological effort ground truth",
+    "Audio/video share container timing; synchronization not independently verified",
+    "OpenCV resize/JPEG approximates browser encoding; not browser throughput test",
+    "VAD speech windows do not validate vocal effort",
+    "No reported effort-stage labels were sent to the provider"
+  ]
+}

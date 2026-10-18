@@ -1,0 +1,18 @@
+[
+  {
+    "mode": "desktop",
+    "parallel_start_seconds": 0.06744362199970055,
+    "neck_visible_on_voice_failure": true,
+    "automatic_5_second_stop": true,
+    "20_second_timeout_visible": true,
+    "errors": []
+  },
+  {
+    "mode": "mobile",
+    "parallel_start_seconds": 0.08321374299703166,
+    "neck_visible_on_voice_failure": true,
+    "automatic_5_second_stop": true,
+    "20_second_timeout_visible": true,
+    "errors": []
+  }
+]

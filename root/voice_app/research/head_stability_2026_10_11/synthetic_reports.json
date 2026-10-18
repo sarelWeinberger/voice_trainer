@@ -1,0 +1,330 @@
+{
+  "still": {
+    "version": "head-movement-stability-v1",
+    "status": "measured",
+    "source": "browser_patch_tracking",
+    "unit": "percent_image_width",
+    "effort_score": null,
+    "windows": [
+      {
+        "start": 0.0,
+        "end": 2.0,
+        "status": "measured",
+        "amplitude_percent_image_width": 0.0,
+        "dominant_frequency_hz": null,
+        "background_amplitude_percent_image_width": 0.0,
+        "band_hz": [
+          2,
+          8
+        ],
+        "usable_samples": 59
+      },
+      {
+        "start": 1.0,
+        "end": 3.0,
+        "status": "measured",
+        "amplitude_percent_image_width": 0.0,
+        "dominant_frequency_hz": null,
+        "background_amplitude_percent_image_width": 0.0,
+        "band_hz": [
+          2,
+          8
+        ],
+        "usable_samples": 60
+      },
+      {
+        "start": 2.0,
+        "end": 4.0,
+        "status": "measured",
+        "amplitude_percent_image_width": 0.0,
+        "dominant_frequency_hz": null,
+        "background_amplitude_percent_image_width": 0.0,
+        "band_hz": [
+          2,
+          8
+        ],
+        "usable_samples": 60
+      },
+      {
+        "start": 3.0,
+        "end": 5.0,
+        "status": "measured",
+        "amplitude_percent_image_width": 0.0,
+        "dominant_frequency_hz": null,
+        "background_amplitude_percent_image_width": 0.0,
+        "band_hz": [
+          2,
+          8
+        ],
+        "usable_samples": 60
+      },
+      {
+        "start": 4.0,
+        "end": 6.0,
+        "status": "measured",
+        "amplitude_percent_image_width": 0.0,
+        "dominant_frequency_hz": null,
+        "background_amplitude_percent_image_width": 0.0,
+        "band_hz": [
+          2,
+          8
+        ],
+        "usable_samples": 60
+      }
+    ],
+    "sample_count": 180,
+    "limitations": [
+      "Descriptive image oscillation; not muscle tension or a tremor diagnosis",
+      "Translation control does not fully remove camera rotation, rolling shutter or articulation",
+      "Frequency band and tracking gates are engineering choices, not clinically validated"
+    ],
+    "effective_fps": 30.0,
+    "reason": null
+  },
+  "shake": {
+    "version": "head-movement-stability-v1",
+    "status": "measured",
+    "source": "browser_patch_tracking",
+    "unit": "percent_image_width",
+    "effort_score": null,
+    "windows": [
+      {
+        "start": 0.0,
+        "end": 2.0,
+        "status": "measured",
+        "amplitude_percent_image_width": 0.50072,
+        "dominant_frequency_hz": 4.58,
+        "background_amplitude_percent_image_width": 0.0,
+        "band_hz": [
+          2,
+          8
+        ],
+        "usable_samples": 59
+      },
+      {
+        "start": 1.0,
+        "end": 3.0,
+        "status": "measured",
+        "amplitude_percent_image_width": 0.50769,
+        "dominant_frequency_hz": 4.5,
+        "background_amplitude_percent_image_width": 0.0,
+        "band_hz": [
+          2,
+          8
+        ],
+        "usable_samples": 60
+      },
+      {
+        "start": 2.0,
+        "end": 4.0,
+        "status": "measured",
+        "amplitude_percent_image_width": 0.49925,
+        "dominant_frequency_hz": 4.5,
+        "background_amplitude_percent_image_width": 0.0,
+        "band_hz": [
+          2,
+          8
+        ],
+        "usable_samples": 60
+      },
+      {
+        "start": 3.0,
+        "end": 5.0,
+        "status": "measured",
+        "amplitude_percent_image_width": 0.49028,
+        "dominant_frequency_hz": 4.5,
+        "background_amplitude_percent_image_width": 0.0,
+        "band_hz": [
+          2,
+          8
+        ],
+        "usable_samples": 60
+      },
+      {
+        "start": 4.0,
+        "end": 6.0,
+        "status": "measured",
+        "amplitude_percent_image_width": 0.49387,
+        "dominant_frequency_hz": 4.5,
+        "background_amplitude_percent_image_width": 0.0,
+        "band_hz": [
+          2,
+          8
+        ],
+        "usable_samples": 60
+      }
+    ],
+    "sample_count": 180,
+    "limitations": [
+      "Descriptive image oscillation; not muscle tension or a tremor diagnosis",
+      "Translation control does not fully remove camera rotation, rolling shutter or articulation",
+      "Frequency band and tracking gates are engineering choices, not clinically validated"
+    ],
+    "effective_fps": 30.0,
+    "reason": null
+  },
+  "slow": {
+    "version": "head-movement-stability-v1",
+    "status": "measured",
+    "source": "browser_patch_tracking",
+    "unit": "percent_image_width",
+    "effort_score": null,
+    "windows": [
+      {
+        "start": 0.0,
+        "end": 2.0,
+        "status": "measured",
+        "amplitude_percent_image_width": 0.00208,
+        "dominant_frequency_hz": 2.03,
+        "background_amplitude_percent_image_width": 0.0,
+        "band_hz": [
+          2,
+          8
+        ],
+        "usable_samples": 59
+      },
+      {
+        "start": 1.0,
+        "end": 3.0,
+        "status": "measured",
+        "amplitude_percent_image_width": 0.00177,
+        "dominant_frequency_hz": 2.0,
+        "background_amplitude_percent_image_width": 0.0,
+        "band_hz": [
+          2,
+          8
+        ],
+        "usable_samples": 60
+      },
+      {
+        "start": 2.0,
+        "end": 4.0,
+        "status": "measured",
+        "amplitude_percent_image_width": 0.00196,
+        "dominant_frequency_hz": 2.0,
+        "background_amplitude_percent_image_width": 0.0,
+        "band_hz": [
+          2,
+          8
+        ],
+        "usable_samples": 60
+      },
+      {
+        "start": 3.0,
+        "end": 5.0,
+        "status": "measured",
+        "amplitude_percent_image_width": 0.00167,
+        "dominant_frequency_hz": 2.0,
+        "background_amplitude_percent_image_width": 0.0,
+        "band_hz": [
+          2,
+          8
+        ],
+        "usable_samples": 60
+      },
+      {
+        "start": 4.0,
+        "end": 6.0,
+        "status": "measured",
+        "amplitude_percent_image_width": 0.00196,
+        "dominant_frequency_hz": 2.0,
+        "background_amplitude_percent_image_width": 0.0,
+        "band_hz": [
+          2,
+          8
+        ],
+        "usable_samples": 60
+      }
+    ],
+    "sample_count": 180,
+    "limitations": [
+      "Descriptive image oscillation; not muscle tension or a tremor diagnosis",
+      "Translation control does not fully remove camera rotation, rolling shutter or articulation",
+      "Frequency band and tracking gates are engineering choices, not clinically validated"
+    ],
+    "effective_fps": 30.0,
+    "reason": null
+  },
+  "camera": {
+    "version": "head-movement-stability-v1",
+    "status": "measured",
+    "source": "browser_patch_tracking",
+    "unit": "percent_image_width",
+    "effort_score": null,
+    "windows": [
+      {
+        "start": 0.0,
+        "end": 2.0,
+        "status": "measured",
+        "amplitude_percent_image_width": 0.01299,
+        "dominant_frequency_hz": 2.03,
+        "background_amplitude_percent_image_width": 0.50029,
+        "band_hz": [
+          2,
+          8
+        ],
+        "usable_samples": 59
+      },
+      {
+        "start": 1.0,
+        "end": 3.0,
+        "status": "measured",
+        "amplitude_percent_image_width": 0.0118,
+        "dominant_frequency_hz": 2.0,
+        "background_amplitude_percent_image_width": 0.5069,
+        "band_hz": [
+          2,
+          8
+        ],
+        "usable_samples": 60
+      },
+      {
+        "start": 2.0,
+        "end": 4.0,
+        "status": "measured",
+        "amplitude_percent_image_width": 0.00274,
+        "dominant_frequency_hz": 2.0,
+        "background_amplitude_percent_image_width": 0.49886,
+        "band_hz": [
+          2,
+          8
+        ],
+        "usable_samples": 60
+      },
+      {
+        "start": 3.0,
+        "end": 5.0,
+        "status": "measured",
+        "amplitude_percent_image_width": 0.0024,
+        "dominant_frequency_hz": 2.0,
+        "background_amplitude_percent_image_width": 0.49021,
+        "band_hz": [
+          2,
+          8
+        ],
+        "usable_samples": 60
+      },
+      {
+        "start": 4.0,
+        "end": 6.0,
+        "status": "measured",
+        "amplitude_percent_image_width": 0.00234,
+        "dominant_frequency_hz": 2.5,
+        "background_amplitude_percent_image_width": 0.49384,
+        "band_hz": [
+          2,
+          8
+        ],
+        "usable_samples": 60
+      }
+    ],
+    "sample_count": 180,
+    "limitations": [
+      "Descriptive image oscillation; not muscle tension or a tremor diagnosis",
+      "Translation control does not fully remove camera rotation, rolling shutter or articulation",
+      "Frequency band and tracking gates are engineering choices, not clinically validated"
+    ],
+    "effective_fps": 30.0,
+    "reason": null
+  }
+}

@@ -1,0 +1,12 @@
+[
+  {"name":"relaxed_speech","scores":[0,0,0,0,0],"local_independent":true},
+  {"name":"large_jaw_motion","scores":[0,0,2,0,2],"local_independent":false},
+  {"name":"large_head_motion","scores":[2,2,2,0,0],"local_independent":false},
+  {"name":"shoulder_elevation","scores":[0,0,0,2,0],"local_independent":true},
+  {"name":"lateral_tightening","scores":[0,2,0,0,0],"local_independent":true},
+  {"name":"poor_lighting","scores":[0,0,0,0,0],"local_independent":true,"quality":0.05},
+  {"name":"camera_motion","scores":[2,2,2,2,2],"local_independent":false,"quality":0.1},
+  {"name":"neck_occlusion","scores":[0,1,1,0,0],"local_independent":true,"neck_hidden":true},
+  {"name":"shoulders_cropped","scores":[0,0,0,2,0],"local_independent":true,"shoulders_hidden":true},
+  {"name":"silent_movement","scores":[2,2,2,2,2],"local_independent":true,"speech":"silent"}
+]

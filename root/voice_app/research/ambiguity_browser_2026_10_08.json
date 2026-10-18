@@ -1,0 +1,20 @@
+[
+  {
+    "mobile": false,
+    "null_preserved": true,
+    "ambiguity_shown": true,
+    "zero_preserved": true,
+    "partial_shown": true,
+    "script_version": "neck-analysis-v1.js?v=12",
+    "javascript_errors": []
+  },
+  {
+    "mobile": true,
+    "null_preserved": true,
+    "ambiguity_shown": true,
+    "zero_preserved": true,
+    "partial_shown": true,
+    "script_version": "neck-analysis-v1.js?v=12",
+    "javascript_errors": []
+  }
+]

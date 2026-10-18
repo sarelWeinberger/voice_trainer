@@ -1591,6 +1591,21 @@ def _build_model(model_type):
 # GRBASClassifier
 # ---------------------------------------------------------------------------
 
+class _ConstantClassifier:
+    """Degenerate model used when a GRBAS dimension has only one class in the
+    training data (common with small real datasets). Always predicts that
+    class so training does not crash on a single-valued target."""
+
+    def __init__(self, value):
+        self.value = int(value)
+
+    def fit(self, X, y):  # noqa: D401 - sklearn-compatible signature
+        return self
+
+    def predict(self, X):
+        return np.full(len(X), self.value, dtype=int)
+
+
 class GRBASClassifier:
     """GRBAS voice quality classifier.
 
@@ -1606,18 +1621,24 @@ class GRBASClassifier:
         self.model_type = model_type
         self.models     = {}
         self.is_trained = False
+        self.metadata   = {}
 
     def fit(self, X, y_dict):
         """Train one model per GRBAS dimension.
 
         Args:
             X:      np.ndarray of shape (n_samples, n_features)
-            y_dict: dict with keys G,R,B,A,S, each a 1-D array of int labels (1–5)
+            y_dict: dict with keys G,R,B,A,S, each a 1-D array of int labels (0–3)
         """
         self.models = {}
         for dim in "GRBAS":
+            y = np.asarray(y_dict[dim])
+            if len(np.unique(y)) < 2:
+                # A single class -- nothing for a classifier to separate.
+                self.models[dim] = _ConstantClassifier(y[0] if len(y) else 0)
+                continue
             model = _build_model(self.model_type)
-            model.fit(X, y_dict[dim])
+            model.fit(X, y)
             self.models[dim] = model
         self.is_trained = True
 
@@ -1640,7 +1661,7 @@ class GRBASClassifier:
     def save(self, path):
         joblib.dump(
             {"models": self.models, "is_trained": self.is_trained,
-             "model_type": self.model_type},
+             "model_type": self.model_type, "metadata": self.metadata},
             path,
         )
 
@@ -1650,3 +1671,4 @@ class GRBASClassifier:
             self.models     = data["models"]
             self.is_trained = data["is_trained"]
             self.model_type = data.get("model_type", "ensemble")
+            self.metadata   = data.get("metadata", {})

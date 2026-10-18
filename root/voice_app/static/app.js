@@ -1,50 +1,32 @@
 // Voice Training App - Frontend Logic
 
-// Interface selection logic with localStorage persistence
-(function() {
-    const savedUI = localStorage.getItem('preferred_ui');
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+// Interface selection: mobile devices go to the phone UI automatically, and a
+// button in the top bar switches manually. No blocking modal on first load --
+// asking "which interface?" before the user has seen anything is a dead end.
+(function () {
+    const savedUI = localStorage.getItem("preferred_ui");
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i
+        .test(navigator.userAgent);
 
-    // Auto-redirect if preference is mobile or device is mobile with no preference
-    if (savedUI === 'mobile' || (isMobile && savedUI !== 'desktop')) {
-        window.location.href = 'mobile.html';
+    if (savedUI === "mobile" || (isMobile && savedUI !== "desktop")) {
+        window.location.href = "mobile.html";
         return;
     }
+    localStorage.setItem("preferred_ui", "desktop");
 
-    // If user already chose desktop, skip the modal
-    if (savedUI === 'desktop') {
-        const modal = document.getElementById('interface-select-modal');
-        if (modal) modal.style.display = 'none';
-    }
-
-    // Set up modal buttons when DOM is ready
-    function setupModal() {
-        const modal = document.getElementById('interface-select-modal');
-        if (!modal) return;
-
-        if (savedUI === 'desktop') {
-            modal.style.display = 'none';
-            return;
-        }
-
-        document.body.style.overflow = 'hidden';
-
-        document.getElementById('choose-desktop').addEventListener('click', function() {
-            localStorage.setItem('preferred_ui', 'desktop');
-            modal.style.display = 'none';
-            document.body.style.overflow = '';
-        });
-
-        document.getElementById('choose-mobile').addEventListener('click', function() {
-            localStorage.setItem('preferred_ui', 'mobile');
-            window.location.href = 'mobile.html';
+    function bindSwitch() {
+        const btn = document.getElementById("switch-to-mobile");
+        if (!btn) return;
+        btn.addEventListener("click", () => {
+            localStorage.setItem("preferred_ui", "mobile");
+            window.location.href = "mobile.html";
         });
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', setupModal);
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", bindSwitch);
     } else {
-        setupModal();
+        bindSwitch();
     }
 })();
 
@@ -73,7 +55,11 @@ let camera = null;
 let initInProgress = false;
 let neckEffortInterval = null;
 let neckEffortRequestInFlight = false;
+let neckSampler = null;
+let neckMotionSeed = null;
 let neckCaptureCanvas = null;
+// How often a camera frame is sent to the neck-effort engine while recording.
+const NECK_FRAME_INTERVAL_MS = 200;
 
 // ---- DOM refs ----
 const video = document.getElementById("video");
@@ -149,7 +135,7 @@ function initFaceMesh() {
 
         faceMesh.setOptions({
             maxNumFaces: 1,
-            refineLandmarks: true,
+            refineLandmarks: false,
             minDetectionConfidence: 0.5,
             minTrackingConfidence: 0.5,
         });
@@ -158,7 +144,7 @@ function initFaceMesh() {
 
         camera = new Camera(video, {
             onFrame: async () => {
-                await faceMesh.send({ image: video });
+                if (!isRecording || neckSampler?.requestMotionReference?.()) await faceMesh.send({ image: video });
             },
             width: 640,
             height: 480,
@@ -176,6 +162,8 @@ function onFaceResults(results) {
 
     if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
         const landmarks = results.multiFaceLandmarks[0];
+        neckMotionSeed = {at: Date.now(), points: [10,151,168,33,263,1].map(i=>[landmarks[i].x,landmarks[i].y])};
+        if (isRecording) neckSampler?.updateMotionReference?.(neckMotionSeed);
 
         // Draw face mesh
         drawConnectors(faceCtx, landmarks, FACEMESH_TESSELATION, {
@@ -199,6 +187,8 @@ function onFaceResults(results) {
             `סימטריית שפתיים: ${metrics.lipSymmetry.toFixed(1)}% | ` +
             `מתח: ${metrics.facialTension.toFixed(1)}%`;
     } else {
+        neckMotionSeed = null;
+        if (isRecording) neckSampler?.updateMotionReference?.(null);
         faceMetrics.style.display = "none";
     }
 }
@@ -282,20 +272,52 @@ async function startNeckEffortRecordingSession() {
     }
 }
 
-async function stopNeckEffortRecordingSession() {
-    if (typeof getAuthHeaders !== "function") return null;
+async function stopNeckEffortRecordingSession(audioBlob, audioOffsetSeconds = 0) {
+    const sampler=neckSampler,sessionId=neckEffortSessionId;
+    await sampler?.stop();
+    const captureTransport=sampler?.transportDiagnostics?.();
+    const localMotion = await sampler?.localMotionReport?.();
     const headers = getAuthHeaders();
-    if (!headers.Authorization) return null;
+    const container = document.getElementById("neck-analysis-v1-results");
+    function show(packet) {
+        if (sessionId && sessionId!==neckEffortSessionId) return packet;
+        if(packet.neckAnalysis){packet.neckAnalysis.validation_status ??= 'not_clinically_validated';packet.neckAnalysis.confidence_kind ??= 'uncalibrated_evidence_index';
+            if(captureTransport){packet.neckAnalysis.diagnostics ||= {};packet.neckAnalysis.diagnostics.capture_transport ??= captureTransport;}}
+        container.hidden = false;
+        updateNeckEffortUI(packet);
+        renderNeckAnalysis(container, packet, {viewer: typeof _currentUser !== "undefined" ? _currentUser : null});
+        activateTab("results");
+        return packet;
+    }
+    if (localMotion) show({model_version:'neck-analysis-v1',neckAnalysis:{version:'neck-analysis-v1',status:'pending',dimensions:{},movement_stability:localMotion}});
+    if (!headers.Authorization) return localMotion ? show({model_version:'neck-analysis-v1',neckAnalysis:{version:'neck-analysis-v1',status:'error',dimensions:{},movement_stability:localMotion}}) : null;
     try {
+        const body = new FormData();
+        if (sessionId) body.append('session_id', sessionId);
+        if (captureTransport) body.append('capture_transport',JSON.stringify(captureTransport));
+        const motionTrace = sampler?.motionTrace?.();
+        if (motionTrace) body.append('motion_trace', JSON.stringify(motionTrace));
+        if (audioBlob) {
+            body.append('audio', audioBlob, 'neck-context.wav');
+            body.append('audio_offset_seconds', String(audioOffsetSeconds));
+        }
         const resp = await fetch("/api/neck-effort/recording/stop", {
-            method: "POST",
-            headers: headers,
+            method: "POST", headers, body, signal: AbortSignal.timeout(55000)
         });
-        if (!resp.ok) return null;
-        return await resp.json();
-    } catch (err) {
-        console.warn("Neck effort recording stop failed:", err);
-        return null;
+        if (!resp.ok) throw new Error("neck_service_http_" + resp.status);
+        const result = await resp.json();
+        if (!result.neck_effort) throw new Error("neck_result_missing");
+        if (localMotion && !result.neck_effort.neckAnalysis?.movement_stability) {
+            result.neck_effort.neckAnalysis ||= {version:'neck-analysis-v1',status:'error',dimensions:{}};
+            result.neck_effort.neckAnalysis.movement_stability=localMotion;
+        }
+        return show(result.neck_effort);
+    } catch (error) {
+        return show({model_version: "neck-analysis-v1", reasons: [error.name === "TimeoutError" ? "analysis_timeout" : "neck_service_unavailable"],
+            neckAnalysis: {version: "neck-analysis-v1", status: "error", dimensions: {},
+                overall: {continuous_score: null, category: null, confidence: 0},
+                movement_stability: localMotion || {},
+                summary: "ניתוח הצוואר לא הושלם. אפשר לנסות הקלטה חדשה."}});
     }
 }
 
@@ -304,11 +326,14 @@ function startNeckEffortMonitoring() {
     neckCaptureCanvas = document.createElement("canvas");
     neckCaptureCanvas.width = 480;
     neckCaptureCanvas.height = 360;
-    neckEffortInterval = window.setInterval(captureNeckEffortFrame, 350);
-    captureNeckEffortFrame();
+    // Collect temporal evidence at up to 5fps; scoring starts after recording.
+    neckSampler = new NeckCapture({video,canvas:neckCaptureCanvas,sessionId:neckEffortSessionId,
+        startedAt:recordingStart,motionSeed:neckMotionSeed,headers:getAuthHeaders,onResult:updateNeckEffortUI});
+    neckSampler.start();
 }
 
-function stopNeckEffortMonitoring() {
+function stopNeckEffortMonitoring(cancel = true) {
+    if (cancel) neckSampler?.cancel();
     if (neckEffortInterval) {
         window.clearInterval(neckEffortInterval);
         neckEffortInterval = null;
@@ -358,6 +383,14 @@ async function captureNeckEffortFrame() {
         }
 
         const data = await resp.json();
+        // The engine is making progress as long as it answers with a real
+        // mode; "running" means observable tracking has finished calibration.
+        if (data.mode === "calibrating" || data.mode === "running" || data.mode === "no_score") {
+            neckEffortProgressing = true;
+        }
+        if (data.mode === "running") {
+            neckEffortScored = true;
+        }
         updateNeckEffortUI(data);
     } catch (err) {
         console.warn("Neck effort analysis failed:", err);
@@ -396,6 +429,16 @@ function updateNeckEffortUI(data) {
         return;
     }
 
+    if (data.model_version === "neck-analysis-v1") {
+        neckEffortMode.textContent = data.neckAnalysis?.status === 'pending' ? 'ממתין לתצפיות' : data.mode === "error" || data.neckAnalysis?.status === "error" ? "נכשל" : data.mode === "complete" || data.neckAnalysis ? "הסתיים" : "אוסף ראיות";
+        neckEffortScore.textContent = "—";
+        neckEffortScore.className = "neck-effort-score";
+        neckEffortLabel.textContent = "תצפיות התנוחה, הצוואר והלסת יוצגו בסיום ההקלטה";
+        neckEffortConfidence.textContent = data.neckAnalysis ? "פרטי התוצאה מופיעים בלשונית תוצאות." : "איכות מעקב בתמונה (לא התקדמות הניתוח): " + Math.round((data.confidence || 0) * 100) + "%";
+        neckEffortReasons.textContent = "שמרו את הפנים, הצוואר והכתפיים בתמונה.";
+        if (neckEffortFeedback) neckEffortFeedback.replaceChildren();
+        return;
+    }
     if (data.mode === "calibrating") {
         const progress = Math.round((data.calibration_progress || 0) * 100);
         neckEffortMode.textContent = "כיול";
@@ -450,10 +493,10 @@ function updateNeckEffortUI(data) {
 
 function formatNeckEffortScoreLabel(score, rawLabel) {
     const byScore = {
-        0: "לא נראים סימני מאמץ בולטים",
-        1: "ייתכן מאמץ קל",
-        2: "ייתכן מאמץ בינוני",
-        3: "ייתכן מאמץ משמעותי",
+        0: "עומס נצפה מזערי",
+        1: "עומס נצפה קל",
+        2: "עומס נצפה בינוני",
+        3: "עומס נצפה גבוה",
     };
     const byRawLabel = {
         appears_relaxed: byScore[0],
@@ -548,6 +591,13 @@ function updateNeckEffortFeedback(score, reasons) {
 }
 
 // ---- Audio Recording ----
+// Recording duration is independent of analysis. Never extend for a neck score.
+const MAX_RECORDING_MS = 20000;
+let recordingLimitMs = 5000;
+let neckEffortScored = false;
+let neckEffortProgressing = false;
+let recordingExtended = false;
+
 recordBtn.addEventListener("click", toggleRecording);
 
 function toggleRecording() {
@@ -565,15 +615,21 @@ async function startRecording() {
     }
 
     audioChunks = [];
+    document.getElementById("neck-analysis-v1-results").hidden = true;
 
     // Use AudioContext to capture WAV-compatible audio
     const audioContext = new AudioContext({ sampleRate: 44100 });
     const source = audioContext.createMediaStreamSource(audioStream);
     const processor = audioContext.createScriptProcessor(4096, 1, 1);
     const pcmChunks = [];
+    recordBtn._neckAudioOffset = 0;
 
     processor.onaudioprocess = (e) => {
         if (isRecording) {
+            if (!pcmChunks.length) {
+                // Approximate the first input buffer start; device/callback latency remains unverified.
+                recordBtn._neckAudioOffset = (Date.now() - recordingStart) / 1000 - e.inputBuffer.duration;
+            }
             const channelData = e.inputBuffer.getChannelData(0);
             pcmChunks.push(new Float32Array(channelData));
         }
@@ -585,16 +641,26 @@ async function startRecording() {
     await resetNeckEffortSession();
     await startNeckEffortRecordingSession();
     isRecording = true;
-    startNeckEffortMonitoring();
+    neckEffortScored = false;
+    neckEffortProgressing = false;
+    recordingExtended = false;
+    recordingLimitMs = Math.min(MAX_RECORDING_MS, Math.max(5000, Number(document.getElementById("recording-duration").value) * 1000));
     recordingStart = Date.now();
+    startNeckEffortMonitoring();
     recordBtn.classList.add("recording");
     recordLabel.textContent = "עצור הקלטה";
     timerEl.hidden = false;
-    setStatus("מקליט...");
+    setStatus("מקליט... ההקלטה תיעצר אחרי " + recordingLimitMs / 1000 + " שניות.");
 
     timerInterval = setInterval(() => {
-        const elapsed = ((Date.now() - recordingStart) / 1000).toFixed(1);
-        timerEl.textContent = elapsed + "s";
+        const elapsedMs = Date.now() - recordingStart;
+        timerEl.textContent = elapsedMs < recordingLimitMs
+            ? (elapsedMs / 1000).toFixed(1) + "s / " + (recordingLimitMs / 1000) + "s"
+            : (elapsedMs / 1000).toFixed(1) + "s";
+
+        if (!isRecording || elapsedMs < recordingLimitMs) return;
+
+        stopRecording();
     }, 100);
 
     // Store references for stop
@@ -623,9 +689,15 @@ async function stopRecording() {
     audioContext.close();
 
     setStatus("מנתח...");
-    stopNeckEffortMonitoring();
-    await stopNeckEffortRecordingSession();
-    sendAudio(wavBlob);
+    stopNeckEffortMonitoring(false);
+    recordBtn.disabled = true;
+    try {
+        const [neck, voice] = await Promise.all([stopNeckEffortRecordingSession(wavBlob, recordBtn._neckAudioOffset), sendAudio(wavBlob)]);
+        if (voice && neck) { voice.neck_effort = neck; displayResults(voice); }
+        setStatus(neck?.neckAnalysis?.status === "error"
+            ? "ניתוח הצוואר לא הושלם; פרטים מופיעים בתוצאות."
+            : voice ? "הניתוח הושלם." : "תוצאת הצוואר מוצגת; ניתוח הקול לא הושלם.", !voice || neck?.neckAnalysis?.status === "error");
+    } finally { recordBtn.disabled = false; }
 }
 
 function pcmToWav(pcmChunks, sampleRate) {
@@ -683,6 +755,7 @@ async function sendAudio(blob) {
     try {
         const headers = typeof getAuthHeaders === "function" ? getAuthHeaders() : {};
         const resp = await fetch("/api/analyze", {
+            signal: AbortSignal.timeout(20000),
             method: "POST",
             body: formData,
             headers: headers,
@@ -698,9 +771,15 @@ async function sendAudio(blob) {
         displayResults(data);
         saveToHistory(data);
         loadCloudHistory();
+        // Take the user straight to what they just earned, and flag the tabs
+        // that quietly gained content while they were on the results tab.
+        activateTab("results");
+        markTabUpdated("tips");
+        markTabUpdated("progress");
         setStatus("Analysis complete.");
+        return data;
     } catch (err) {
-        setStatus("Error: " + err.message, true);
+        setStatus(err.name === "TimeoutError" ? "ניתוח הקול עבר את זמן ההמתנה. נסו שוב." : "Error: " + err.message, true);
     }
 }
 
@@ -717,7 +796,30 @@ function displayResults(data) {
         scoresList.appendChild(createScoreRow(dim, score));
     }
 
-    const neckScore = data.neck_effort && Number.isInteger(data.neck_effort.score)
+    const effortPanel = document.getElementById("observable-effort-results");
+    if (effortPanel) {
+        effortPanel.replaceChildren();
+        const report = data.observable_effort;
+        if (report) {
+            const intro = document.createElement("p");
+            intro.textContent = "מדדים נצפים לאורך זמן — גרסת מחקר. אין ציון מאמץ מאומת; עוצמת ההקלטה מושפעת גם מהמיקרופון והמרחק. הסנכרון בהקלטה החיה אינו מאומת.";
+            effortPanel.appendChild(intro);
+            const table = document.createElement("table");
+            const heading = table.insertRow();
+            ["זמן (שניות)", "עוצמה (dBFS)", "יחס אנרגיה מעל 1kHz", "איכות"].forEach(label => { const cell = document.createElement("th"); cell.textContent = label; heading.appendChild(cell); });
+            (report.audio_timeline || []).forEach(row => {
+                const tr = table.insertRow();
+                [row.t.toFixed(1), row.rms_dbfs, row.high_frequency_energy_ratio === null ? "—" : row.high_frequency_energy_ratio.toFixed(3), row.usable ? "ניתן למדידה" : "שקט / רוויה"].forEach(value => { tr.insertCell().textContent = value; });
+            });
+            effortPanel.appendChild(table);
+        }
+    }
+    const neckSection = document.getElementById("neck-analysis-v1-results");
+    if (neckSection) {
+        if (data.neck_effort) neckSection.hidden = false;
+        if (data.neck_effort) renderNeckAnalysis(neckSection, data.neck_effort, {viewer: typeof _currentUser !== "undefined" ? _currentUser : null});
+    }
+    const neckScore = data.neck_effort && !data.neck_effort.neckAnalysis && data.neck_effort.model_version !== "neck-analysis-v1" && Number.isInteger(data.neck_effort.score)
         ? data.neck_effort.score
         : null;
     if (neckScore !== null) {
@@ -805,7 +907,7 @@ function renderCombinedSummary(data) {
 
     const voiceGrade = Number(data.scores?.G ?? 0);
     const strain = Number(data.scores?.S ?? 0);
-    const neckEffort = data.neck_effort && Number.isInteger(data.neck_effort.score)
+    const neckEffort = data.neck_effort && !data.neck_effort.neckAnalysis && data.neck_effort.model_version !== "neck-analysis-v1" && Number.isInteger(data.neck_effort.score)
         ? data.neck_effort.score
         : null;
     const overallLevel = Math.max(voiceGrade, strain, neckEffort ?? 0);
@@ -1057,8 +1159,8 @@ function showImprovementBanner(data) {
     }
 
     // Check neck effort improvement
-    const prevNeck = prev.neck_effort && Number.isInteger(prev.neck_effort.score) ? prev.neck_effort.score : null;
-    const curNeck = data.neck_effort && Number.isInteger(data.neck_effort.score) ? data.neck_effort.score : null;
+    const prevNeck = prev.neck_effort && !prev.neck_effort.neckAnalysis && prev.neck_effort.model_version !== "neck-analysis-v1" && Number.isInteger(prev.neck_effort.score) ? prev.neck_effort.score : null;
+    const curNeck = data.neck_effort && !data.neck_effort.neckAnalysis && data.neck_effort.model_version !== "neck-analysis-v1" && Number.isInteger(data.neck_effort.score) ? data.neck_effort.score : null;
     if (prevNeck !== null && curNeck !== null && curNeck < prevNeck) {
         improved.push({ dim: "N", from: prevNeck, to: curNeck });
     }
@@ -1098,6 +1200,7 @@ function saveToHistory(data) {
         scores: data.scores,
         features: data.features,
         neck_effort: data.neck_effort || null,
+        observable_effort: data.observable_effort || null,
     });
     // Keep last 50 entries
     if (history.length > 50) history.length = 50;
@@ -1131,7 +1234,7 @@ function loadHistory() {
             const s = entry.scores[dim];
             scoresHtml += `<span class="history-score grade-${s}">${dim}:${s}</span>`;
         }
-        if (entry.neck_effort && Number.isInteger(entry.neck_effort.score)) {
+        if (entry.neck_effort && !entry.neck_effort.neckAnalysis && entry.neck_effort.model_version !== "neck-analysis-v1" && Number.isInteger(entry.neck_effort.score)) {
             scoresHtml += `<span class="history-score grade-${entry.neck_effort.score}">N:${entry.neck_effort.score}</span>`;
         }
 
@@ -1172,6 +1275,7 @@ async function loadCloudHistory() {
             renderHistory(data.history);
             renderProgressChart(data.history);
             updateQuickStats(data.history);
+            syncTabEmptyStates();
         }
     } catch (err) {
         console.warn("Cloud history load failed:", err);
@@ -1227,7 +1331,7 @@ function renderHistory(entries) {
             const s = entry.scores[dim];
             scoresHtml += `<span class="history-score grade-${s}">${dim}:${s}</span>`;
         }
-        if (entry.neck_effort && Number.isInteger(entry.neck_effort.score)) {
+        if (entry.neck_effort && !entry.neck_effort.neckAnalysis && entry.neck_effort.model_version !== "neck-analysis-v1" && Number.isInteger(entry.neck_effort.score)) {
             scoresHtml += `<span class="history-score grade-${entry.neck_effort.score}">N:${entry.neck_effort.score}</span>`;
         }
 
@@ -1245,6 +1349,13 @@ function renderHistory(entries) {
 // ---- Load History Entry into Results ----
 
 // ---- Progress Chart ----
+// Dimensions the user has toggled off by clicking the legend, plus the state
+// needed to redraw the chart without re-fetching history.
+const progressHiddenDims = new Set();
+let progressChartEntries = null;
+let progressLegendHits = [];
+let progressLegendBound = false;
+
 function renderProgressChart(entries) {
     if (!progressPanel || !progressChart || !entries || entries.length < 2) {
         if (progressPanel) progressPanel.hidden = true;
@@ -1252,47 +1363,168 @@ function renderProgressChart(entries) {
     }
 
     progressPanel.hidden = false;
+    progressChartEntries = entries;
+    _bindProgressLegend();
 
     // Defer drawing to next frame so the browser can layout the now-visible panel
     requestAnimationFrame(() => _drawProgressChart(entries));
 }
 
+/** Clicking a legend entry hides or re-shows that line. */
+function _bindProgressLegend() {
+    if (progressLegendBound || !progressChart) return;
+    progressLegendBound = true;
+
+    progressChart.addEventListener("click", (ev) => {
+        const rect = progressChart.getBoundingClientRect();
+        const x = ev.clientX - rect.left;
+        const y = ev.clientY - rect.top;
+        const hit = progressLegendHits.find(
+            (r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h
+        );
+        if (!hit || !progressChartEntries) return;
+
+        if (progressHiddenDims.has(hit.key)) progressHiddenDims.delete(hit.key);
+        else progressHiddenDims.add(hit.key);
+        _drawProgressChart(progressChartEntries);
+    });
+
+    progressChart.addEventListener("mousemove", (ev) => {
+        const rect = progressChart.getBoundingClientRect();
+        const x = ev.clientX - rect.left;
+        const y = ev.clientY - rect.top;
+        const over = progressLegendHits.some(
+            (r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h
+        );
+        progressChart.style.cursor = over ? "pointer" : "default";
+    });
+
+    window.addEventListener("resize", () => {
+        if (progressChartEntries && progressPanel && !progressPanel.hidden) {
+            _drawProgressChart(progressChartEntries);
+        }
+    });
+}
+
+/**
+ * Pull one 0-3 score out of a history entry.
+ * "N" is the neck-effort score, which lives outside `scores` but shares the
+ * same 0-3 scale, so it can be plotted on the same axis as GRBAS.
+ * Returns null when the session has no value for that dimension (e.g. an
+ * audio-only session has no neck score) so it can be skipped, not read as 0.
+ */
+function _progressDimValue(entry, key) {
+    if (key === "N") {
+        const score = entry.neck_effort && !entry.neck_effort.neckAnalysis && entry.neck_effort.model_version !== "neck-analysis-v1" ? entry.neck_effort.score : null;
+        return Number.isFinite(score) ? score : null;
+    }
+    const score = entry.scores ? entry.scores[key] : null;
+    return Number.isFinite(score) ? score : null;
+}
+
+/**
+ * Centered weighted moving average over a series (nulls skipped).
+ * One unusually good or bad session should nudge the trend, not flip it, so
+ * every point is averaged with its neighbours using triangular weights. The
+ * window widens as history grows: +-1 session early on, up to +-3 later.
+ */
+function _smoothSeries(raw) {
+    const n = raw.length;
+    const half = n < 5 ? 1 : (n < 10 ? 2 : 3);
+    const out = [];
+    for (let i = 0; i < n; i++) {
+        let sum = 0;
+        let weight = 0;
+        for (let j = i - half; j <= i + half; j++) {
+            if (j < 0 || j >= n || raw[j] === null) continue;
+            const w = (half + 1) - Math.abs(j - i);
+            sum += raw[j] * w;
+            weight += w;
+        }
+        out.push(weight > 0 ? sum / weight : null);
+    }
+    return out;
+}
+
+/** Stroke a soft Catmull-Rom curve through the given points. */
+function _strokeSmoothPath(ctx, pts) {
+    if (pts.length < 2) return;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[i - 1] || pts[i];
+        const p1 = pts[i];
+        const p2 = pts[i + 1];
+        const p3 = pts[i + 2] || p2;
+        ctx.bezierCurveTo(
+            p1.x + (p2.x - p0.x) / 6, p1.y + (p2.y - p0.y) / 6,
+            p2.x - (p3.x - p1.x) / 6, p2.y - (p3.y - p1.y) / 6,
+            p2.x, p2.y,
+        );
+    }
+    ctx.stroke();
+}
+
 function _drawProgressChart(entries) {
     // Sort oldest first
     const sorted = [...entries].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    const dims = ["G", "R", "B", "A", "S"];
-    const dimColors = {
-        G: "#4a7cff",
-        R: "#f97316",
-        B: "#a855f7",
-        A: "#f59e0b",
-        S: "#ef4444",
-    };
+    const n = sorted.length;
+
+    // GRBAS + neck effort, all on the same 0-3 scale
+    const dims = [
+        { key: "G", name: "דירוג", color: "#4a7cff" },
+        { key: "R", name: "צרידות", color: "#f97316" },
+        { key: "B", name: "נשיפות", color: "#a855f7" },
+        { key: "A", name: "חולשה", color: "#f59e0b" },
+        { key: "S", name: "מאמץ", color: "#ef4444" },
+        { key: "N", name: "מאמץ צוואר", color: "#14b8a6" },
+    ];
+
+    for (const dim of dims) {
+        dim.raw = sorted.map((entry) => _progressDimValue(entry, dim.key));
+        dim.smooth = _smoothSeries(dim.raw);
+    }
+    // A dimension with fewer than two measurements has no trend to show
+    const visible = dims.filter((d) => d.raw.filter((v) => v !== null).length >= 2);
+    if (visible.length === 0) {
+        if (progressPanel) progressPanel.hidden = true;
+        return;
+    }
+    const shown = visible.filter((d) => !progressHiddenDims.has(d.key));
 
     const canvas = progressChart;
     const ctx = canvas.getContext("2d");
     const dpr = window.devicePixelRatio || 1;
     const container = canvas.parentElement;
     const cssW = (container && container.clientWidth > 0) ? container.clientWidth : 760;
-    const cssH = 300;
+    const cssH = 336;
     canvas.style.width = cssW + "px";
     canvas.style.height = cssH + "px";
     canvas.width = cssW * dpr;
     canvas.height = cssH * dpr;
-    ctx.scale(dpr, dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    const pad = { top: 30, right: 20, bottom: 50, left: 40 };
+    const pad = { top: 26, right: 18, bottom: 78, left: 36 };
     const w = cssW - pad.left - pad.right;
     const h = cssH - pad.top - pad.bottom;
-    const n = sorted.length;
+    const xAt = (i) => pad.left + (i / Math.max(1, n - 1)) * w;
+    const yAt = (score) => pad.top + h - (score / 3) * h;
+
+    // Dimensions frequently land on the same grade (three 1's hide two lines).
+    // Fan the drawn lines apart by a couple of pixels each so none disappears
+    // behind another; the shift is far below one grade step.
+    const laneGap = shown.length > 1 ? Math.min(2.4, (h / 3) * 0.06) : 0;
+    shown.forEach((dim, i) => {
+        dim.lane = (i - (shown.length - 1) / 2) * laneGap;
+    });
 
     ctx.clearRect(0, 0, cssW, cssH);
 
     // Background grid
-    ctx.strokeStyle = "rgba(0,0,0,0.06)";
     ctx.lineWidth = 1;
     for (let level = 0; level <= 3; level++) {
-        const y = pad.top + h - (level / 3) * h;
+        const y = yAt(level);
+        ctx.strokeStyle = level === 0 ? "rgba(0,0,0,0.12)" : "rgba(0,0,0,0.06)";
         ctx.beginPath();
         ctx.moveTo(pad.left, y);
         ctx.lineTo(pad.left + w, y);
@@ -1310,92 +1542,138 @@ function _drawProgressChart(entries) {
     ctx.font = "11px 'Rubik', sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
-    const maxLabels = Math.min(n, 10);
-    const step = Math.max(1, Math.floor(n / maxLabels));
+    const maxLabels = Math.min(n, 8);
+    const step = Math.max(1, Math.ceil(n / maxLabels));
     for (let i = 0; i < n; i += step) {
-        const x = pad.left + (i / Math.max(1, n - 1)) * w;
         const date = new Date(sorted[i].timestamp);
-        const label = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-        ctx.fillText(label, x, pad.top + h + 8);
+        const label = date.toLocaleDateString("he-IL", { month: "numeric", day: "numeric" });
+        ctx.fillText(label, xAt(i), pad.top + h + 8);
     }
 
-    // Draw lines for each dimension
-    for (const dim of dims) {
-        ctx.beginPath();
-        ctx.strokeStyle = dimColors[dim];
-        ctx.lineWidth = 2.5;
-        ctx.lineJoin = "round";
-
+    // Each dimension: faint raw sessions + a smoothed trend line on top
+    for (const dim of shown) {
+        ctx.save();
+        ctx.globalAlpha = 0.22;
+        ctx.fillStyle = dim.color;
         for (let i = 0; i < n; i++) {
-            const x = pad.left + (i / Math.max(1, n - 1)) * w;
-            const score = sorted[i].scores[dim] ?? 0;
-            const y = pad.top + h - (score / 3) * h;
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-
-        // Draw dots
-        for (let i = 0; i < n; i++) {
-            const x = pad.left + (i / Math.max(1, n - 1)) * w;
-            const score = sorted[i].scores[dim] ?? 0;
-            const y = pad.top + h - (score / 3) * h;
+            if (dim.raw[i] === null) continue;
             ctx.beginPath();
-            ctx.arc(x, y, 3.5, 0, Math.PI * 2);
-            ctx.fillStyle = dimColors[dim];
+            ctx.arc(xAt(i), yAt(dim.raw[i]) + dim.lane, 2.4, 0, Math.PI * 2);
             ctx.fill();
         }
+        ctx.restore();
+
+        // A white casing under each line keeps overlapping lines readable
+        const runs = [];
+        let run = [];
+        for (let i = 0; i <= n; i++) {
+            const value = i < n ? dim.smooth[i] : null;
+            if (value === null) {
+                if (run.length) runs.push(run);
+                run = [];
+                continue;
+            }
+            run.push({ x: xAt(i), y: yAt(value) + dim.lane });
+        }
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        ctx.strokeStyle = "rgba(255,255,255,0.85)";
+        ctx.lineWidth = 5.5;
+        for (const r of runs) _strokeSmoothPath(ctx, r);
+        ctx.strokeStyle = dim.color;
+        ctx.lineWidth = 2.6;
+        for (const r of runs) _strokeSmoothPath(ctx, r);
+
+        // Mark where the trend currently stands
+        const lastIdx = dim.smooth.reduce((acc, v, i) => (v === null ? acc : i), -1);
+        if (lastIdx >= 0) {
+            ctx.beginPath();
+            ctx.arc(xAt(lastIdx), yAt(dim.smooth[lastIdx]) + dim.lane, 4, 0, Math.PI * 2);
+            ctx.fillStyle = dim.color;
+            ctx.fill();
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
     }
 
-    // Legend
-    const legendY = pad.top + h + 28;
-    let legendX = pad.left;
-    ctx.font = "bold 12px sans-serif";
-    for (const dim of dims) {
-        ctx.fillStyle = dimColors[dim];
+    // Legend — clickable, falls back to letters if the names do not fit
+    const legendY = pad.top + h + 40;
+    ctx.font = "12px 'Rubik', sans-serif";
+    ctx.textBaseline = "middle";
+    const gap = 16;
+    const dotW = 14;
+    const labels = visible.map((d) => d.name);
+    const rowWidth = () => visible.reduce(
+        (sum, d, i) => sum + dotW + ctx.measureText(labels[i]).width + gap, -gap);
+    if (rowWidth() > w) visible.forEach((d, i) => { labels[i] = d.key; });
+
+    let legendX = pad.left + Math.max(0, (w - rowWidth()) / 2);
+    progressLegendHits = [];
+    visible.forEach((dim, i) => {
+        const off = progressHiddenDims.has(dim.key);
+        const textW = ctx.measureText(labels[i]).width;
+
+        ctx.save();
+        ctx.globalAlpha = off ? 0.35 : 1;
+        ctx.fillStyle = dim.color;
         ctx.beginPath();
-        ctx.arc(legendX + 6, legendY, 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#e8eaf0";
+        ctx.arc(legendX + 5, legendY, 5, 0, Math.PI * 2);
+        if (off) { ctx.lineWidth = 1.5; ctx.strokeStyle = dim.color; ctx.stroke(); }
+        else ctx.fill();
+        ctx.fillStyle = "#5a6a7e";
         ctx.textAlign = "left";
-        ctx.textBaseline = "middle";
-        ctx.fillText(dim, legendX + 15, legendY);
-        legendX += 50;
-    }
+        ctx.fillText(labels[i], legendX + dotW, legendY);
+        ctx.restore();
+
+        progressLegendHits.push({
+            key: dim.key,
+            x: legendX - 4, y: legendY - 11,
+            w: dotW + textW + 8, h: 22,
+        });
+        legendX += dotW + textW + gap;
+    });
+
+    // Hint that the legend is interactive
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.font = "11px 'Rubik', sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("לחצו על שם במקרא כדי להסתיר או להציג קו", pad.left + w / 2, legendY + 20);
 
     // Progress summary
-    renderProgressSummary(sorted, dims);
+    renderProgressSummary(sorted, visible);
 }
 
 function renderProgressSummary(sorted, dims) {
     if (!progressSummary || sorted.length < 2) return;
 
-    const first = sorted[0];
-    const last = sorted[sorted.length - 1];
-    const dimNames = { G: "דירוג", R: "צרידות", B: "נשיפות", A: "חולשה", S: "מאמץ" };
-
     let html = "";
     for (const dim of dims) {
-        const start = first.scores[dim] ?? 0;
-        const end = last.scores[dim] ?? 0;
+        // Compare smoothed endpoints so a single outlier session cannot flip the arrow
+        const trend = dim.smooth.filter((v) => v !== null);
+        if (trend.length < 2) continue;
+        const start = trend[0];
+        const end = trend[trend.length - 1];
         const diff = end - start;
 
         let arrow, cls;
-        if (diff < 0) {
-            arrow = "\u2193"; // ↓ improved (lower is better)
+        if (diff <= -0.15) {
+            arrow = "↓"; // ↓ improved (lower is better)
             cls = "progress-improved";
-        } else if (diff > 0) {
-            arrow = "\u2191"; // ↑ worsened
+        } else if (diff >= 0.15) {
+            arrow = "↑"; // ↑ worsened
             cls = "progress-worsened";
         } else {
-            arrow = "\u2192"; // → stable
+            arrow = "→"; // → stable
             cls = "progress-stable";
         }
 
-        html += `<div class="progress-chip ${cls}">
-            <span class="progress-chip-dim">${dim}</span>
-            <span class="progress-chip-label">${dimNames[dim]}</span>
-            <span class="progress-chip-change">${start} ${arrow} ${end}</span>
+        const dimmed = progressHiddenDims.has(dim.key) ? " progress-chip-off" : "";
+        html += `<div class="progress-chip ${cls}${dimmed}">
+            <span class="progress-chip-dim" style="color:${dim.color}">${dim.key}</span>
+            <span class="progress-chip-label">${dim.name}</span>
+            <span class="progress-chip-change">${start.toFixed(1)} ${arrow} ${end.toFixed(1)}</span>
         </div>`;
     }
 
@@ -1414,6 +1692,7 @@ async function loadHistoryEntry(entry) {
         features: entry.features || {},
         model_type: entry.model_type || "unknown",
         neck_effort: entry.neck_effort || null,
+        observable_effort: entry.observable_effort || null,
         recommendations: entry.recommendations || null,
     };
 
@@ -1446,6 +1725,7 @@ async function loadHistoryEntry(entry) {
                 body: JSON.stringify({
                     scores: entry.scores,
                     neck_effort: entry.neck_effort || null,
+        observable_effort: entry.observable_effort || null,
                 }),
             });
             if (resp.ok) {
@@ -1481,6 +1761,11 @@ function onAuthReady(user) {
     showApp();
     init();
     loadCloudHistory();
+    syncTabEmptyStates();
+    const avatar = document.getElementById("user-avatar");
+    if (avatar && user && user.username) {
+        avatar.textContent = user.username.trim().charAt(0).toUpperCase();
+    }
 }
 
 function onAuthSignedOut() {
@@ -1502,29 +1787,104 @@ function onAuthSignedOut() {
 // Don't auto-init; wait for auth. If already logged in, _restoreSession in
 // auth.js will call onAuthReady which triggers init().
 
-// ---- Scroll Navigation ----
-(function initScrollNav() {
-    const scrollTopBtn = document.getElementById("scroll-top-btn");
-    const sectionNav = document.getElementById("section-nav");
+// ---- Tab Navigation ----
+// The app used to be one long scroll with a floating dot navigator. Each stage
+// of the flow is now its own tab, so nothing below the fold gets lost.
+function activateTab(name) {
+    const tabs = document.querySelectorAll("#app-tabs .tab");
+    const panels = document.querySelectorAll(".tab-panel");
+    if (!tabs.length) return;
+    tabs.forEach((tab) => tab.classList.toggle("is-active", tab.dataset.tab === name));
+    panels.forEach((panel) => panel.classList.toggle("is-active", panel.dataset.tab === name));
+    syncTabEmptyStates();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
 
+/** Show a placeholder in any tab whose real content has not been produced yet. */
+function syncTabEmptyStates() {
+    const pairs = [
+        ["results-empty", "results-panel"],
+        ["tips-empty", "recommendations-panel"],
+        ["progress-empty", "progress-panel"],
+    ];
+    for (const [emptyId, panelId] of pairs) {
+        const empty = document.getElementById(emptyId);
+        const panel = document.getElementById(panelId);
+        if (empty && panel) empty.hidden = !panel.hidden;
+    }
+}
+
+/** Mark a tab as holding something new until the user opens it. */
+function markTabUpdated(name) {
+    const tab = document.querySelector(`#app-tabs .tab[data-tab="${name}"]`);
+    if (tab && !tab.classList.contains("is-active")) tab.classList.add("has-update");
+}
+
+(function initTabs() {
+    const tabBar = document.getElementById("app-tabs");
+    if (tabBar) {
+        tabBar.addEventListener("click", (e) => {
+            const tab = e.target.closest(".tab");
+            if (!tab) return;
+            tab.classList.remove("has-update");
+            activateTab(tab.dataset.tab);
+        });
+    }
+
+    // "Go to recording" buttons inside the empty states
+    document.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-go-tab]");
+        if (btn) activateTab(btn.dataset.goTab);
+    });
+
+    const scrollTopBtn = document.getElementById("scroll-top-btn");
     if (scrollTopBtn) {
         scrollTopBtn.addEventListener("click", () => {
             window.scrollTo({ top: 0, behavior: "smooth" });
         });
+        const toggleScrollBtn = () => {
+            scrollTopBtn.classList.toggle("is-visible", window.scrollY > 400);
+        };
+        window.addEventListener("scroll", toggleScrollBtn, { passive: true });
+        toggleScrollBtn();
     }
 
-    // Section navigator dot clicks
-    if (sectionNav) {
-        sectionNav.addEventListener("click", (e) => {
-            const btn = e.target.closest(".snav-dot");
-            if (!btn) return;
-            const targetId = "section-" + btn.dataset.target;
-            const el = document.getElementById(targetId);
-            if (el) {
-                const navHeight = document.querySelector(".top-nav")?.offsetHeight || 0;
-                const top = el.getBoundingClientRect().top + window.scrollY - navHeight - 16;
-                window.scrollTo({ top, behavior: "smooth" });
-            }
+    syncTabEmptyStates();
+})();
+
+// ---- Auth form modes ----
+// One card, two modes: the class-code field and the emphasised button follow
+// the chosen mode instead of showing every field at once.
+(function initAuthModes() {
+    const tabs = document.getElementById("auth-mode-tabs");
+    if (!tabs) return;
+    const classField = document.getElementById("class-code-field");
+    const loginButton = document.getElementById("login-btn");
+    const registerButton = document.getElementById("register-btn");
+
+    function setMode(mode) {
+        const registering = mode === "register";
+        tabs.querySelectorAll(".tab").forEach((tab) => {
+            tab.classList.toggle("is-active", tab.dataset.mode === mode);
         });
+        if (classField) classField.hidden = !registering;
+        if (loginButton) {
+            loginButton.hidden = registering;
+            loginButton.className = "btn btn-primary btn-block";
+        }
+        if (registerButton) {
+            registerButton.hidden = !registering;
+            registerButton.className = registering
+                ? "btn btn-primary btn-block"
+                : "btn btn-secondary btn-block";
+        }
+        const heading = document.querySelector(".auth-heading");
+        if (heading) heading.textContent = registering ? "יצירת חשבון" : "התחברות";
     }
+
+    tabs.addEventListener("click", (e) => {
+        const tab = e.target.closest(".tab");
+        if (tab) setMode(tab.dataset.mode);
+    });
+    setMode("login");
 })();

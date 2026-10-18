@@ -1,0 +1,339 @@
+{
+  "source_sha256": "db22a467a9769c5e12cf48d090320d1fa6c89d8f71cca35f927e6f7cd8708c82",
+  "source_file": "mixkit_woman_laptop_17679.mp4",
+  "source_fps": 25.0,
+  "source_dimensions": [
+    1280,
+    720
+  ],
+  "segment_start": 12.0,
+  "segment_seconds": 5.0,
+  "frame_count": 25,
+  "repeats": 2,
+  "selected_indices": [
+    0,
+    1,
+    3,
+    6,
+    7,
+    10,
+    11,
+    24
+  ],
+  "conditions": {
+    "480_png_reference": {
+      "image_dimensions": [
+        480,
+        270
+      ],
+      "face_detected_fraction": 1.0,
+      "dimension_quality": {
+        "posture_compensation": 0.201,
+        "scm_lateral_recruitment": 0.0763,
+        "anterior_submental_activity": 0.0757,
+        "shoulder_recruitment": 0.1656,
+        "jaw_compensation": 0.1661
+      },
+      "warm_mean_cv_seconds": 0.065067,
+      "mean_cv_seconds": 0.0684,
+      "mean_first_encode_seconds": 0.007848,
+      "mean_upload_bytes": 193035.92,
+      "mean_model_image_bytes": 193035.92,
+      "mean_cv_input_psnr_db": null,
+      "mean_model_input_psnr_db": null,
+      "cv_feature_difference_from_same_resolution_png": {
+        "jaw_opening": {
+          "paired_frames": 50,
+          "mean_absolute_difference": 0.0
+        },
+        "head_roll_deg": {
+          "paired_frames": 50,
+          "mean_absolute_difference": 0.0
+        },
+        "head_pitch_deg": {
+          "paired_frames": 50,
+          "mean_absolute_difference": 0.0
+        },
+        "head_motion": {
+          "paired_frames": 48,
+          "mean_absolute_difference": 0.0
+        },
+        "anterior_motion": {
+          "paired_frames": 48,
+          "mean_absolute_difference": 0.0
+        },
+        "lateral_motion": {
+          "paired_frames": 48,
+          "mean_absolute_difference": 0.0
+        },
+        "shoulder_motion": {
+          "paired_frames": 48,
+          "mean_absolute_difference": 0.0
+        }
+      }
+    },
+    "480_jpeg80_88": {
+      "image_dimensions": [
+        480,
+        270
+      ],
+      "face_detected_fraction": 1.0,
+      "dimension_quality": {
+        "posture_compensation": 0.2005,
+        "scm_lateral_recruitment": 0.0774,
+        "anterior_submental_activity": 0.0747,
+        "shoulder_recruitment": 0.1656,
+        "jaw_compensation": 0.1671
+      },
+      "warm_mean_cv_seconds": 0.065074,
+      "mean_cv_seconds": 0.068183,
+      "mean_first_encode_seconds": 0.001117,
+      "mean_upload_bytes": 20610.8,
+      "mean_model_image_bytes": 25596.08,
+      "mean_cv_input_psnr_db": 37.247043,
+      "mean_model_input_psnr_db": 36.317606,
+      "cv_feature_difference_from_same_resolution_png": {
+        "jaw_opening": {
+          "paired_frames": 50,
+          "mean_absolute_difference": 0.005375
+        },
+        "head_roll_deg": {
+          "paired_frames": 50,
+          "mean_absolute_difference": 0.383323
+        },
+        "head_pitch_deg": {
+          "paired_frames": 50,
+          "mean_absolute_difference": 1.172594
+        },
+        "head_motion": {
+          "paired_frames": 48,
+          "mean_absolute_difference": 0.02018
+        },
+        "anterior_motion": {
+          "paired_frames": 48,
+          "mean_absolute_difference": 0.074515
+        },
+        "lateral_motion": {
+          "paired_frames": 48,
+          "mean_absolute_difference": 0.03972
+        },
+        "shoulder_motion": {
+          "paired_frames": 48,
+          "mean_absolute_difference": 0.196838
+        }
+      }
+    },
+    "480_jpeg95_95": {
+      "image_dimensions": [
+        480,
+        270
+      ],
+      "face_detected_fraction": 1.0,
+      "dimension_quality": {
+        "posture_compensation": 0.2007,
+        "scm_lateral_recruitment": 0.0772,
+        "anterior_submental_activity": 0.0761,
+        "shoulder_recruitment": 0.1654,
+        "jaw_compensation": 0.1679
+      },
+      "warm_mean_cv_seconds": 0.063144,
+      "mean_cv_seconds": 0.066673,
+      "mean_first_encode_seconds": 0.001432,
+      "mean_upload_bytes": 42597.52,
+      "mean_model_image_bytes": 42567.2,
+      "mean_cv_input_psnr_db": 41.265744,
+      "mean_model_input_psnr_db": 40.180466,
+      "cv_feature_difference_from_same_resolution_png": {
+        "jaw_opening": {
+          "paired_frames": 50,
+          "mean_absolute_difference": 0.00277
+        },
+        "head_roll_deg": {
+          "paired_frames": 50,
+          "mean_absolute_difference": 0.253549
+        },
+        "head_pitch_deg": {
+          "paired_frames": 50,
+          "mean_absolute_difference": 0.349681
+        },
+        "head_motion": {
+          "paired_frames": 48,
+          "mean_absolute_difference": 0.00945
+        },
+        "anterior_motion": {
+          "paired_frames": 48,
+          "mean_absolute_difference": 0.039586
+        },
+        "lateral_motion": {
+          "paired_frames": 48,
+          "mean_absolute_difference": 0.017783
+        },
+        "shoulder_motion": {
+          "paired_frames": 48,
+          "mean_absolute_difference": 0.19191
+        }
+      }
+    },
+    "960_png_reference": {
+      "image_dimensions": [
+        960,
+        540
+      ],
+      "face_detected_fraction": 1.0,
+      "dimension_quality": {
+        "posture_compensation": 0.312,
+        "scm_lateral_recruitment": 0.1037,
+        "anterior_submental_activity": 0.1042,
+        "shoulder_recruitment": 0.2584,
+        "jaw_compensation": 0.259
+      },
+      "warm_mean_cv_seconds": 0.159097,
+      "mean_cv_seconds": 0.157858,
+      "mean_first_encode_seconds": 0.028091,
+      "mean_upload_bytes": 622876.64,
+      "mean_model_image_bytes": 622876.64,
+      "mean_cv_input_psnr_db": null,
+      "mean_model_input_psnr_db": null,
+      "cv_feature_difference_from_same_resolution_png": {
+        "jaw_opening": {
+          "paired_frames": 50,
+          "mean_absolute_difference": 0.0
+        },
+        "head_roll_deg": {
+          "paired_frames": 50,
+          "mean_absolute_difference": 0.0
+        },
+        "head_pitch_deg": {
+          "paired_frames": 50,
+          "mean_absolute_difference": 0.0
+        },
+        "head_motion": {
+          "paired_frames": 48,
+          "mean_absolute_difference": 0.0
+        },
+        "anterior_motion": {
+          "paired_frames": 48,
+          "mean_absolute_difference": 0.0
+        },
+        "lateral_motion": {
+          "paired_frames": 48,
+          "mean_absolute_difference": 0.0
+        },
+        "shoulder_motion": {
+          "paired_frames": 48,
+          "mean_absolute_difference": 0.0
+        }
+      }
+    },
+    "960_jpeg80_88": {
+      "image_dimensions": [
+        960,
+        540
+      ],
+      "face_detected_fraction": 1.0,
+      "dimension_quality": {
+        "posture_compensation": 0.3015,
+        "scm_lateral_recruitment": 0.1121,
+        "anterior_submental_activity": 0.1113,
+        "shoulder_recruitment": 0.2495,
+        "jaw_compensation": 0.2503
+      },
+      "warm_mean_cv_seconds": 0.208438,
+      "mean_cv_seconds": 0.206762,
+      "mean_first_encode_seconds": 0.004736,
+      "mean_upload_bytes": 53319.12,
+      "mean_model_image_bytes": 66348.32,
+      "mean_cv_input_psnr_db": 41.434629,
+      "mean_model_input_psnr_db": 40.607182,
+      "cv_feature_difference_from_same_resolution_png": {
+        "jaw_opening": {
+          "paired_frames": 50,
+          "mean_absolute_difference": 0.002209
+        },
+        "head_roll_deg": {
+          "paired_frames": 50,
+          "mean_absolute_difference": 0.108168
+        },
+        "head_pitch_deg": {
+          "paired_frames": 50,
+          "mean_absolute_difference": 0.61141
+        },
+        "head_motion": {
+          "paired_frames": 48,
+          "mean_absolute_difference": 0.011373
+        },
+        "anterior_motion": {
+          "paired_frames": 48,
+          "mean_absolute_difference": 0.079619
+        },
+        "lateral_motion": {
+          "paired_frames": 48,
+          "mean_absolute_difference": 0.056932
+        },
+        "shoulder_motion": {
+          "paired_frames": 48,
+          "mean_absolute_difference": 0.171337
+        }
+      }
+    },
+    "960_jpeg95_95": {
+      "image_dimensions": [
+        960,
+        540
+      ],
+      "face_detected_fraction": 1.0,
+      "dimension_quality": {
+        "posture_compensation": 0.31,
+        "scm_lateral_recruitment": 0.1033,
+        "anterior_submental_activity": 0.102,
+        "shoulder_recruitment": 0.2569,
+        "jaw_compensation": 0.2578
+      },
+      "warm_mean_cv_seconds": 0.163638,
+      "mean_cv_seconds": 0.162714,
+      "mean_first_encode_seconds": 0.004707,
+      "mean_upload_bytes": 115681.92,
+      "mean_model_image_bytes": 116081.52,
+      "mean_cv_input_psnr_db": 44.963407,
+      "mean_model_input_psnr_db": 44.251502,
+      "cv_feature_difference_from_same_resolution_png": {
+        "jaw_opening": {
+          "paired_frames": 50,
+          "mean_absolute_difference": 0.001484
+        },
+        "head_roll_deg": {
+          "paired_frames": 50,
+          "mean_absolute_difference": 0.083586
+        },
+        "head_pitch_deg": {
+          "paired_frames": 50,
+          "mean_absolute_difference": 0.217121
+        },
+        "head_motion": {
+          "paired_frames": 48,
+          "mean_absolute_difference": 0.005947
+        },
+        "anterior_motion": {
+          "paired_frames": 48,
+          "mean_absolute_difference": 0.023044
+        },
+        "lateral_motion": {
+          "paired_frames": 48,
+          "mean_absolute_difference": 0.011806
+        },
+        "shoulder_motion": {
+          "paired_frames": 48,
+          "mean_absolute_difference": 0.266029
+        }
+      }
+    }
+  },
+  "limitations": [
+    "No effort scores, OpenAI judgments or physiological ground truth",
+    "OpenCV JPEG/canvas scaling approximate, not byte-equivalent to browser encoding",
+    "Input video already compressed; PNG does not undo source compression",
+    "PNG is a within-resolution reference, not evidence of medical accuracy",
+    "Tracking-quality rules explicitly depend on scale and resolution",
+    "Timings depend on hardware/load; cold first frames excluded only from warm mean"
+  ]
+}

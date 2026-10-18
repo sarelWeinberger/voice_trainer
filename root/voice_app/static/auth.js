@@ -27,6 +27,8 @@ const authClassCode = document.getElementById("auth-class-code");
 const loginBtn     = document.getElementById("login-btn");
 const registerBtn  = document.getElementById("register-btn");
 const authError    = document.getElementById("auth-error");
+const authConsentWrap = document.getElementById("auth-consent-wrap");
+const authConsent  = document.getElementById("auth-consent");
 const userBar      = document.getElementById("user-bar");
 const userNameEl   = document.getElementById("user-name");
 const logoutBtn    = document.getElementById("logout-btn");
@@ -57,8 +59,19 @@ async function register() {
     if (!username || !password) return showAuthError("הזינו שם משתמש וסיסמה.");
     if (password.length < 8)   return showAuthError("הסיסמה חייבת להכיל לפחות 8 תווים.");
 
+    // Two-step consent flow: first click reveals the checkbox, second click
+    // (with checkbox ticked) actually submits. Keeps login UX uncluttered while
+    // making the agreement a deliberate act.
+    if (authConsentWrap && authConsentWrap.style.display === "none") {
+        authConsentWrap.style.display = "flex";
+        return showAuthError("יש לאשר את התנאים ולחיצה חוזרת על 'הרשמה'.");
+    }
+    if (!authConsent?.checked) {
+        return showAuthError("יש לאשר את תנאי השימוש ומדיניות הפרטיות.");
+    }
+
     try {
-        const body = { username, password };
+        const body = { username, password, accepted_terms: true };
         if (classCode) body.class_code = classCode;
 
         const resp = await fetch("/api/register", {

@@ -1,0 +1,72 @@
+{
+  "status": 200,
+  "analysis_status": "insufficient_quality",
+  "diagnostics": {
+    "captured_frames": 25,
+    "selected_frames": 8,
+    "feature_available_frames": {
+      "head_pitch_deg": 25,
+      "shoulder_motion": 0,
+      "shoulders_head_relative_motion": 24
+    },
+    "observed_span_seconds": 44.488,
+    "effective_fps": 0.539,
+    "target_fps": 5,
+    "temporal_quality": 0.0863,
+    "speech_status": "unknown",
+    "audio_timing": "unverified",
+    "usable_speech_duration": null,
+    "vad_available": false,
+    "audio_offset_seconds": null,
+    "dimension_quality": {
+      "posture_compensation": 0.5442341964751591,
+      "scm_lateral_recruitment": 0.5367669871169201,
+      "anterior_submental_activity": 0.5342923813010124,
+      "shoulder_recruitment": 0.5304213174313146,
+      "jaw_compensation": 0.5361851295945075
+    },
+    "mean_cv_processing_seconds": 0.1184,
+    "provider_skipped": true,
+    "dimensions": {
+      "posture_compensation": {
+        "tracking_quality": 0.5442341964751591,
+        "maximum_possible_confidence": 0.047,
+        "required_confidence": 0.15,
+        "rejection_reason": "Insufficient temporal sampling confidence",
+        "model_evidence": []
+      },
+      "scm_lateral_recruitment": {
+        "tracking_quality": 0.5367669871169201,
+        "maximum_possible_confidence": 0.0463,
+        "required_confidence": 0.15,
+        "rejection_reason": "Insufficient temporal sampling confidence",
+        "model_evidence": []
+      },
+      "anterior_submental_activity": {
+        "tracking_quality": 0.5342923813010124,
+        "maximum_possible_confidence": 0.0461,
+        "required_confidence": 0.15,
+        "rejection_reason": "Insufficient temporal sampling confidence",
+        "model_evidence": []
+      },
+      "shoulder_recruitment": {
+        "tracking_quality": 0.5304213174313146,
+        "maximum_possible_confidence": 0.0458,
+        "required_confidence": 0.15,
+        "rejection_reason": "Insufficient temporal sampling confidence",
+        "model_evidence": []
+      },
+      "jaw_compensation": {
+        "tracking_quality": 0.5361851295945075,
+        "maximum_possible_confidence": 0.0463,
+        "required_confidence": 0.15,
+        "rejection_reason": "Insufficient temporal sampling confidence",
+        "model_evidence": []
+      }
+    }
+  },
+  "reasons": [],
+  "finalize_seconds": 0.436,
+  "rendered": true,
+  "javascript_errors": []
+}

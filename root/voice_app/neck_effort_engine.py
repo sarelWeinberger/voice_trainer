@@ -1,794 +1,313 @@
-from __future__ import annotations
-
-import math
-import time
+"""Neck Analysis V1. Legacy severity heuristics have been removed."""
+import base64
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
-
+import math
+import os
+import threading
+import time
 import cv2
-import mediapipe as mp
 import numpy as np
-
-
-def _xy(lm, w: int, h: int):
-    return np.array([lm.x * w, lm.y * h], dtype=np.float32)
-
-
-def _dist(a, b) -> float:
-    return float(np.linalg.norm(a - b))
-
-
-def _mid(a, b):
-    return (a + b) / 2.0
-
-
-def _angle_deg(v1, v2) -> float:
-    n1 = np.linalg.norm(v1)
-    n2 = np.linalg.norm(v2)
-    if n1 < 1e-6 or n2 < 1e-6:
-        return 0.0
-    cosang = float(np.clip(np.dot(v1, v2) / (n1 * n2), -1.0, 1.0))
-    return float(math.degrees(math.acos(cosang)))
-
-
-def _clamp(x, lo, hi):
-    return max(lo, min(hi, x))
-
-
-def _norm_bad(x, good, bad) -> float:
-    if bad <= good:
-        return 0.0
-    return float(np.clip((x - good) / (bad - good), 0.0, 1.0))
-
-
-def _safe_mean(values: List[float], default=0.0):
-    return float(np.mean(values)) if values else float(default)
-
-
-@dataclass
-class NeckEffortConfig:
-    """Clinically-calibrated neck effort thresholds.
-
-    References:
-    - CVA (Craniovertebral Angle): Yip 2008, Lau 2010 — cutoff 48.8°
-    - Head lateral tilt: Ferrario 1995 — normal < 3°
-    - Shoulder elevation: Kibler 1998, Grandjean ergonomics
-    - MTD markers: Roy 2003, Rubin 2007, Koufman functional dysphonia
-    """
-    smooth_window: int = 20
-    ema_alpha: float = 0.25
-    calibration_frames: int = 45
-    min_visibility: float = 0.45
-    min_confidence_to_score: float = 0.45
-    min_view_quality_to_track: float = 0.35
-    hysteresis_margin: float = 0.08
-
-    # --- Forward head posture (FHP) — primary clinical marker ---
-    # Measured in meters using MediaPipe pose_world_landmarks.
-    # Kendall: >2.5 cm anterior offset = abnormal.
-    # Our mapping:
-    #   < 2 cm  = normal
-    #   2-6 cm  = mild
-    #   6-10 cm = moderate
-    #   > 10 cm = severe
-    forward_head_good: float = 0.02  # meters (2 cm)
-    forward_head_bad: float = 0.10   # meters (10 cm)
-
-    # --- Head lateral tilt (Ferrario 1995) ---
-    # Good < 3°, moderate 6-10°, severe > 10°
-    head_tilt_good: float = 3.0
-    head_tilt_bad: float = 12.0
-
-    # --- Shoulder line asymmetry (Kibler 1998) ---
-    # Significant > 5°, clinical > 15°
-    shoulder_angle_good: float = 3.0
-    shoulder_angle_bad: float = 15.0
-
-    # --- Shoulder elevation (delta from calibrated baseline) ---
-    shoulder_raise_good: float = 0.02
-    shoulder_raise_bad: float = 0.15
-
-    # --- Head instability (variance over recent frames) ---
-    head_instability_good: float = 0.008
-    head_instability_bad: float = 0.07
-
-    # --- View quality thresholds (not in scoring) ---
-    head_rotation_good: float = 0.03  # used in view_quality check only
-    head_rotation_bad: float = 0.15
-    mouth_open_good: float = 0.30     # used in view_quality check only
-    mouth_open_bad: float = 0.50
-
-    # --- Feature weights (5 effort metrics, must sum to ~1.0) ---
-    # Removed mouth_open and head_rotation from effort scoring:
-    # mouth_open → false positives during /a/ phonation
-    # head_rotation → view quality signal, not tension
-    w_forward_head: float = 0.30     # primary (was 0.25)
-    w_head_tilt: float = 0.25        # clinical marker (was 0.20)
-    w_shoulder_raise: float = 0.22   # most reliable visual sign (was 0.18)
-    w_shoulder_asym: float = 0.13    # secondary (was 0.12)
-    w_head_instability: float = 0.10 # tremor signal (kept)
-
-    # Calibration blending weight
-    calibration_weight: float = 0.55
-
+from neck_v1_cv import CVProcessor, jaw_residualization, select_frames
+from neck_v1_scoring import NeckEffortConfig, VERSION, DIMENSIONS, NeckAnalysis, aggregate, unavailable
+from neck_v1_openai import interpret, NeckProviderError, PROMPT_VERSION, DEFAULT_MODEL
+from neck_observable_change import compare_observable_windows
+from neck_capture_context import movement_evidence, transport_evidence
 
 @dataclass
 class NeckEffortState:
-    calibrated: bool = False
-    calibration_count: int = 0
-    calibration_buffer: List[Dict[str, float]] = field(default_factory=list)
-    baseline: Dict[str, float] = field(default_factory=dict)
-    feature_history: deque = field(default_factory=lambda: deque(maxlen=20))
-    head_anchor_history: deque = field(default_factory=lambda: deque(maxlen=20))
-    ema_continuous_score: Optional[float] = None
-    stable_score: Optional[int] = None
-    last_valid_result: Optional[Dict[str, Any]] = None
-    last_valid_result_at: Optional[float] = None
     recording_active: bool = False
-    recording_session_id: Optional[str] = None
-    recording_started_at: Optional[float] = None
-    recording_stopped_at: Optional[float] = None
-    recording_results: deque = field(default_factory=lambda: deque(maxlen=240))
+    recording_session_id: str | None = None
+    recording_started_at: float | None = None
+    recording_stopped_at: float | None = None
+    recording_results: deque = field(default_factory=lambda: deque(maxlen=300))
+    calibrated: bool = False
+
+
+def packet(mode='collecting', result=None, confidence=0.0, reasons=None):
+    overall=(result or {}).get('overall',{})
+    return dict(ok=mode!='error', mode=mode, calibrated=mode in ('running','complete'),
+                calibration_progress=1.0 if mode in ('running','complete') else 0.0,
+                score=overall.get('category'), score_label=overall.get('label'),
+                continuous_score=overall.get('continuous_score'), confidence=overall.get('confidence',confidence),
+                features=None, reasons=reasons or [], model_version=VERSION, neckAnalysis=result)
+
+
+def evidence_context(rows, selected, cfg, audio=None, timing='unverified',movement=None,capture_transport=None):
+    observable_change=compare_observable_windows(rows,audio,timing)
+    features=[r['features'] for r in rows]
+    motion=[f.get('anterior_motion',0.0) for f in features]
+    jaw=[f.get('jaw_velocity',0.0) for f in features]
+    residual,fraction=jaw_residualization(motion,jaw)
+    visibility=lambda key: float(np.mean([r['visibility'].get(key,0) for r in rows]))
+    stability=float(np.mean([r['camera_stability'] for r in rows]))
+    lighting=float(np.mean([r['lighting'] for r in rows]))
+    resolution=float(np.mean([r['resolution_quality'] for r in rows]))
+    duration=rows[-1]['t']-rows[0]['t'] if len(rows)>1 else 0
+    deltas=np.diff([r['t'] for r in rows])
+    rate=min(1/float(np.median(deltas)), (len(rows)-1)/duration) if len(deltas) and np.median(deltas)>0 and duration>0 else 0
+    # Live flow already samples at 5fps; not equivalent to dense 30fps analysis.
+    temporal=min(1.0,duration/5)*min(1.0,rate/5)
+    warnings=[]
+    warnings.extend(sorted({warning for row in rows for warning in row.get('warnings',[])}))
+    if duration<5: warnings.append('short_recording')
+    if rate<5: warnings.append('sparse_frame_rate')
+    if lighting<.5: warnings.append('poor_lighting')
+    if resolution<.75: warnings.append('low_resolution')
+    if stability<.5: warnings.append('camera_motion')
+    if visibility('shoulders')<.25: warnings.append('shoulders_not_reliably_visible')
+    if min(visibility('anterior'),visibility('submental'))<.25: warnings.append('neck_not_reliably_visible')
+    if not any(r.get('camera_measurement_available',False) for r in rows): warnings.append('camera_stability_not_independently_verified')
+    if timing in ('unverified','browser_estimated_offset','container_estimated_offset'): warnings.append('speech_timing_unverified')
+    speech_status='unknown'
+    usable_duration=None
+    audio_context=None
+    if audio is not None and timing!='unverified':
+        overlap=[r for r in audio if r['t']<rows[-1]['t'] and r['t']+r['duration']>rows[0]['t']]
+        audio_context=overlap
+        if overlap:
+            usable_duration=sum(max(0,min(rows[-1]['t'],r['t']+r['duration'])-max(rows[0]['t'],r['t']))
+                                for r in overlap if r.get('speech_active',False))
+            speech_status='active' if usable_duration>0 else ('silent' if all(r.get('clipped_fraction',0)<.01 and r.get('vad_available',True) for r in overlap) else 'unknown')
+        else: warnings.append('audio_video_do_not_overlap')
+    if speech_status=='active':
+        temporal*=min(1.0,usable_duration/3)
+    elif speech_status=='unknown':
+        temporal*=.8
+    if timing in ('browser_estimated_offset','container_estimated_offset') and speech_status!='unknown':
+        temporal*=.8  # Device latency and callback timing have not been independently verified.
+    quality=dict(overall=round((visibility('face')*lighting*stability*resolution)**.25,4),
+                 face_visibility=visibility('face'), neck_visibility=min(visibility('anterior'),visibility('submental')),
+                 shoulder_visibility=visibility('shoulders'),camera_stability=stability,
+                 lighting_quality=lighting,warnings=warnings)
+    dimension_quality={
+        'posture_compensation':visibility('face'),
+        'scm_lateral_recruitment':max(visibility('left_lateral'),visibility('right_lateral')),
+        'anterior_submental_activity':min(visibility('anterior'),visibility('submental')),
+        'shoulder_recruitment':visibility('shoulders'),
+        'jaw_compensation':visibility('jaw')}
+    dimension_quality={k:float(v*math.sqrt(stability*lighting*resolution)) for k,v in dimension_quality.items()}
+    timeline=[]
+    for index,row in enumerate(rows):
+        window=math.floor(row['t'])
+        if not timeline or timeline[-1]['start']!=window:
+            timeline.append(dict(start=window,end=window+1,values=[]))
+        timeline[-1]['values'].append(float(residual[index]))
+    for window in timeline:
+        window['neck_activity']=float(np.mean(window.pop('values')))
+    diagnostics = dict(captured_frames=len(rows), selected_frames=len(selected),
+                       selected_frame_indices=list(selected),selected_frame_times=[round(rows[i]['t'],3) for i in selected],
+                       frame_selection='temporal_coverage_then_extrema_v2',
+                       feature_available_frames={key:sum(key in row['features'] for row in rows)
+                           for key in ('head_pitch_deg','shoulder_motion','shoulders_head_relative_motion')},
+                       observed_span_seconds=round(duration, 3), effective_fps=round(rate, 3),
+                       target_fps=5, temporal_quality=round(temporal, 4),
+                       speech_status=speech_status,audio_timing=timing,
+                       usable_speech_duration=round(usable_duration,3) if usable_duration is not None else None,
+                       vad_available=any(r.get('vad_available',False) for r in (audio_context or [])),
+                       audio_offset_seconds=audio[0]['t'] if audio else None,
+                       dimension_quality=dimension_quality,
+                       mean_cv_processing_seconds=round(float(np.mean([r['processing_seconds'] for r in rows if 'processing_seconds' in r])), 4)
+                           if any('processing_seconds' in r for r in rows) else None)
+    head_movement=movement_evidence(movement,rows[0]['t'],rows[-1]['t'])
+    if head_movement is not None:
+        diagnostics['head_motion_context_supplied']=True
+        diagnostics['head_motion_context']=head_movement
+    transport=transport_evidence(capture_transport,len(rows))
+    if transport is not None:
+        diagnostics['capture_transport']=transport
+        if not transport['complete']:quality['warnings'].append('capture_frames_missing')
+    context=dict(diagnostics=diagnostics,quality=quality,dimension_quality=dimension_quality,temporal_quality=temporal,
+                observable_change=observable_change,
+                jaw_explained_fraction=fraction, jaw_residual_motion=residual,
+                timeline=timeline, selected_indices=selected, speech_status=speech_status,
+                usable_speech_duration=usable_duration,audio_timing=timing,audio=audio_context,
+                frames=[dict(index=i,**rows[i]) for i in selected],
+                limitations=['ROIs approximate image-space regions, not isolated muscles',
+                             'Flow and jaw regression are motion evidence, not force or causality',
+                             'WebRTC VAD speech timing is provisional, not ground truth or diagnosis'],
+                versions=dict(analyzer=VERSION,preprocessing='neck-cv-v1.1',prompt=PROMPT_VERSION,
+                              weights='neck-weights-v1.0',scoring='neck-scoring-v1.1',
+                              observable_change='neck-observable-change-v1',selection='temporal-coverage-v2',
+                              model=os.environ.get('NECK_OPENAI_MODEL',DEFAULT_MODEL)))
+    if head_movement is not None:context['head_movement']=head_movement
+    return context
 
 
 class NeckEffortEngine:
-    def __init__(self, config: Optional[NeckEffortConfig] = None):
-        self.cfg = config or NeckEffortConfig()
-        self.state = NeckEffortState(
-            feature_history=deque(maxlen=self.cfg.smooth_window),
-            head_anchor_history=deque(maxlen=self.cfg.smooth_window),
-        )
-
-        mp_solutions = getattr(mp, "solutions", None)
-        if mp_solutions is None:
-            raise RuntimeError(
-                "Incompatible MediaPipe package: legacy Pose/FaceMesh solutions are unavailable. "
-                "Pin mediapipe==0.10.14 or adapt the neck-effort pipeline to the Tasks API before release."
-            )
-
-        self.mp_pose = mp_solutions.pose
-        self.mp_face_mesh = mp_solutions.face_mesh
-
-        self.pose = self.mp_pose.Pose(
-            static_image_mode=False,
-            model_complexity=2,
-            enable_segmentation=False,
-            min_detection_confidence=0.6,
-            min_tracking_confidence=0.6,
-        )
-        self.face = self.mp_face_mesh.FaceMesh(
-            static_image_mode=False,
-            max_num_faces=1,
-            refine_landmarks=True,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5,
-        )
+    def __init__(self,config=None,interpreter=None,processor=None):
+        self.cfg=config or NeckEffortConfig()
+        self.processor=processor or CVProcessor()
+        self.interpreter=interpreter or interpret
+        self.lock=threading.RLock()
+        self.expiry_timer=None
+        self.reset_session()
 
     def reset_session(self):
-        self.state = NeckEffortState(
-            feature_history=deque(maxlen=self.cfg.smooth_window),
-            head_anchor_history=deque(maxlen=self.cfg.smooth_window),
-            recording_results=deque(maxlen=240),
-        )
+        with self.lock:
+            if self.expiry_timer is not None:
+                self.expiry_timer.cancel()
+                self.expiry_timer=None
+            self.state=NeckEffortState(recording_results=deque(maxlen=self.cfg.max_frames))
+            self.rows=[]
+            self.images=[]
+            self.result=None
+            self.latest=None
+            self.debug_evidence=None
+            self.upload_batches={}
+            self.processor.reset()
 
-    def start_recording_session(self, session_id: Optional[str] = None):
-        self.state.recording_active = True
-        self.state.recording_session_id = session_id
-        self.state.recording_started_at = time.monotonic()
-        self.state.recording_stopped_at = None
-        self.state.recording_results.clear()
+    def start_recording_session(self,session_id=None):
+        self.reset_session()
+        self.state.recording_active=True
+        self.state.recording_session_id=session_id
+        self.state.recording_started_at=time.monotonic()
+        session=self.state.recording_started_at
+        def expire():
+            with self.lock:
+                if self.state.recording_started_at==session:
+                    self.images.clear()
+                    self.debug_evidence=None
+                    self.processor.reset()
+                    self.state.recording_active=False
+        self.expiry_timer=threading.Timer(120,expire)
+        self.expiry_timer.daemon=True
+        self.expiry_timer.start()
 
     def stop_recording_session(self):
-        self.state.recording_active = False
-        self.state.recording_stopped_at = time.monotonic()
+        with self.lock:
+            self.state.recording_active=False
+            self.state.recording_stopped_at=time.monotonic()
 
-    def export_recording(self) -> List[Dict[str, Any]]:
-        """Serialize recorded per-frame results into a feature time-series.
+    def is_calibrated(self):
+        return bool(self.rows)
 
-        Timestamps (``t``) are relative seconds from the first recorded frame, so
-        the series can later be aligned with the audio clip captured in the same
-        session for cross-modal model training.
-        """
-        items = list(self.state.recording_results)
-        if not items:
-            return []
-        t0 = float(items[0]["at"])
-        series: List[Dict[str, Any]] = []
-        for item in items:
-            result = item.get("result", {})
-            series.append(
-                {
-                    "t": round(float(item["at"]) - t0, 3),
-                    "score": result.get("score"),
-                    "continuous_score": result.get("continuous_score"),
-                    "confidence": result.get("confidence"),
-                    "features": result.get("features"),
-                }
-            )
-        return series
+    def calibration_progress(self):
+        return min(1.0,len(self.rows)/10)
 
-    def recording_summary(self, max_age_seconds: Optional[float] = None) -> Optional[Dict[str, Any]]:
-        if not self.state.recording_results:
-            return None
+    def latest_result(self,max_age_seconds=None):
+        if self.latest is None: return None
+        if max_age_seconds is not None and time.monotonic()-self.latest_at>max_age_seconds: return None
+        return self.latest
 
-        now = time.monotonic()
-        ended_at = self.state.recording_stopped_at or now
-        if max_age_seconds is not None and (now - ended_at) > max_age_seconds:
-            return None
+    def process_frame(self,frame_bgr,timestamp=None):
+        with self.lock:
+            if not self.state.recording_active:
+                return packet('no_score',reasons=['recording_required'])
+            if frame_bgr is None or frame_bgr.size==0:
+                return packet('error',reasons=['empty_frame'])
+            if len(self.rows)>=self.cfg.max_frames:
+                return packet('running',reasons=['frame_limit_reached'])
+            t=timestamp if timestamp is not None else time.monotonic()-self.state.recording_started_at
+            if not math.isfinite(t) or t<0 or (self.rows and t<=self.rows[-1]['t']):
+                return packet('error',reasons=['invalid_frame_timestamp'])
+            # Bound processing/memory resolution, preserve aspect ratio.
+            height,width=frame_bgr.shape[:2]
+            factor=min(1,960/max(height,width))
+            image=cv2.resize(frame_bgr,(max(1,round(width*factor)),max(1,round(height*factor))))
+            processing_started=time.monotonic()
+            row=self.processor.process(image,float(t))
+            row['processing_seconds']=time.monotonic()-processing_started
+            ok,jpeg=cv2.imencode('.jpg',image,[cv2.IMWRITE_JPEG_QUALITY,95])
+            if not ok: return packet('error',reasons=['frame_encoding_failed'])
+            self.rows.append(row);self.images.append(jpeg.tobytes())
+            current=packet('running',confidence=row['visibility'].get('face',0),reasons=['collecting_neck_evidence'])
+            self.latest=current;self.latest_at=time.monotonic()
+            self.state.recording_results.append({'at':self.latest_at,'result':dict(t=t,**current)})
+            return current
 
-        items = [item["result"] for item in self.state.recording_results]
-        scores = [int(item["score"]) for item in items if isinstance(item.get("score"), int)]
-        if not scores:
-            return None
+    def export_recording(self):
+        # Metadata only. No JPEG bytes, raw landmark arrays or patient images.
+        return [dict(t=row['t'],features=row['features'],visibility=row['visibility'],processing_seconds=row.get('processing_seconds')) for row in self.rows]
 
-        continuous_scores = [
-            float(item["continuous_score"])
-            for item in items
-            if isinstance(item.get("continuous_score"), (int, float))
-        ]
-        confidences = [
-            float(item["confidence"])
-            for item in items
-            if isinstance(item.get("confidence"), (int, float))
-        ]
+    def recording_summary(self,max_age_seconds=None):
+        ended=self.state.recording_stopped_at
+        if max_age_seconds is not None and (ended is None or time.monotonic()-ended>max_age_seconds): return None
+        return self.result
 
-        summary_score = int(round(float(np.median(scores))))
-        summary_score = int(_clamp(summary_score, 0, 3))
-
-        reason_counts: Dict[str, int] = {}
-        for item in items:
-            for reason in item.get("reasons") or []:
-                reason_counts[reason] = reason_counts.get(reason, 0) + 1
-        reasons = [
-            reason
-            for reason, _count in sorted(reason_counts.items(), key=lambda kv: kv[1], reverse=True)
-            if reason != "minimal_visible_effort"
-        ][:3]
-        if not reasons:
-            reasons = ["minimal_visible_effort"]
-
-        representative = dict(items[-1])
-        representative.update(
-            {
-                "score": summary_score,
-                "score_label": self._score_label(summary_score),
-                "confidence": round(float(np.mean(confidences)), 3) if confidences else representative.get("confidence", 0.0),
-                "continuous_score": round(float(np.median(continuous_scores)), 4) if continuous_scores else representative.get("continuous_score"),
-                "reasons": reasons,
-                "recording_summary": True,
-                "captured_frame_count": len(scores),
-            }
-        )
-        return representative
-
-    def is_calibrated(self) -> bool:
-        return self.state.calibrated
-
-    def calibration_progress(self) -> float:
-        return min(1.0, self.state.calibration_count / max(1, self.cfg.calibration_frames))
-
-    def latest_result(self, max_age_seconds: Optional[float] = None) -> Optional[Dict[str, Any]]:
-        result = self.state.last_valid_result
-        if result is None:
-            return None
-
-        if max_age_seconds is None:
-            return result
-
-        captured_at = self.state.last_valid_result_at
-        if captured_at is None:
-            return None
-
-        if (time.monotonic() - captured_at) > max_age_seconds:
-            return None
-
-        return result
-
-    def process_frame(self, frame_bgr: np.ndarray) -> Dict[str, Any]:
-        if frame_bgr is None or frame_bgr.size == 0:
-            return self._error_result("empty_frame")
-
-        h, w = frame_bgr.shape[:2]
-        rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-
-        pose_res = self.pose.process(rgb)
-        face_res = self.face.process(rgb)
-
-        if not pose_res.pose_landmarks or not face_res.multi_face_landmarks:
-            return self._no_score_result(
-                reason="no_face_or_pose",
-                confidence=0.0,
-                debug={},
-            )
-
-        try:
-            pose_lm = pose_res.pose_landmarks.landmark
-            face_lm = face_res.multi_face_landmarks[0].landmark
-            # World landmarks: true 3D in meters (origin at hip center)
-            pose_world = getattr(pose_res, "pose_world_landmarks", None)
-            pose_world_lm = pose_world.landmark if pose_world else None
-
-            visibility = self._estimate_visibility(pose_lm)
-            feats = self._extract_features(pose_lm, face_lm, w, h, pose_world_lm)
-            view_quality = self._estimate_view_quality(feats, visibility)
-            confidence = float(_clamp(0.55 * visibility + 0.45 * view_quality, 0.0, 1.0))
-            trackable_frame = self._is_trackable_frame(visibility, view_quality)
-
-            if trackable_frame:
-                self.state.feature_history.append(feats)
-                self.state.head_anchor_history.append(feats["head_anchor"])
-                smoothed = self._smooth_features()
-            else:
-                smoothed = None
-
-            if not self.state.calibrated:
-                if smoothed is None:
-                    return {
-                        "ok": True,
-                        "mode": "calibrating",
-                        "calibrated": False,
-                        "calibration_progress": self.calibration_progress(),
-                        "score": None,
-                        "score_label": None,
-                        "confidence": round(confidence, 3),
-                        "features": None,
-                        "reasons": ["Hold a relaxed neutral posture for calibration"],
-                    }
-                self._update_calibration(smoothed, confidence)
-                return {
-                    "ok": True,
-                    "mode": "calibrating",
-                    "calibrated": False,
-                    "calibration_progress": self.calibration_progress(),
-                    "score": None,
-                    "score_label": None,
-                    "confidence": round(confidence, 3),
-                    "features": self._jsonify_features(smoothed),
-                    "reasons": ["Hold a relaxed neutral posture for calibration"],
-                }
-
-            if smoothed is None or confidence < self.cfg.min_confidence_to_score:
-                return self._no_score_result(
-                    reason="low_confidence_view",
-                    confidence=confidence,
-                    debug={"view_quality": view_quality, "visibility": visibility},
-                )
-
-            continuous, contribs = self._compute_continuous_effort(smoothed)
-            continuous = self._apply_calibration_delta(continuous, smoothed)
-            continuous = float(_clamp(continuous, 0.0, 1.0))
-
-            if self.state.ema_continuous_score is None:
-                self.state.ema_continuous_score = continuous
-            else:
-                alpha = self.cfg.ema_alpha
-                self.state.ema_continuous_score = (
-                    alpha * continuous + (1 - alpha) * self.state.ema_continuous_score
-                )
-
-            cont_smooth = float(self.state.ema_continuous_score)
-            raw_score = self._continuous_to_discrete(cont_smooth)
-            stable_score = self._apply_hysteresis(raw_score, cont_smooth)
-            reasons = self._build_reasons(contribs, smoothed)
-
-            result = {
-                "ok": True,
-                "mode": "running",
-                "calibrated": True,
-                "calibration_progress": 1.0,
-                "score": stable_score,
-                "score_label": self._score_label(stable_score),
-                "confidence": round(confidence, 3),
-                "continuous_score": round(cont_smooth, 4),
-                "features": self._jsonify_features(smoothed),
-                "reasons": reasons,
-            }
-            self.state.last_valid_result = result
-            self.state.last_valid_result_at = time.monotonic()
-            if self.state.recording_active:
-                self.state.recording_results.append(
-                    {
-                        "at": self.state.last_valid_result_at,
-                        "result": dict(result),
-                    }
-                )
-            return result
-        except Exception as exc:
-            return self._error_result(f"processing_exception: {str(exc)}")
-
-    def _estimate_visibility(self, pose_lm) -> float:
-        ids = [
-            self.mp_pose.PoseLandmark.LEFT_SHOULDER,
-            self.mp_pose.PoseLandmark.RIGHT_SHOULDER,
-            self.mp_pose.PoseLandmark.LEFT_EAR,
-            self.mp_pose.PoseLandmark.RIGHT_EAR,
-            self.mp_pose.PoseLandmark.NOSE,
-        ]
-        vals = []
-        for idx in ids:
+    def finalize(self,audio=None,timing='unverified',movement=None,capture_transport=None):
+        with self.lock:
+            if self.result is not None: return self.result
+            self.stop_recording_session()
+            context=None
             try:
-                vals.append(float(pose_lm[idx].visibility))
-            except Exception:
-                vals.append(0.0)
-        mean_vis = _safe_mean(vals, 0.0)
-        return float(np.clip((mean_vis - 0.2) / 0.8, 0.0, 1.0))
+                if len(self.rows)<2 or len(self.images)!=len(self.rows):
+                    raise ValueError('Insufficient or expired video frames')
+                selected=select_frames(self.rows,self.cfg.max_evidence_frames)
+                context=evidence_context(self.rows,selected,self.cfg,audio,timing,movement,capture_transport)
+                if os.environ.get('NECK_DEBUG')=='1':
+                    self.debug_evidence={'context':context,'sampled_frames':[self.images[i] for i in selected]}
+                ceilings={k:q*context['temporal_quality'] for k,q in context['dimension_quality'].items()}
+                insufficient_sampling=max(ceilings.values())<self.cfg.min_dimension_confidence
+                silent=context['speech_status']=='silent'
+                if insufficient_sampling or silent:
+                    reason='No usable speech/phonation evidence in aligned audio' if silent else 'Insufficient temporal sampling confidence'
+                    diagnostics=dict(context['diagnostics'], provider_skipped=True,
+                        dimensions={k:dict(tracking_quality=context['dimension_quality'][k],
+                            maximum_possible_confidence=round(ceilings[k],4),
+                            required_confidence=self.cfg.min_dimension_confidence,
+                            rejection_reason=reason,model_evidence=[]) for k in DIMENSIONS})
+                    analysis=dict(version=VERSION,status='insufficient_quality',quality=context['quality'],
+                        dimensions={k:unavailable(reason) for k in DIMENSIONS},diagnostics=diagnostics,
+                        overall=dict(continuous_score=None,category=None,confidence=0.0,label='Not reliably assessable'),
+                        summary=('לא זוהתה פעילות דיבור שימושית באודיו החופף לצילום; לא נשלחה בקשה ל־OpenAI.' if silent else
+                                 'איכות וקצב הפריימים אינם מאפשרים להגיע לסף הביטחון הנדרש; לא נשלחה בקשה ל־OpenAI.'),
+                        limitations=context['limitations'],versions=context['versions'])
+                elif max(context['dimension_quality'].values())<self.cfg.min_roi_quality:
+                    analysis=dict(version=VERSION,status='insufficient_quality',quality=context['quality'],
+                                  dimensions={k:unavailable('Insufficient visibility') for k in DIMENSIONS},
+                                  overall=dict(continuous_score=None,category=None,confidence=0.0,label='Not reliably assessable'),
+                                  summary='איכות הצילום אינה מספיקה להערכת התנהגות צוואר נצפית.',
+                                  limitations=context['limitations'],versions=context['versions'])
+                else:
+                    images=[]
+                    crop_indices=set(selected[:1]+sorted(selected,key=lambda i: -self.rows[i]['features'].get('anterior_motion',0))[:1])
+                    for i in selected:
+                        encoded=self.images[i]
+                        images.append(dict(index=i,t=self.rows[i]['t'],kind='full_frame',url='data:image/jpeg;base64,'+base64.b64encode(encoded).decode()))
+                        box=self.rows[i]['rois'].get('anterior')
+                        if box and i in crop_indices:
+                            frame=cv2.imdecode(np.frombuffer(encoded,np.uint8),cv2.IMREAD_COLOR)
+                            h,w=frame.shape[:2];x1,y1,x2,y2=box
+                            # Context crop includes lateral neck, chin and clavicles.
+                            margin=max(1,x2-x1)
+                            crop=frame[max(0,y1-margin//2):min(h,y2+margin//2),max(0,x1-margin):min(w,x2+margin)]
+                            if crop.size:
+                                ok,jpeg=cv2.imencode('.jpg',crop)
+                                if ok: images.append(dict(index=i,t=self.rows[i]['t'],kind='neck_context_crop',url='data:image/jpeg;base64,'+base64.b64encode(jpeg).decode()))
+                    output=self.interpreter(context,images)
+                    analysis=aggregate(output,context,self.cfg)
+                analysis.setdefault('diagnostics',context['diagnostics'])
+                analysis['timeline']=context['timeline']
+                analysis['observable_change']=context['observable_change']
+                if movement is not None:analysis['movement_stability']=movement
+                analysis['effective_weights']={k:self.cfg.weights[k]/sum(self.cfg.weights[d] for d in DIMENSIONS if analysis['dimensions'][d]['score'] is not None)
+                                               for k in DIMENSIONS if analysis['dimensions'][k]['score'] is not None}
+                analysis=NeckAnalysis.model_validate(analysis).model_dump()
+                self.result=packet('complete',analysis)
+                self.result.update(recording_summary=True,captured_frame_count=len(self.rows),timeline=self.export_recording())
+                return self.result
+            except (NeckProviderError,ValueError,RuntimeError) as exc:
+                # Sanitized provider error; no patient/provider bodies in ordinary logs.
+                self.result=packet('error',reasons=[str(exc)])
+                self.result['neckAnalysis']=dict(version=VERSION,status='error',
+                    validation_status='not_clinically_validated',confidence_kind='uncalibrated_evidence_index',
+                    dimensions={k:unavailable('Analysis failed') for k in DIMENSIONS},
+                    overall=dict(continuous_score=None,category=None,confidence=0.0,label='Analysis unavailable'),
+                    quality=context['quality'] if context else {'overall':0.0,'warnings':['analysis_failed']},
+                    observable_change=context['observable_change'] if context else compare_observable_windows(self.rows,audio,timing),
+                    diagnostics=context['diagnostics'] if context else {'captured_frames':len(self.rows)},summary='ניתוח הצוואר אינו זמין.',limitations=[str(exc)])
+                if movement is not None:self.result['neckAnalysis']['movement_stability']=movement
+                self.result.update(recording_summary=True,captured_frame_count=len(self.rows),timeline=self.export_recording())
+                return self.result
+            finally:
+                # Media never survives finalization, even when the provider fails.
+                self.images.clear()
+                self.processor.reset()
+                if self.expiry_timer is not None and self.debug_evidence is None: self.expiry_timer.cancel()
 
-    def _extract_features(self, pose_lm, face_lm, w: int, h: int, pose_world_lm=None) -> Dict[str, float]:
-        # Pose landmarks in pixel coordinates
-        l_sh = _xy(pose_lm[self.mp_pose.PoseLandmark.LEFT_SHOULDER], w, h)
-        r_sh = _xy(pose_lm[self.mp_pose.PoseLandmark.RIGHT_SHOULDER], w, h)
-        l_ear = _xy(pose_lm[self.mp_pose.PoseLandmark.LEFT_EAR], w, h)
-        r_ear = _xy(pose_lm[self.mp_pose.PoseLandmark.RIGHT_EAR], w, h)
-        nose = _xy(pose_lm[self.mp_pose.PoseLandmark.NOSE], w, h)
-
-        # --- Forward head posture: use pose_world_landmarks (3D meters) when available ---
-        # Kendall clinical threshold: >2.5 cm anterior = abnormal
-        # MediaPipe pose_world_landmarks origin: hip center, Y=up, Z=depth (meters)
-        forward_head_m = 0.0
-        world_forward_head_available = False
-        if pose_world_lm is not None:
-            try:
-                lsw = pose_world_lm[self.mp_pose.PoseLandmark.LEFT_SHOULDER]
-                rsw = pose_world_lm[self.mp_pose.PoseLandmark.RIGHT_SHOULDER]
-                lew = pose_world_lm[self.mp_pose.PoseLandmark.LEFT_EAR]
-                rew = pose_world_lm[self.mp_pose.PoseLandmark.RIGHT_EAR]
-                shoulder_z_m = (float(lsw.z) + float(rsw.z)) / 2.0
-                ear_z_m = (float(lew.z) + float(rew.z)) / 2.0
-                if math.isfinite(shoulder_z_m) and math.isfinite(ear_z_m):
-                    world_forward_head_available = True
-                    # Forward = ear z more negative than shoulder z (closer to camera)
-                    forward_head_m = max(0.0, shoulder_z_m - ear_z_m)
-            except Exception:
-                pass
-
-        # Fallback to 2D z (normalized, noisy) if world landmarks missing
-        if not world_forward_head_available:
-            try:
-                l_sh_z = float(pose_lm[self.mp_pose.PoseLandmark.LEFT_SHOULDER].z)
-                r_sh_z = float(pose_lm[self.mp_pose.PoseLandmark.RIGHT_SHOULDER].z)
-                l_ear_z = float(pose_lm[self.mp_pose.PoseLandmark.LEFT_EAR].z)
-                r_ear_z = float(pose_lm[self.mp_pose.PoseLandmark.RIGHT_EAR].z)
-                shoulder_z = (l_sh_z + r_sh_z) / 2.0
-                ear_z = (l_ear_z + r_ear_z) / 2.0
-                forward_head_z_2d = max(0.0, shoulder_z - ear_z)
-                # Scale 2D z (unitless ~0.0–0.3) to approximate meters
-                # (rough calibration: 0.1 in 2D z ≈ 5cm anterior)
-                forward_head_m = forward_head_z_2d * 0.5
-            except Exception:
-                forward_head_m = 0.0
-
-        shoulder_mid = _mid(l_sh, r_sh)
-        ear_mid = _mid(l_ear, r_ear)
-        shoulder_width = max(_dist(l_sh, r_sh), 1e-6)
-
-        # Torso length approximation: shoulder-mid to pose body y-axis
-        # Used for shoulder_raise normalization (distance-independent)
-        try:
-            l_hip = _xy(pose_lm[23], w, h)  # LEFT_HIP
-            r_hip = _xy(pose_lm[24], w, h)  # RIGHT_HIP
-            hip_mid = _mid(l_hip, r_hip)
-            torso_length = max(_dist(shoulder_mid, hip_mid), shoulder_width * 1.2)
-        except Exception:
-            torso_length = shoulder_width * 1.5
-
-        # Face landmarks (still needed for view quality check)
-        face_nose = _xy(face_lm[1], w, h)
-        eye_l = _xy(face_lm[33], w, h)
-        eye_r = _xy(face_lm[263], w, h)
-        eye_mid = _mid(eye_l, eye_r)
-        eye_dist = max(_dist(eye_l, eye_r), 1e-6)
-        lip_top = _xy(face_lm[13], w, h)
-        lip_bottom = _xy(face_lm[14], w, h)
-
-        # --- Head lateral tilt (Ferrario 1995) — CLINICAL ---
-        eye_vec = eye_r - eye_l
-        horizontal = np.array([1.0, 0.0], dtype=np.float32)
-        raw_eye_angle = _angle_deg(eye_vec, horizontal)
-        head_tilt_deg = min(raw_eye_angle, 180.0 - raw_eye_angle)
-
-        # --- Shoulder line angle from horizontal (Kibler 1998) — CLINICAL ---
-        shoulder_vec = r_sh - l_sh
-        raw_shoulder_angle = _angle_deg(shoulder_vec, horizontal)
-        shoulder_angle_deg = min(raw_shoulder_angle, 180.0 - raw_shoulder_angle)
-
-        # --- Shoulder elevation (y-position relative to torso length) ---
-        shoulder_raise_metric = float(shoulder_mid[1] / max(torso_length, 1.0))
-
-        # --- Head rotation (yaw) — VIEW QUALITY ONLY (not effort) ---
-        head_rotation = abs(float(face_nose[0] - eye_mid[0])) / eye_dist
-
-        # --- Mouth opening — VIEW QUALITY ONLY (not effort) ---
-        mouth_open = _dist(lip_top, lip_bottom) / eye_dist
-
-        # --- Head stability anchor (for variance tracking) ---
-        head_anchor = _dist(nose, shoulder_mid) / shoulder_width
-
-        return {
-            "forward_head_m": float(forward_head_m),
-            "head_tilt_deg": float(head_tilt_deg),
-            "shoulder_angle_deg": float(shoulder_angle_deg),
-            "shoulder_raise_metric": float(shoulder_raise_metric),
-            "head_anchor": float(head_anchor),
-            # View quality only (not in effort scoring):
-            "head_rotation": float(head_rotation),
-            "mouth_open": float(mouth_open),
-            # Legacy names kept for UI/reasons compatibility:
-            "forward_head_z": float(forward_head_m),
-            "forward_head": float(forward_head_m),
-            "neck_tilt_deg": float(head_tilt_deg),
-            "shoulder_asym": float(shoulder_angle_deg) / 90.0,
-            "shoulder_raise_proxy": 0.0,
-        }
-
-    def _estimate_view_quality(self, feats: Dict[str, float], visibility: float) -> float:
-        cfg = self.cfg
-        penalties = []
-        penalties.append(_norm_bad(feats["head_rotation"], cfg.head_rotation_good, cfg.head_rotation_bad))
-        penalties.append(_norm_bad(feats["neck_tilt_deg"], 25.0, 45.0))
-        penalties.append(_norm_bad(feats["mouth_open"], cfg.mouth_open_bad, cfg.mouth_open_bad + 0.25))
-
-        penalty = _safe_mean(penalties, 0.0)
-        return float(_clamp((1.0 - penalty) * (0.6 + 0.4 * visibility), 0.0, 1.0))
-
-    def _is_trackable_frame(self, visibility: float, view_quality: float) -> bool:
-        return (
-            visibility >= self.cfg.min_visibility
-            and view_quality >= self.cfg.min_view_quality_to_track
-        )
-
-    def _smooth_features(self) -> Dict[str, float]:
-        hist = list(self.state.feature_history)
-        keys = hist[0].keys()
-        out = {}
-        for key in keys:
-            out[key] = float(np.median([item[key] for item in hist]))
-
-        head_anchors = list(self.state.head_anchor_history)
-        if len(head_anchors) >= 3:
-            anchor_median = float(np.median(head_anchors))
-            mad = float(np.median([abs(anchor - anchor_median) for anchor in head_anchors]))
-            out["head_instability"] = 1.4826 * mad
-        else:
-            out["head_instability"] = 0.0
-        return out
-
-    def _update_calibration(self, feats: Dict[str, float], confidence: float):
-        # Require higher confidence during calibration
-        if confidence < 0.65:
-            return
-
-        # Reject frames where posture is clearly not neutral:
-        # - Head rotation > 8° (not facing camera)
-        # - Head tilt > 8° (tilted head)
-        # - Shoulder angle > 8° (asymmetric)
-        # This ensures baseline is built from genuinely neutral frames.
-        if feats.get("head_rotation", 0) > 0.10:  # ~8° rotation
-            return
-        if feats.get("head_tilt_deg", 0) > 8.0:
-            return
-        if feats.get("shoulder_angle_deg", 0) > 8.0:
-            return
-
-        self.state.calibration_buffer.append(
-            {
-                "forward_head_m": feats.get("forward_head_m", 0.0),
-                "head_tilt_deg": feats.get("head_tilt_deg", 0.0),
-                "shoulder_angle_deg": feats.get("shoulder_angle_deg", 0.0),
-                "shoulder_raise_metric": feats.get("shoulder_raise_metric", 0.0),
-                "head_instability": feats.get("head_instability", 0.0),
-            }
-        )
-        self.state.calibration_count += 1
-
-        if self.state.calibration_count >= self.cfg.calibration_frames:
-            keys = self.state.calibration_buffer[0].keys()
-            # Use median — robust to brief posture dips during calibration
-            self.state.baseline = {
-                key: float(np.median([item[key] for item in self.state.calibration_buffer]))
-                for key in keys
-            }
-            self.state.calibrated = True
-
-    def _compute_continuous_effort(self, feats: Dict[str, float]):
-        """Clinical scoring: max individual severity dominates, evidence boosts.
-
-        score_raw = 0.80 * max_norm + 0.20 * combined_weighted_sum
-
-        This ensures:
-        - One severe metric (max=1.0) → raw ≥ 0.80 → score 3
-        - One moderate metric (max=0.6) → raw ≥ 0.48 → score 2
-        - One mild metric (max=0.25) → raw ≥ 0.20 → score 1
-        """
-        cfg = self.cfg
-
-        # Forward-head posture is clinically scored with side-view CVA. From the
-        # app's mostly frontal camera, MediaPipe depth is useful as a change
-        # signal, but too unstable as an absolute diagnosis.
-        nf = 0.0
-        if self.state.calibrated and self.state.baseline:
-            fh_now = feats.get("forward_head_m", feats.get("forward_head_z", 0.0))
-            fh_base = self.state.baseline.get("forward_head_m", 0.0)
-            nf = _norm_bad(max(0.0, fh_now - fh_base), 0.015, 0.070)
-        ht = _norm_bad(feats["head_tilt_deg"], cfg.head_tilt_good, cfg.head_tilt_bad)
-        sa = _norm_bad(feats["shoulder_angle_deg"], cfg.shoulder_angle_good, cfg.shoulder_angle_bad)
-
-        # Shoulder raise — derived from baseline delta if available
-        sr = 0.0
-        if self.state.calibrated and self.state.baseline:
-            sh_base = self.state.baseline.get("shoulder_raise_metric", None)
-            sh_now = feats.get("shoulder_raise_metric", None)
-            if sh_base is not None and sh_now is not None:
-                raise_delta = max(0.0, sh_base - sh_now)
-                sr = _norm_bad(raise_delta, cfg.shoulder_raise_good, cfg.shoulder_raise_bad)
-
-        ni = _norm_bad(feats.get("head_instability", 0.0),
-                       cfg.head_instability_good, cfg.head_instability_bad)
-
-        norms = {
-            "forward_head": nf,
-            "head_tilt": ht,
-            "shoulder_asym": sa,
-            "shoulder_raise": sr,
-            "head_instability": ni,
-        }
-
-        weights = {
-            "forward_head": cfg.w_forward_head,
-            "head_tilt": cfg.w_head_tilt,
-            "shoulder_asym": cfg.w_shoulder_asym,
-            "shoulder_raise": cfg.w_shoulder_raise,
-            "head_instability": cfg.w_head_instability,
-        }
-
-        contribs = {name: weights[name] * norms[name] for name in norms}
-
-        combined_sum = float(sum(contribs.values()))
-        max_severity = float(max(norms.values()))
-
-        # 80% max severity + 20% combined evidence
-        continuous = 0.80 * max_severity + 0.20 * combined_sum
-        continuous = float(_clamp(continuous, 0.0, 1.0))
-
-        return continuous, contribs
-
-    def _apply_calibration_delta(self, continuous: float, feats: Dict[str, float]) -> float:
-        """Calibration now refines rather than replaces the clinical score.
-
-        Shoulder raise is already computed from baseline in _compute_continuous_effort.
-        Here we optionally boost the score if user has deteriorated significantly
-        from their own neutral baseline (since some users have baseline issues).
-        """
-        if not self.state.calibrated or not self.state.baseline:
-            return continuous
-
-        baseline = self.state.baseline
-        deltas = []
-
-        # Measure deterioration relative to baseline (all in SI units)
-        fh_delta = max(0.0, feats.get("forward_head_m", 0) - baseline.get("forward_head_m", 0))
-        ht_delta = max(0.0, feats.get("head_tilt_deg", 0) - baseline.get("head_tilt_deg", 0))
-        sa_delta = max(0.0, feats.get("shoulder_angle_deg", 0) - baseline.get("shoulder_angle_deg", 0))
-
-        deltas.append(_norm_bad(fh_delta, 0.02, 0.08))  # meters
-        deltas.append(_norm_bad(ht_delta, 2.0, 8.0))
-        deltas.append(_norm_bad(sa_delta, 2.0, 8.0))
-
-        delta_score = float(np.mean(deltas)) if deltas else 0.0
-
-        # Gentle boost only when user has significantly deteriorated
-        # Limit boost to 10% to avoid inflating clinical scores
-        boost = 0.10 * delta_score
-        return float(max(continuous, min(continuous + boost, 1.0)))
-
-    def _continuous_to_discrete(self, x: float) -> int:
-        # Slightly stricter boundaries: the UI was tending to rate neck effort
-        # as too relaxed, so mild/moderate/significant effort now appears sooner.
-        # 0 (normal):   max_severity < 0.12
-        # 1 (mild):     0.12 – 0.38
-        # 2 (moderate): 0.38 – 0.72
-        # 3 (severe):   ≥ 0.72
-        if x < 0.12:
-            return 0
-        if x < 0.38:
-            return 1
-        if x < 0.72:
-            return 2
-        return 3
-
-    def _apply_hysteresis(self, raw_score: int, cont: float) -> int:
-        if self.state.stable_score is None:
-            self.state.stable_score = raw_score
-            return raw_score
-
-        prev = self.state.stable_score
-        bounds = {
-            0: (0.00, 0.12),
-            1: (0.12, 0.38),
-            2: (0.38, 0.72),
-            3: (0.72, 1.00),
-        }
-
-        lo, hi = bounds[prev]
-        if prev == 0:
-            if cont < hi + self.cfg.hysteresis_margin:
-                return 0
-        elif prev == 3:
-            if cont > lo - self.cfg.hysteresis_margin:
-                return 3
-        elif (lo - self.cfg.hysteresis_margin) <= cont <= (hi + self.cfg.hysteresis_margin):
-            return prev
-
-        self.state.stable_score = raw_score
-        return raw_score
-
-    def _build_reasons(self, contribs: Dict[str, float], feats: Dict[str, float]) -> List[str]:
-        ranked = sorted(contribs.items(), key=lambda item: item[1], reverse=True)
-        reasons = []
-        for name, value in ranked[:3]:
-            if value < 0.03:
-                continue
-            if name == "forward_head":
-                reasons.append("head_forward_posture")
-            elif name == "head_tilt":
-                reasons.append("neck_tilt")
-            elif name == "shoulder_asym":
-                reasons.append("shoulder_imbalance")
-            elif name == "shoulder_raise":
-                reasons.append("raised_shoulders")
-            elif name == "head_instability":
-                reasons.append("head_instability")
-            elif name == "mouth_open":
-                reasons.append("excess_mouth_opening")
-            elif name == "head_rotation":
-                reasons.append("head_rotation")
-
-        if not reasons:
-            reasons = ["minimal_visible_effort"]
-        return reasons
-
-    def _score_label(self, score: int) -> str:
-        return {
-            0: "appears_relaxed",
-            1: "possible_mild_effort",
-            2: "possible_moderate_effort",
-            3: "possible_significant_effort",
-        }.get(score, "unknown")
-
-    def _jsonify_features(self, feats: Dict[str, float]) -> Dict[str, float]:
-        out = {}
-        for key, value in feats.items():
-            if key == "head_anchor":
-                continue
-            out[key] = round(float(value), 4)
-        return out
-
-    def _no_score_result(self, reason: str, confidence: float, debug: Dict[str, Any]) -> Dict[str, Any]:
-        result = {
-            "ok": True,
-            "mode": "no_score",
-            "calibrated": self.state.calibrated,
-            "calibration_progress": self.calibration_progress(),
-            "score": None,
-            "score_label": None,
-            "confidence": round(float(confidence), 3),
-            "features": None,
-            "reasons": [reason],
-            "debug": debug,
-        }
-        if self.state.last_valid_result is not None:
-            result["last_valid_score"] = self.state.last_valid_result.get("score")
-        return result
-
-    def _error_result(self, reason: str) -> Dict[str, Any]:
-        return {
-            "ok": False,
-            "mode": "error",
-            "calibrated": self.state.calibrated,
-            "calibration_progress": self.calibration_progress(),
-            "score": None,
-            "score_label": None,
-            "confidence": 0.0,
-            "features": None,
-            "reasons": [reason],
-        }
+    def close(self):
+        if self.expiry_timer is not None: self.expiry_timer.cancel()
+        self.images.clear()
+        self.debug_evidence=None
+        self.processor.close()

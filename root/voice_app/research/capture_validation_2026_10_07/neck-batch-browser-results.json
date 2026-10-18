@@ -1,0 +1,118 @@
+[
+  {
+    "mobile": false,
+    "diagnostics": {
+      "captured_frames": 25,
+      "selected_frames": 8,
+      "observed_span_seconds": 4.8,
+      "effective_fps": 5.0,
+      "target_fps": 5,
+      "temporal_quality": 0.768,
+      "dimension_quality": {
+        "posture_compensation": 0.0,
+        "scm_lateral_recruitment": 0.0,
+        "anterior_submental_activity": 0.0,
+        "shoulder_recruitment": 0.0,
+        "jaw_compensation": 0.0
+      },
+      "mean_cv_processing_seconds": 0.0372,
+      "provider_skipped": true,
+      "dimensions": {
+        "posture_compensation": {
+          "tracking_quality": 0.0,
+          "maximum_possible_confidence": 0.0,
+          "required_confidence": 0.15,
+          "rejection_reason": "Insufficient temporal sampling confidence",
+          "model_evidence": []
+        },
+        "scm_lateral_recruitment": {
+          "tracking_quality": 0.0,
+          "maximum_possible_confidence": 0.0,
+          "required_confidence": 0.15,
+          "rejection_reason": "Insufficient temporal sampling confidence",
+          "model_evidence": []
+        },
+        "anterior_submental_activity": {
+          "tracking_quality": 0.0,
+          "maximum_possible_confidence": 0.0,
+          "required_confidence": 0.15,
+          "rejection_reason": "Insufficient temporal sampling confidence",
+          "model_evidence": []
+        },
+        "shoulder_recruitment": {
+          "tracking_quality": 0.0,
+          "maximum_possible_confidence": 0.0,
+          "required_confidence": 0.15,
+          "rejection_reason": "Insufficient temporal sampling confidence",
+          "model_evidence": []
+        },
+        "jaw_compensation": {
+          "tracking_quality": 0.0,
+          "maximum_possible_confidence": 0.0,
+          "required_confidence": 0.15,
+          "rejection_reason": "Insufficient temporal sampling confidence",
+          "model_evidence": []
+        }
+      }
+    },
+    "errors": []
+  },
+  {
+    "mobile": true,
+    "diagnostics": {
+      "captured_frames": 25,
+      "selected_frames": 8,
+      "observed_span_seconds": 4.8,
+      "effective_fps": 5.0,
+      "target_fps": 5,
+      "temporal_quality": 0.768,
+      "dimension_quality": {
+        "posture_compensation": 0.0,
+        "scm_lateral_recruitment": 0.0,
+        "anterior_submental_activity": 0.0,
+        "shoulder_recruitment": 0.0,
+        "jaw_compensation": 0.0
+      },
+      "mean_cv_processing_seconds": 0.0425,
+      "provider_skipped": true,
+      "dimensions": {
+        "posture_compensation": {
+          "tracking_quality": 0.0,
+          "maximum_possible_confidence": 0.0,
+          "required_confidence": 0.15,
+          "rejection_reason": "Insufficient temporal sampling confidence",
+          "model_evidence": []
+        },
+        "scm_lateral_recruitment": {
+          "tracking_quality": 0.0,
+          "maximum_possible_confidence": 0.0,
+          "required_confidence": 0.15,
+          "rejection_reason": "Insufficient temporal sampling confidence",
+          "model_evidence": []
+        },
+        "anterior_submental_activity": {
+          "tracking_quality": 0.0,
+          "maximum_possible_confidence": 0.0,
+          "required_confidence": 0.15,
+          "rejection_reason": "Insufficient temporal sampling confidence",
+          "model_evidence": []
+        },
+        "shoulder_recruitment": {
+          "tracking_quality": 0.0,
+          "maximum_possible_confidence": 0.0,
+          "required_confidence": 0.15,
+          "rejection_reason": "Insufficient temporal sampling confidence",
+          "model_evidence": []
+        },
+        "jaw_compensation": {
+          "tracking_quality": 0.0,
+          "maximum_possible_confidence": 0.0,
+          "required_confidence": 0.15,
+          "rejection_reason": "Insufficient temporal sampling confidence",
+          "model_evidence": []
+        }
+      }
+    },
+    "errors": []
+  }
+]

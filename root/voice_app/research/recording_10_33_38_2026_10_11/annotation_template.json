@@ -1,0 +1,77 @@
+{
+  "source_file": "WIN_20261011_10_33_38_Pro.mp4",
+  "subject_id": null,
+  "rater_id": null,
+  "annotation_source": "independent_human_review_required",
+  "reported_effort": {
+    "onset_seconds": null,
+    "description": null
+  },
+  "windows": [
+    {
+      "start_seconds": 0,
+      "end_seconds": 2.0,
+      "visible_posture_movement_grade": null,
+      "visible_neck_appearance_grade": null,
+      "visible_jaw_behavior_grade": null,
+      "assessability": null,
+      "description": null,
+      "head_jaw_lighting_confound": null
+    },
+    {
+      "start_seconds": 2.0,
+      "end_seconds": 4.0,
+      "visible_posture_movement_grade": null,
+      "visible_neck_appearance_grade": null,
+      "visible_jaw_behavior_grade": null,
+      "assessability": null,
+      "description": null,
+      "head_jaw_lighting_confound": null
+    },
+    {
+      "start_seconds": 4.0,
+      "end_seconds": 6.0,
+      "visible_posture_movement_grade": null,
+      "visible_neck_appearance_grade": null,
+      "visible_jaw_behavior_grade": null,
+      "assessability": null,
+      "description": null,
+      "head_jaw_lighting_confound": null
+    },
+    {
+      "start_seconds": 6.0,
+      "end_seconds": 8.0,
+      "visible_posture_movement_grade": null,
+      "visible_neck_appearance_grade": null,
+      "visible_jaw_behavior_grade": null,
+      "assessability": null,
+      "description": null,
+      "head_jaw_lighting_confound": null
+    },
+    {
+      "start_seconds": 8.0,
+      "end_seconds": 9.137366666666667,
+      "visible_posture_movement_grade": null,
+      "visible_neck_appearance_grade": null,
+      "visible_jaw_behavior_grade": null,
+      "assessability": null,
+      "description": null,
+      "head_jaw_lighting_confound": null
+    }
+  ],
+  "rules": [
+    "Null is unlabelled/unassessable, never zero",
+    "Visible behavior labels and participant-reported effort are separate targets",
+    "No diagnosis or internal muscle tension labels inferred from RGB",
+    "No OpenAI-generated labels used as independent ground truth",
+    "Subject IDs must be supplied before subject-disjoint evaluation"
+  ],
+  "participant_report": {
+    "description": "Head and neck shaking throughout the clip; perceived neck tension",
+    "visible_instability_reported_interval_seconds": [
+      0,
+      9.137
+    ],
+    "physiological_tension_verified": false
+  }
+}

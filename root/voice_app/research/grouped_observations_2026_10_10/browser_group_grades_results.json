@@ -1,0 +1,30 @@
+[
+  {
+    "mobile": false,
+    "groups": 3,
+    "five_metric_option_removed": true,
+    "no_overall": true,
+    "coupled_description": true,
+    "group_grades": true,
+    "local_comparison": true,
+    "version": "http://127.0.0.1:5000/neck-analysis-v1.js?v=17",
+    "explanations_visible": true,
+    "status_guide": true,
+    "service_error_clear": true,
+    "javascript_errors": []
+  },
+  {
+    "mobile": true,
+    "groups": 3,
+    "five_metric_option_removed": true,
+    "no_overall": true,
+    "coupled_description": true,
+    "group_grades": true,
+    "local_comparison": true,
+    "version": "http://127.0.0.1:5000/neck-analysis-v1.js?v=17",
+    "explanations_visible": true,
+    "status_guide": true,
+    "service_error_clear": true,
+    "javascript_errors": []
+  }
+]

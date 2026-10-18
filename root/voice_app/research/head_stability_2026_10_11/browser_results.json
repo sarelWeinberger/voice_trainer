@@ -1,0 +1,380 @@
+[
+  {
+    "mobile": false,
+    "report": {
+      "version": "head-movement-stability-v2",
+      "status": "measured",
+      "source": "browser_patch_tracking",
+      "unit": "percent_image_width",
+      "amplitude_kind": "dominant_sinusoid_rms",
+      "effort_score": null,
+      "windows": [
+        {
+          "start": 0.053,
+          "end": 2.053,
+          "status": "measured",
+          "amplitude_percent_image_width": 0.11675,
+          "dominant_frequency_hz": 4.8,
+          "background_amplitude_percent_image_width": 0.00333,
+          "received_samples": 50,
+          "usable_samples": 49,
+          "tracking_coverage": 0.98,
+          "tracked_span_seconds": 1.904,
+          "max_gap_seconds": 0.128,
+          "temporal_coverage": 1.0,
+          "method": "observed_timestamp_sinusoid_fit",
+          "band_hz": [
+            2,
+            8
+          ],
+          "effective_sample_density": 25.208
+        },
+        {
+          "start": 1.053,
+          "end": 3.053,
+          "status": "measured",
+          "amplitude_percent_image_width": 0.17781,
+          "dominant_frequency_hz": 5.1,
+          "background_amplitude_percent_image_width": 0.01387,
+          "received_samples": 43,
+          "usable_samples": 43,
+          "tracking_coverage": 1.0,
+          "tracked_span_seconds": 1.936,
+          "max_gap_seconds": 0.208,
+          "temporal_coverage": 0.95,
+          "method": "observed_timestamp_sinusoid_fit",
+          "band_hz": [
+            2,
+            8
+          ],
+          "effective_sample_density": 21.693
+        },
+        {
+          "start": 2.053,
+          "end": 4.053,
+          "status": "measured",
+          "amplitude_percent_image_width": 0.13584,
+          "dominant_frequency_hz": 4.85,
+          "background_amplitude_percent_image_width": 0.01598,
+          "received_samples": 46,
+          "usable_samples": 46,
+          "tracking_coverage": 1.0,
+          "tracked_span_seconds": 1.952,
+          "max_gap_seconds": 0.208,
+          "temporal_coverage": 0.95,
+          "method": "observed_timestamp_sinusoid_fit",
+          "band_hz": [
+            2,
+            8
+          ],
+          "effective_sample_density": 23.052
+        },
+        {
+          "start": 3.053,
+          "end": 5.053,
+          "status": "measured",
+          "amplitude_percent_image_width": 0.13284,
+          "dominant_frequency_hz": 4.7,
+          "background_amplitude_percent_image_width": 0.00619,
+          "received_samples": 55,
+          "usable_samples": 55,
+          "tracking_coverage": 1.0,
+          "tracked_span_seconds": 1.968,
+          "max_gap_seconds": 0.112,
+          "temporal_coverage": 1.0,
+          "method": "observed_timestamp_sinusoid_fit",
+          "band_hz": [
+            2,
+            8
+          ],
+          "effective_sample_density": 27.442
+        },
+        {
+          "start": 4.053,
+          "end": 6.053,
+          "status": "measured",
+          "amplitude_percent_image_width": 0.17552,
+          "dominant_frequency_hz": 4.6,
+          "background_amplitude_percent_image_width": 0.00345,
+          "received_samples": 58,
+          "usable_samples": 58,
+          "tracking_coverage": 1.0,
+          "tracked_span_seconds": 1.968,
+          "max_gap_seconds": 0.064,
+          "temporal_coverage": 1.0,
+          "method": "observed_timestamp_sinusoid_fit",
+          "band_hz": [
+            2,
+            8
+          ],
+          "effective_sample_density": 28.964
+        },
+        {
+          "start": 5.053,
+          "end": 7.053,
+          "status": "measured",
+          "amplitude_percent_image_width": 0.19383,
+          "dominant_frequency_hz": 4.5,
+          "background_amplitude_percent_image_width": 0.00572,
+          "received_samples": 52,
+          "usable_samples": 52,
+          "tracking_coverage": 1.0,
+          "tracked_span_seconds": 1.952,
+          "max_gap_seconds": 0.096,
+          "temporal_coverage": 1.0,
+          "method": "observed_timestamp_sinusoid_fit",
+          "band_hz": [
+            2,
+            8
+          ],
+          "effective_sample_density": 26.129
+        },
+        {
+          "start": 6.053,
+          "end": 8.053,
+          "status": "measured",
+          "amplitude_percent_image_width": 0.18213,
+          "dominant_frequency_hz": 4.4,
+          "background_amplitude_percent_image_width": 0.01309,
+          "received_samples": 51,
+          "usable_samples": 51,
+          "tracking_coverage": 1.0,
+          "tracked_span_seconds": 1.968,
+          "max_gap_seconds": 0.112,
+          "temporal_coverage": 1.0,
+          "method": "observed_timestamp_sinusoid_fit",
+          "band_hz": [
+            2,
+            8
+          ],
+          "effective_sample_density": 25.404
+        },
+        {
+          "start": 7.053,
+          "end": 9.053,
+          "status": "measured",
+          "amplitude_percent_image_width": 0.18843,
+          "dominant_frequency_hz": 4.05,
+          "background_amplitude_percent_image_width": 0.01296,
+          "received_samples": 55,
+          "usable_samples": 55,
+          "tracking_coverage": 1.0,
+          "tracked_span_seconds": 1.968,
+          "max_gap_seconds": 0.112,
+          "temporal_coverage": 1.0,
+          "method": "observed_timestamp_sinusoid_fit",
+          "band_hz": [
+            2,
+            8
+          ],
+          "effective_sample_density": 27.436
+        }
+      ],
+      "sample_count": 236,
+      "limitations": [
+        "Descriptive image oscillation; not muscle tension or a tremor diagnosis",
+        "Translation control does not fully remove camera rotation, rolling shutter or articulation",
+        "Frequency band and tracking gates are engineering choices, not clinically validated"
+      ],
+      "effective_fps": 31.217,
+      "reason": null
+    },
+    "checks": {
+      "movement_visible": true,
+      "rows": 9,
+      "no_admin_debug": true,
+      "group_grades_preserved": true,
+      "motion_survives_provider_failure": true
+    },
+    "javascript_errors": []
+  },
+  {
+    "mobile": true,
+    "report": {
+      "version": "head-movement-stability-v2",
+      "status": "measured",
+      "source": "browser_patch_tracking",
+      "unit": "percent_image_width",
+      "amplitude_kind": "dominant_sinusoid_rms",
+      "effort_score": null,
+      "windows": [
+        {
+          "start": 0.063,
+          "end": 2.063,
+          "status": "measured",
+          "amplitude_percent_image_width": 0.11998,
+          "dominant_frequency_hz": 4.8,
+          "background_amplitude_percent_image_width": 0.005,
+          "received_samples": 50,
+          "usable_samples": 49,
+          "tracking_coverage": 0.98,
+          "tracked_span_seconds": 1.904,
+          "max_gap_seconds": 0.128,
+          "temporal_coverage": 1.0,
+          "method": "observed_timestamp_sinusoid_fit",
+          "band_hz": [
+            2,
+            8
+          ],
+          "effective_sample_density": 25.208
+        },
+        {
+          "start": 1.063,
+          "end": 3.063,
+          "status": "measured",
+          "amplitude_percent_image_width": 0.17717,
+          "dominant_frequency_hz": 5.1,
+          "background_amplitude_percent_image_width": 0.01253,
+          "received_samples": 45,
+          "usable_samples": 45,
+          "tracking_coverage": 1.0,
+          "tracked_span_seconds": 1.936,
+          "max_gap_seconds": 0.176,
+          "temporal_coverage": 0.95,
+          "method": "observed_timestamp_sinusoid_fit",
+          "band_hz": [
+            2,
+            8
+          ],
+          "effective_sample_density": 22.726
+        },
+        {
+          "start": 2.063,
+          "end": 4.063,
+          "status": "measured",
+          "amplitude_percent_image_width": 0.13535,
+          "dominant_frequency_hz": 4.9,
+          "background_amplitude_percent_image_width": 0.01573,
+          "received_samples": 51,
+          "usable_samples": 51,
+          "tracking_coverage": 1.0,
+          "tracked_span_seconds": 1.952,
+          "max_gap_seconds": 0.176,
+          "temporal_coverage": 0.95,
+          "method": "observed_timestamp_sinusoid_fit",
+          "band_hz": [
+            2,
+            8
+          ],
+          "effective_sample_density": 25.613
+        },
+        {
+          "start": 3.063,
+          "end": 5.063,
+          "status": "measured",
+          "amplitude_percent_image_width": 0.13026,
+          "dominant_frequency_hz": 4.65,
+          "background_amplitude_percent_image_width": 0.0086,
+          "received_samples": 56,
+          "usable_samples": 56,
+          "tracking_coverage": 1.0,
+          "tracked_span_seconds": 1.968,
+          "max_gap_seconds": 0.064,
+          "temporal_coverage": 1.0,
+          "method": "observed_timestamp_sinusoid_fit",
+          "band_hz": [
+            2,
+            8
+          ],
+          "effective_sample_density": 27.95
+        },
+        {
+          "start": 4.063,
+          "end": 6.063,
+          "status": "measured",
+          "amplitude_percent_image_width": 0.18198,
+          "dominant_frequency_hz": 4.6,
+          "background_amplitude_percent_image_width": 0.00345,
+          "received_samples": 57,
+          "usable_samples": 57,
+          "tracking_coverage": 1.0,
+          "tracked_span_seconds": 1.968,
+          "max_gap_seconds": 0.064,
+          "temporal_coverage": 1.0,
+          "method": "observed_timestamp_sinusoid_fit",
+          "band_hz": [
+            2,
+            8
+          ],
+          "effective_sample_density": 28.456
+        },
+        {
+          "start": 5.063,
+          "end": 7.063,
+          "status": "measured",
+          "amplitude_percent_image_width": 0.1892,
+          "dominant_frequency_hz": 4.55,
+          "background_amplitude_percent_image_width": 0.00562,
+          "received_samples": 54,
+          "usable_samples": 54,
+          "tracking_coverage": 1.0,
+          "tracked_span_seconds": 1.952,
+          "max_gap_seconds": 0.096,
+          "temporal_coverage": 1.0,
+          "method": "observed_timestamp_sinusoid_fit",
+          "band_hz": [
+            2,
+            8
+          ],
+          "effective_sample_density": 27.153
+        },
+        {
+          "start": 6.063,
+          "end": 8.063,
+          "status": "measured",
+          "amplitude_percent_image_width": 0.19442,
+          "dominant_frequency_hz": 4.4,
+          "background_amplitude_percent_image_width": 0.00853,
+          "received_samples": 47,
+          "usable_samples": 47,
+          "tracking_coverage": 1.0,
+          "tracked_span_seconds": 1.968,
+          "max_gap_seconds": 0.112,
+          "temporal_coverage": 1.0,
+          "method": "observed_timestamp_sinusoid_fit",
+          "band_hz": [
+            2,
+            8
+          ],
+          "effective_sample_density": 23.372
+        },
+        {
+          "start": 7.063,
+          "end": 9.063,
+          "status": "measured",
+          "amplitude_percent_image_width": 0.19517,
+          "dominant_frequency_hz": 4.05,
+          "background_amplitude_percent_image_width": 0.01872,
+          "received_samples": 51,
+          "usable_samples": 51,
+          "tracking_coverage": 1.0,
+          "tracked_span_seconds": 1.968,
+          "max_gap_seconds": 0.112,
+          "temporal_coverage": 1.0,
+          "method": "observed_timestamp_sinusoid_fit",
+          "band_hz": [
+            2,
+            8
+          ],
+          "effective_sample_density": 25.404
+        }
+      ],
+      "sample_count": 236,
+      "limitations": [
+        "Descriptive image oscillation; not muscle tension or a tremor diagnosis",
+        "Translation control does not fully remove camera rotation, rolling shutter or articulation",
+        "Frequency band and tracking gates are engineering choices, not clinically validated"
+      ],
+      "effective_fps": 31.217,
+      "reason": null
+    },
+    "checks": {
+      "movement_visible": true,
+      "rows": 9,
+      "no_admin_debug": true,
+      "group_grades_preserved": true,
+      "motion_survives_provider_failure": true
+    },
+    "javascript_errors": []
+  }
+]

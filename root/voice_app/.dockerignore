@@ -1,0 +1,31 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local SQLite — production must use DATABASE_URL (Postgres). Shipping a
+# local app.db inside the image would overwrite the persistent DB on first boot.
+*.db
+
+# Local secrets / dev artifacts
+.env
+service-account-key.json
+
+# Bulky scratch data not needed at runtime
+tmp_synth/
+synthetic_audio/
+synthetic_training_features*.csv
+clinical_review_queue.csv
+publication_data_targets.csv
+synthetic_grbas_manifest.csv
+
+# Tests don't need to be in the deployed image
+tests/
+
+# Editor / VCS noise
+.git/
+.gitignore
+.vscode/
+.idea/
+*.bak

@@ -1,0 +1,321 @@
+{
+  "method": "Controlled model outputs, not provider predictions or accuracy validation",
+  "production_confidence_threshold": 0.15,
+  "results": [
+    {
+      "case": "supported_zero",
+      "threshold": 0.15,
+      "dimensions": {
+        "scm_lateral_recruitment": {
+          "score": 0,
+          "reason": null,
+          "adjusted_confidence": 0.95
+        },
+        "anterior_submental_activity": {
+          "score": 0,
+          "reason": null,
+          "adjusted_confidence": 0.95
+        },
+        "shoulder_recruitment": {
+          "score": 0,
+          "reason": null,
+          "adjusted_confidence": 0.95
+        }
+      }
+    },
+    {
+      "case": "supported_zero",
+      "threshold": 0.1,
+      "dimensions": {
+        "scm_lateral_recruitment": {
+          "score": 0,
+          "reason": null,
+          "adjusted_confidence": 0.95
+        },
+        "anterior_submental_activity": {
+          "score": 0,
+          "reason": null,
+          "adjusted_confidence": 0.95
+        },
+        "shoulder_recruitment": {
+          "score": 0,
+          "reason": null,
+          "adjusted_confidence": 0.95
+        }
+      }
+    },
+    {
+      "case": "supported_zero",
+      "threshold": 0.05,
+      "dimensions": {
+        "scm_lateral_recruitment": {
+          "score": 0,
+          "reason": null,
+          "adjusted_confidence": 0.95
+        },
+        "anterior_submental_activity": {
+          "score": 0,
+          "reason": null,
+          "adjusted_confidence": 0.95
+        },
+        "shoulder_recruitment": {
+          "score": 0,
+          "reason": null,
+          "adjusted_confidence": 0.95
+        }
+      }
+    },
+    {
+      "case": "clear_independent_change",
+      "threshold": 0.15,
+      "dimensions": {
+        "scm_lateral_recruitment": {
+          "score": 2,
+          "reason": null,
+          "adjusted_confidence": 0.95
+        },
+        "anterior_submental_activity": {
+          "score": 2,
+          "reason": null,
+          "adjusted_confidence": 0.95
+        },
+        "shoulder_recruitment": {
+          "score": 2,
+          "reason": null,
+          "adjusted_confidence": 0.95
+        }
+      }
+    },
+    {
+      "case": "clear_independent_change",
+      "threshold": 0.1,
+      "dimensions": {
+        "scm_lateral_recruitment": {
+          "score": 2,
+          "reason": null,
+          "adjusted_confidence": 0.95
+        },
+        "anterior_submental_activity": {
+          "score": 2,
+          "reason": null,
+          "adjusted_confidence": 0.95
+        },
+        "shoulder_recruitment": {
+          "score": 2,
+          "reason": null,
+          "adjusted_confidence": 0.95
+        }
+      }
+    },
+    {
+      "case": "clear_independent_change",
+      "threshold": 0.05,
+      "dimensions": {
+        "scm_lateral_recruitment": {
+          "score": 2,
+          "reason": null,
+          "adjusted_confidence": 0.95
+        },
+        "anterior_submental_activity": {
+          "score": 2,
+          "reason": null,
+          "adjusted_confidence": 0.95
+        },
+        "shoulder_recruitment": {
+          "score": 2,
+          "reason": null,
+          "adjusted_confidence": 0.95
+        }
+      }
+    },
+    {
+      "case": "head_jaw_ambiguous_change",
+      "threshold": 0.15,
+      "dimensions": {
+        "scm_lateral_recruitment": {
+          "score": null,
+          "reason": "Local activity not distinguishable from jaw/head mechanics",
+          "adjusted_confidence": null
+        },
+        "anterior_submental_activity": {
+          "score": null,
+          "reason": "Local activity not distinguishable from jaw/head mechanics",
+          "adjusted_confidence": null
+        },
+        "shoulder_recruitment": {
+          "score": 1,
+          "reason": null,
+          "adjusted_confidence": 0.95
+        }
+      }
+    },
+    {
+      "case": "head_jaw_ambiguous_change",
+      "threshold": 0.1,
+      "dimensions": {
+        "scm_lateral_recruitment": {
+          "score": null,
+          "reason": "Local activity not distinguishable from jaw/head mechanics",
+          "adjusted_confidence": null
+        },
+        "anterior_submental_activity": {
+          "score": null,
+          "reason": "Local activity not distinguishable from jaw/head mechanics",
+          "adjusted_confidence": null
+        },
+        "shoulder_recruitment": {
+          "score": 1,
+          "reason": null,
+          "adjusted_confidence": 0.95
+        }
+      }
+    },
+    {
+      "case": "head_jaw_ambiguous_change",
+      "threshold": 0.05,
+      "dimensions": {
+        "scm_lateral_recruitment": {
+          "score": null,
+          "reason": "Local activity not distinguishable from jaw/head mechanics",
+          "adjusted_confidence": null
+        },
+        "anterior_submental_activity": {
+          "score": null,
+          "reason": "Local activity not distinguishable from jaw/head mechanics",
+          "adjusted_confidence": null
+        },
+        "shoulder_recruitment": {
+          "score": 1,
+          "reason": null,
+          "adjusted_confidence": 0.95
+        }
+      }
+    },
+    {
+      "case": "low_quality_short_speech_change",
+      "threshold": 0.15,
+      "dimensions": {
+        "scm_lateral_recruitment": {
+          "score": null,
+          "reason": "Insufficient evidence confidence",
+          "adjusted_confidence": 0.1494
+        },
+        "anterior_submental_activity": {
+          "score": null,
+          "reason": "Insufficient evidence confidence",
+          "adjusted_confidence": 0.1494
+        },
+        "shoulder_recruitment": {
+          "score": null,
+          "reason": "Insufficient evidence confidence",
+          "adjusted_confidence": 0.1494
+        }
+      }
+    },
+    {
+      "case": "low_quality_short_speech_change",
+      "threshold": 0.1,
+      "dimensions": {
+        "scm_lateral_recruitment": {
+          "score": 1,
+          "reason": null,
+          "adjusted_confidence": 0.1494
+        },
+        "anterior_submental_activity": {
+          "score": 1,
+          "reason": null,
+          "adjusted_confidence": 0.1494
+        },
+        "shoulder_recruitment": {
+          "score": 1,
+          "reason": null,
+          "adjusted_confidence": 0.1494
+        }
+      }
+    },
+    {
+      "case": "low_quality_short_speech_change",
+      "threshold": 0.05,
+      "dimensions": {
+        "scm_lateral_recruitment": {
+          "score": 1,
+          "reason": null,
+          "adjusted_confidence": 0.1494
+        },
+        "anterior_submental_activity": {
+          "score": 1,
+          "reason": null,
+          "adjusted_confidence": 0.1494
+        },
+        "shoulder_recruitment": {
+          "score": 1,
+          "reason": null,
+          "adjusted_confidence": 0.1494
+        }
+      }
+    },
+    {
+      "case": "anterior_jaw_fit_lateral_independent",
+      "threshold": 0.15,
+      "dimensions": {
+        "scm_lateral_recruitment": {
+          "score": 1,
+          "reason": null,
+          "adjusted_confidence": 0.17
+        },
+        "anterior_submental_activity": {
+          "score": null,
+          "reason": "Insufficient evidence confidence",
+          "adjusted_confidence": 0.119
+        },
+        "shoulder_recruitment": {
+          "score": 1,
+          "reason": null,
+          "adjusted_confidence": 0.17
+        }
+      }
+    },
+    {
+      "case": "anterior_jaw_fit_lateral_independent",
+      "threshold": 0.1,
+      "dimensions": {
+        "scm_lateral_recruitment": {
+          "score": 1,
+          "reason": null,
+          "adjusted_confidence": 0.17
+        },
+        "anterior_submental_activity": {
+          "score": 1,
+          "reason": null,
+          "adjusted_confidence": 0.119
+        },
+        "shoulder_recruitment": {
+          "score": 1,
+          "reason": null,
+          "adjusted_confidence": 0.17
+        }
+      }
+    },
+    {
+      "case": "anterior_jaw_fit_lateral_independent",
+      "threshold": 0.05,
+      "dimensions": {
+        "scm_lateral_recruitment": {
+          "score": 1,
+          "reason": null,
+          "adjusted_confidence": 0.17
+        },
+        "anterior_submental_activity": {
+          "score": 1,
+          "reason": null,
+          "adjusted_confidence": 0.119
+        },
+        "shoulder_recruitment": {
+          "score": 1,
+          "reason": null,
+          "adjusted_confidence": 0.17
+        }
+      }
+    }
+  ]
+}

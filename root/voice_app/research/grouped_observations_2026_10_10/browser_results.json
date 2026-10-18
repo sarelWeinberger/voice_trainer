@@ -1,0 +1,26 @@
+[
+  {
+    "mobile": false,
+    "groups": 3,
+    "details_closed": true,
+    "no_overall": true,
+    "coupled_description": true,
+    "independent_score_absent": true,
+    "local_comparison": true,
+    "version": "http://127.0.0.1:5000/neck-analysis-v1.js?v=14",
+    "details_visible": true,
+    "javascript_errors": []
+  },
+  {
+    "mobile": true,
+    "groups": 3,
+    "details_closed": true,
+    "no_overall": true,
+    "coupled_description": true,
+    "independent_score_absent": true,
+    "local_comparison": true,
+    "version": "http://127.0.0.1:5000/neck-analysis-v1.js?v=14",
+    "details_visible": true,
+    "javascript_errors": []
+  }
+]

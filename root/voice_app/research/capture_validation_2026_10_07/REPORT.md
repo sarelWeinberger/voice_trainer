@@ -1,0 +1,7 @@
+# Capture transport regression
+
+The last user-provided result reported 12 frames over 18.605 seconds, effective rate 0.599fps and mean native CV processing of 0.087 seconds/frame. Processing alone does not explain the whole request gap. The prior frontend permitted only one image to be captured while its HTTP request was outstanding, coupling acquisition rate to round-trip latency.
+
+Capture and upload now run independently with small ordered batches, bounded queues and session validation. Tests in real Chromium against an isolated local database with synthetic camera/microphone and 1.7 seconds of artificial delay before each batch reached the actual API. Both desktop and mobile delivered 25 frames in a 5-second recording, across a 4.8-second image time span, effective rate 5.0fps. No OpenAI inference was made on the nonhuman synthetic media. No patient images or identifying metadata are included in the artifacts.
+
+Node tests separately establish independent acquisition while HTTP is unresolved, queue limits and cancellation. Python route tests check exact capture timestamps and reject stale sessions and malformed metadata. The precise source of the original round-trip delay (browser, connection, server scheduling or auth/database work) remains unmeasured; batching removes acquisition's dependence on one round trip per frame. Successful scoring and original user's camera performance require a new real recording with the updated runtime.

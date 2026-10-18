@@ -1,0 +1,208 @@
+{
+  "ok": true,
+  "mode": "complete",
+  "calibrated": true,
+  "calibration_progress": 1,
+  "score": null,
+  "score_label": "Not reliably assessable",
+  "continuous_score": null,
+  "confidence": 0,
+  "features": null,
+  "reasons": [],
+  "model_version": "neck-analysis-v1",
+  "neckAnalysis": {
+    "version": "neck-analysis-v1",
+    "status": "insufficient_quality",
+    "dimensions": {
+      "posture_compensation": {
+        "observable": false,
+        "score": null,
+        "continuous_score": null,
+        "confidence": 0,
+        "label": "Not reliably assessable",
+        "evidence": [
+          "Insufficient visibility"
+        ]
+      },
+      "scm_lateral_recruitment": {
+        "observable": false,
+        "score": null,
+        "continuous_score": null,
+        "confidence": 0,
+        "label": "Not reliably assessable",
+        "evidence": [
+          "Insufficient visibility"
+        ]
+      },
+      "anterior_submental_activity": {
+        "observable": false,
+        "score": null,
+        "continuous_score": null,
+        "confidence": 0,
+        "label": "Not reliably assessable",
+        "evidence": [
+          "Insufficient visibility"
+        ]
+      },
+      "shoulder_recruitment": {
+        "observable": false,
+        "score": null,
+        "continuous_score": null,
+        "confidence": 0,
+        "label": "Not reliably assessable",
+        "evidence": [
+          "Insufficient visibility"
+        ]
+      },
+      "jaw_compensation": {
+        "observable": false,
+        "score": null,
+        "continuous_score": null,
+        "confidence": 0,
+        "label": "Not reliably assessable",
+        "evidence": [
+          "Insufficient visibility"
+        ]
+      }
+    },
+    "overall": {
+      "continuous_score": null,
+      "category": null,
+      "confidence": 0,
+      "label": "Not reliably assessable"
+    },
+    "quality": {
+      "overall": 0,
+      "face_visibility": 0,
+      "neck_visibility": 0,
+      "shoulder_visibility": 0,
+      "camera_stability": 1,
+      "lighting_quality": 0,
+      "warnings": [
+        "short_recording",
+        "poor_lighting",
+        "low_resolution",
+        "shoulders_not_reliably_visible",
+        "neck_not_reliably_visible",
+        "camera_stability_not_independently_verified"
+      ]
+    },
+    "summary": "איכות הצילום אינה מספיקה להערכת התנהגות צוואר נצפית.",
+    "limitations": [
+      "ROIs approximate image-space regions, not isolated muscles",
+      "Flow and jaw regression are motion evidence, not force or causality",
+      "WebRTC VAD speech timing is provisional, not ground truth or diagnosis"
+    ],
+    "versions": {
+      "analyzer": "neck-analysis-v1",
+      "preprocessing": "neck-cv-v1.0",
+      "prompt": "neck-rubric-v1.0",
+      "weights": "neck-weights-v1.0",
+      "model": "gpt-4.1-2025-04-14"
+    },
+    "effective_weights": {},
+    "timeline": [
+      {
+        "start": 0,
+        "end": 1,
+        "neck_activity": 0
+      },
+      {
+        "start": 1,
+        "end": 2,
+        "neck_activity": 0
+      },
+      {
+        "start": 2,
+        "end": 3,
+        "neck_activity": 0
+      }
+    ]
+  },
+  "recording_summary": true,
+  "captured_frame_count": 15,
+  "timeline": [
+    {
+      "t": 0,
+      "features": {},
+      "visibility": {}
+    },
+    {
+      "t": 0.2,
+      "features": {},
+      "visibility": {}
+    },
+    {
+      "t": 0.4,
+      "features": {},
+      "visibility": {}
+    },
+    {
+      "t": 0.6,
+      "features": {},
+      "visibility": {}
+    },
+    {
+      "t": 0.8,
+      "features": {},
+      "visibility": {}
+    },
+    {
+      "t": 1,
+      "features": {},
+      "visibility": {}
+    },
+    {
+      "t": 1.2,
+      "features": {},
+      "visibility": {}
+    },
+    {
+      "t": 1.4,
+      "features": {},
+      "visibility": {}
+    },
+    {
+      "t": 1.6,
+      "features": {},
+      "visibility": {}
+    },
+    {
+      "t": 1.8,
+      "features": {},
+      "visibility": {}
+    },
+    {
+      "t": 2,
+      "features": {},
+      "visibility": {}
+    },
+    {
+      "t": 2.2,
+      "features": {},
+      "visibility": {}
+    },
+    {
+      "t": 2.4,
+      "features": {},
+      "visibility": {}
+    },
+    {
+      "t": 2.6,
+      "features": {},
+      "visibility": {}
+    },
+    {
+      "t": 2.8,
+      "features": {},
+      "visibility": {}
+    }
+  ],
+  "synchronization": {
+    "kind": "caller_declared_offset",
+    "audio_offset_seconds": 0,
+    "limitations": "Constant-frame-rate timebase; offset is declared, not verified; device drift is not corrected"
+  },
+  "visual_duration_analyzed": 3,
+  "truncated": false
+}

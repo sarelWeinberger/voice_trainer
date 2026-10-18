@@ -1,0 +1,124 @@
+[
+  {
+    "mode": "desktop",
+    "real_recording_text": "ניתוח צוואר V1 · התנהגות חיצונית נצפית; אינו מדידה ישירה של כוח או מתח שרירי ואינו אבחנה.\n\nמדד\tציון\tרמה\tביטחון בראיות\tהסבר\nתנוחת ראש וצוואר\tלא ניתן להעריך\tלא זמין\t—\tInsufficient visibility\nפעילות נראית בצדי הצוואר / SCM\tלא ניתן להעריך\tלא זמין\t—\tInsufficient visibility\nפעילות נראית בקדמת הצוואר ומתחת לסנטר\tלא ניתן להעריך\tלא זמין\t—\tInsufficient visibility\nגיוס כתפיים\tלא ניתן להעריך\tלא זמין\t—\tInsufficient visibility\nפיצוי באמצעות הלסת\tלא ניתן להעריך\tלא זמין\t—\tInsufficient visibility\n\nמאמץ צוואר נצפה כולל: לא ניתן להעריך\n\nקטגוריה כוללת: לא זמין\n\nביטחון כולל בראיות: 0% · אינו הסתברות לדיוק רפואי\n\nאיכות הצילום אינה מספיקה להערכת התנהגות צוואר נצפית.\n\nקיימות מגבלות איכות צילום או תזמון; הן נלקחו בחשבון בביטחון.",
+    "api_responses": [
+      {
+        "url": "/api/login",
+        "status": 200
+      },
+      {
+        "url": "/api/me",
+        "status": 200
+      },
+      {
+        "url": "/api/history",
+        "status": 200
+      },
+      {
+        "url": "/api/neck-effort/reset",
+        "status": 200
+      },
+      {
+        "url": "/api/neck-effort/reset",
+        "status": 200
+      },
+      {
+        "url": "/api/neck-effort/recording/start",
+        "status": 200
+      },
+      {
+        "url": "/api/neck-effort",
+        "status": 200
+      },
+      {
+        "url": "/api/neck-effort",
+        "status": 200
+      },
+      {
+        "url": "/api/neck-effort",
+        "status": 200
+      },
+      {
+        "url": "/api/neck-effort/recording/stop",
+        "status": 200
+      },
+      {
+        "url": "/api/analyze",
+        "status": 200
+      },
+      {
+        "url": "/api/history",
+        "status": 200
+      }
+    ],
+    "javascript_errors": [],
+    "layout": {
+      "width": 1280,
+      "body": 1280,
+      "table": 826
+    },
+    "mock_scores_and_error_passed": true
+  },
+  {
+    "mode": "mobile",
+    "real_recording_text": "ניתוח צוואר V1 · התנהגות חיצונית נצפית; אינו מדידה ישירה של כוח או מתח שרירי ואינו אבחנה.\n\nמדד\tציון\tרמה\tביטחון בראיות\tהסבר\nתנוחת ראש וצוואר\tלא ניתן להעריך\tלא זמין\t—\tInsufficient visibility\nפעילות נראית בצדי הצוואר / SCM\tלא ניתן להעריך\tלא זמין\t—\tInsufficient visibility\nפעילות נראית בקדמת הצוואר ומתחת לסנטר\tלא ניתן להעריך\tלא זמין\t—\tInsufficient visibility\nגיוס כתפיים\tלא ניתן להעריך\tלא זמין\t—\tInsufficient visibility\nפיצוי באמצעות הלסת\tלא ניתן להעריך\tלא זמין\t—\tInsufficient visibility\n\nמאמץ צוואר נצפה כולל: לא ניתן להעריך\n\nקטגוריה כוללת: לא זמין\n\nביטחון כולל בראיות: 0% · אינו הסתברות לדיוק רפואי\n\nאיכות הצילום אינה מספיקה להערכת התנהגות צוואר נצפית.\n\nקיימות מגבלות איכות צילום או תזמון; הן נלקחו בחשבון בביטחון.",
+    "api_responses": [
+      {
+        "url": "/api/login",
+        "status": 200
+      },
+      {
+        "url": "/api/me",
+        "status": 200
+      },
+      {
+        "url": "/api/history",
+        "status": 200
+      },
+      {
+        "url": "/api/neck-effort/reset",
+        "status": 200
+      },
+      {
+        "url": "/api/neck-effort/reset",
+        "status": 200
+      },
+      {
+        "url": "/api/neck-effort/recording/start",
+        "status": 200
+      },
+      {
+        "url": "/api/neck-effort",
+        "status": 200
+      },
+      {
+        "url": "/api/neck-effort",
+        "status": 200
+      },
+      {
+        "url": "/api/neck-effort",
+        "status": 200
+      },
+      {
+        "url": "/api/neck-effort/recording/stop",
+        "status": 200
+      },
+      {
+        "url": "/api/analyze",
+        "status": 200
+      },
+      {
+        "url": "/api/neck-effort",
+        "status": 200
+      }
+    ],
+    "javascript_errors": [],
+    "layout": {
+      "width": 390,
+      "body": 390,
+      "table": 320
+    },
+    "mock_scores_and_error_passed": true
+  }
+]

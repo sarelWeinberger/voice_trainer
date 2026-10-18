@@ -1,0 +1,28 @@
+[
+  {
+    "mobile": false,
+    "table_count": 3,
+    "window_rows": 43,
+    "reference_shown": true,
+    "later_delta_shown": true,
+    "missing_score_preserved": true,
+    "measurement_not_effort": true,
+    "horizontal_scroll_enabled": true,
+    "script_version": "http://127.0.0.1:5000/neck-analysis-v1.js?v=13",
+    "local_comparison_on_failure": true,
+    "javascript_errors": []
+  },
+  {
+    "mobile": true,
+    "table_count": 3,
+    "window_rows": 43,
+    "reference_shown": true,
+    "later_delta_shown": true,
+    "missing_score_preserved": true,
+    "measurement_not_effort": true,
+    "horizontal_scroll_enabled": true,
+    "script_version": "http://127.0.0.1:5000/neck-analysis-v1.js?v=13",
+    "local_comparison_on_failure": true,
+    "javascript_errors": []
+  }
+]

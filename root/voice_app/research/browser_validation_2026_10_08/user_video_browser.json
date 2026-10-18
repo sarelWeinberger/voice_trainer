@@ -1,0 +1,36 @@
+{
+  "status": 200,
+  "analysis_status": "error",
+  "diagnostics": {
+    "captured_frames": 25,
+    "selected_frames": 8,
+    "feature_available_frames": {
+      "head_pitch_deg": 25,
+      "shoulder_motion": 0,
+      "shoulders_head_relative_motion": 24
+    },
+    "observed_span_seconds": 4.799,
+    "effective_fps": 5,
+    "target_fps": 5,
+    "temporal_quality": 0.7678,
+    "speech_status": "unknown",
+    "audio_timing": "unverified",
+    "usable_speech_duration": null,
+    "vad_available": false,
+    "audio_offset_seconds": null,
+    "dimension_quality": {
+      "posture_compensation": 0.5391969660693299,
+      "scm_lateral_recruitment": 0.5346123453775041,
+      "anterior_submental_activity": 0.5300102548245491,
+      "shoulder_recruitment": 0.5290708450359208,
+      "jaw_compensation": 0.532580914101734
+    },
+    "mean_cv_processing_seconds": 0.0639
+  },
+  "reasons": [
+    "Neck analysis requires server OPENAI_API_KEY"
+  ],
+  "finalize_seconds": 0.03370000001788139,
+  "rendered": true,
+  "javascript_errors": []
+}

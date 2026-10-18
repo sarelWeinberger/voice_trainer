@@ -31,6 +31,12 @@ const classTabsEl      = document.getElementById("class-tabs");
 const classCodeBox     = document.getElementById("admin-class-code-box");
 const classCodeValueEl = document.getElementById("admin-class-code-value");
 const copyClassCodeBtn = document.getElementById("copy-class-code");
+const allowlistBox     = document.getElementById("allowlist-box");
+const allowEmailInput  = document.getElementById("allow-email-input");
+const allowNameInput   = document.getElementById("allow-name-input");
+const allowAddBtn      = document.getElementById("allow-add-btn");
+const allowMsg         = document.getElementById("allow-msg");
+const allowlistList    = document.getElementById("allowlist-list");
 
 let _allUsers = [];
 let _currentFilter = "all";
@@ -56,6 +62,13 @@ async function onAuthReady(user) {
         // Show class filter tabs only for super admin
         if (_myRole === 1 && classTabsEl) {
             classTabsEl.hidden = false;
+        }
+
+        // Allowlist management: super admin sees every invite, a class admin
+        // sees (and manages) only the ones attached to their own class.
+        if (_myRole <= 2 && allowlistBox) {
+            allowlistBox.hidden = false;
+            loadAllowedEmails();
         }
 
         loadUsers();
@@ -125,11 +138,159 @@ function buildClassTabs(users) {
 }
 
 // ---------------------------------------------------------------------------
+// Allowlist management (super admin)
+// ---------------------------------------------------------------------------
+
+async function loadAllowedEmails() {
+    if (!allowlistList) return;
+    allowlistList.innerHTML = "<li>טוען…</li>";
+    try {
+        const resp = await fetch("/api/admin/allowed-emails", { headers: getAuthHeaders() });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        renderServerWarnings(data);
+        renderAllowedEmails(data.invites || []);
+    } catch (err) {
+        allowlistList.innerHTML = `<li>שגיאה: ${escapeHtml(err.message)}</li>`;
+    }
+}
+
+/** Report server-side deployment problems where the admin will actually see
+ *  them: no persistent DB means everything on this page is wiped by the next
+ *  deploy, and a per-process JWT secret means sessions die on every restart. */
+function renderServerWarnings(data) {
+    const existing = document.getElementById("allow-storage-warning");
+    if (existing) existing.remove();
+
+    const problems = [];
+    if (data.db_persistent === false) {
+        problems.push("אין אחסון קבוע בשרת — משתמשים והיסטוריה יימחקו בפריסה הבאה. " +
+            "יש להגדיר DATABASE_URL.");
+    }
+    if (data.secret_source === "ephemeral") {
+        problems.push("מפתח החתימה נוצר מחדש בכל הפעלה — כל המשתמשים ינותקו בכל ריסטארט. " +
+            "יש להגדיר JWT_SECRET_KEY.");
+    }
+    if (problems.length === 0) return;
+
+    const el = document.createElement("p");
+    el.id = "allow-storage-warning";
+    el.className = "storage-warning";
+    el.textContent = "⚠ " + problems.join(" ");
+    allowlistBox.insertBefore(el, allowlistList);
+}
+
+/** One row per invited email, showing whether the person signed up and how
+ *  much history they have accumulated. */
+function renderAllowedEmails(invites) {
+    allowlistList.innerHTML = "";
+    if (invites.length === 0) {
+        allowlistList.innerHTML = "<li>אין משתמשים מורשים עדיין.</li>";
+        return;
+    }
+
+    for (const inv of invites) {
+        const email = inv.email;
+        let status;
+        if (!inv.registered) {
+            status = '<span class="allow-status allow-pending">טרם נרשם</span>';
+        } else {
+            const last = inv.last_analysis_at
+                ? ` · אחרון: ${new Date(inv.last_analysis_at).toLocaleDateString("he-IL")}`
+                : "";
+            status = `<span class="allow-status allow-active">${inv.results_count} ניתוחים${escapeHtml(last)}</span>`;
+        }
+
+        const historyBtn = inv.registered
+            ? `<button class="small-btn allow-history-btn" data-uid="${inv.user_id}"
+                   data-username="${escapeHtml(email)}">היסטוריה</button>`
+            : "";
+
+        const li = document.createElement("li");
+        li.innerHTML = `
+            <span class="allow-email">
+                ${escapeHtml(email)}
+                ${inv.full_name ? `<small>${escapeHtml(inv.full_name)}</small>` : ""}
+            </span>
+            ${status}
+            <span class="allow-actions">
+                ${historyBtn}
+                <button class="small-btn allow-remove-btn" data-email="${escapeHtml(email)}">הסר</button>
+            </span>
+        `;
+        allowlistList.appendChild(li);
+    }
+
+    allowlistList.querySelectorAll(".allow-remove-btn").forEach((btn) => {
+        btn.addEventListener("click", () => removeAllowedEmail(btn.dataset.email));
+    });
+    allowlistList.querySelectorAll(".allow-history-btn").forEach((btn) => {
+        btn.addEventListener("click", () =>
+            viewUserResults(btn.dataset.uid, btn.dataset.username));
+    });
+}
+
+async function addAllowedEmail() {
+    const email = (allowEmailInput?.value || "").trim();
+    const fullName = (allowNameInput?.value || "").trim();
+    if (!email) return;
+    allowMsg.textContent = "";
+    allowMsg.style.color = "";
+    try {
+        const resp = await fetch("/api/admin/allowed-emails", {
+            method: "POST",
+            headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+            body: JSON.stringify({ email, full_name: fullName || null }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || `HTTP ${resp.status}`);
+        allowEmailInput.value = "";
+        if (allowNameInput) allowNameInput.value = "";
+        allowMsg.style.color = "#3ddc84";
+        allowMsg.textContent = data.registered
+            ? "נוסף (למשתמש כבר יש חשבון — ההיסטוריה שלו תופיע כאן)"
+            : "נוסף! שלחו לו את הקישור — כניסה עם האימייל והסיסמה qwertyui";
+        loadAllowedEmails();
+    } catch (err) {
+        allowMsg.style.color = "";
+        allowMsg.textContent = "שגיאה: " + err.message;
+    }
+}
+
+async function removeAllowedEmail(email) {
+    if (!confirm(`להסיר את ${email}? הגישה תיחסם, ההיסטוריה שלו תישמר.`)) return;
+    try {
+        const resp = await fetch("/api/admin/allowed-emails", {
+            method: "DELETE",
+            headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+            body: JSON.stringify({ email }),
+        });
+        if (!resp.ok) {
+            const data = await resp.json();
+            throw new Error(data.detail || `HTTP ${resp.status}`);
+        }
+        loadAllowedEmails();
+    } catch (err) {
+        alert("שגיאה: " + err.message);
+    }
+}
+
+if (allowAddBtn) {
+    allowAddBtn.addEventListener("click", addAllowedEmail);
+}
+for (const input of [allowEmailInput, allowNameInput]) {
+    if (!input) continue;
+    input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") addAllowedEmail();
+    });
+}
+
+// ---------------------------------------------------------------------------
 // Users
 // ---------------------------------------------------------------------------
 
 async function loadUsers() {
-    usersTbody.innerHTML = '<tr><td colspan="11">טוען…</td></tr>';
+    usersTbody.innerHTML = '<tr><td colspan="12">טוען…</td></tr>';
 
     try {
         const resp = await fetch("/api/admin/users", { headers: getAuthHeaders() });
@@ -144,7 +305,7 @@ async function loadUsers() {
 
         renderUsers();
     } catch (err) {
-        usersTbody.innerHTML = `<tr><td colspan="11">שגיאה: ${escapeHtml(err.message)}</td></tr>`;
+        usersTbody.innerHTML = `<tr><td colspan="12">שגיאה: ${escapeHtml(err.message)}</td></tr>`;
     }
 }
 
@@ -164,7 +325,7 @@ function renderUsers() {
     usersTbody.innerHTML = "";
 
     if (users.length === 0) {
-        usersTbody.innerHTML = '<tr><td colspan="11">לא נמצאו משתמשים.</td></tr>';
+        usersTbody.innerHTML = '<tr><td colspan="12">לא נמצאו משתמשים.</td></tr>';
         return;
     }
 
@@ -185,6 +346,7 @@ function renderUsers() {
             <td><span class="role-badge ${roleCls}">${roleLabel}</span></td>
             <td>${escapeHtml(classInfo)}</td>
             <td>${registered}</td>
+            <td class="results-count-cell">${user.results_count ?? 0}</td>
             ${scoreCell(scores.G)}
             ${scoreCell(scores.R)}
             ${scoreCell(scores.B)}
@@ -206,13 +368,17 @@ function renderUsers() {
             viewUserResults(btn.dataset.uid, btn.dataset.username));
     });
 
-    // Bind role buttons (super admin only)
+    // Bind role + delete buttons (super admin only)
     if (_myRole === 1) {
         document.querySelectorAll(".role-btn").forEach((btn) => {
             btn.addEventListener("click", () => {
                 const newRole = parseInt(btn.dataset.newRole, 10);
                 changeRole(btn.dataset.uid, newRole);
             });
+        });
+        document.querySelectorAll(".delete-user-btn").forEach((btn) => {
+            btn.addEventListener("click", () =>
+                deleteUser(btn.dataset.uid, btn.dataset.username));
         });
     }
 }
@@ -229,6 +395,10 @@ function buildRoleActions(user) {
     }
     if (user.role === 1) {
         actions.push(`<button class="small-btn role-btn" data-uid="${user.id}" data-new-role="2">הורד למנהל</button>`);
+    }
+    // Delete: any user except super admins
+    if (user.role !== 1) {
+        actions.push(`<button class="small-btn danger-btn delete-user-btn" data-uid="${user.id}" data-username="${escapeHtml(user.username)}">מחק</button>`);
     }
     return actions.join(" ");
 }
@@ -289,6 +459,24 @@ async function changeRole(uid, newRole) {
             method: "PUT",
             headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
             body: JSON.stringify({ is_admin: newRole <= 2, role: newRole }),
+        });
+        if (!resp.ok) {
+            const data = await resp.json();
+            throw new Error(data.detail || `HTTP ${resp.status}`);
+        }
+        loadUsers();
+    } catch (err) {
+        alert("שגיאה: " + err.message);
+    }
+}
+
+async function deleteUser(uid, username) {
+    if (!confirm(`למחוק לצמיתות את ${username} ואת כל הניתוחים שלו? פעולה זו בלתי הפיכה.`)) return;
+
+    try {
+        const resp = await fetch(`/api/admin/users/${uid}`, {
+            method: "DELETE",
+            headers: getAuthHeaders(),
         });
         if (!resp.ok) {
             const data = await resp.json();

@@ -6,89 +6,124 @@
     <title>אימון קולי - נייד</title>
     <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+/* Neck observation grades follow the GRBAS score/bar presentation. */
+.neck-group-score { --neck-grade-0: #22c55e; --neck-grade-1: #eab308; --neck-grade-2: #f97316; --neck-grade-3: #ef4444; display: grid; grid-template-columns: auto minmax(70px, 1fr) 52px; grid-template-areas: "label bar value"; gap: 10px; align-items: center; min-width: 210px; }
+.neck-group-score .score-label { grid-area: label; font-size: .875rem; }
+.neck-group-score .score-value { grid-area: value; font-size: 1.25rem; font-weight: 700; text-align: center; white-space: nowrap; }
+.neck-group-score .score-bar-bg { grid-area: bar; height: 6px; background: var(--surface-3, #e5e7eb); border-radius: 999px; overflow: hidden; }
+.neck-group-score .score-bar { height: 100%; border-radius: 999px; transition: width .35s ease; }
+.neck-group-score-note { font-size: .8125rem; line-height: 1.5; margin: 8px 0; }
+
+        .neck-change-table { display: block; width: 100%; max-width: 100%; overflow-x: auto; margin: 12px 0; }
+        /* ==================================================================
+           Mobile UI — same design language as the desktop app (light only):
+           borders carry structure, one accent colour, three text tones.
+           ================================================================== */
         :root {
-            --accent: #4a7cff;
-            --accent2: #6c5ce7;
-            --accent3: #a855f7;
-            --bg: #f0f2f7;
-            --card: #fff;
-            --text: #1a2332;
-            --text2: #5a6a7e;
-            --border: #dde3ed;
-            --green: #22c55e;
-            --yellow: #eab308;
-            --orange: #f97316;
-            --red: #ef4444;
-            --shadow: 0 2px 12px rgba(0,0,0,0.08);
+            --accent:        #3b6ef6;
+            --accent2:       #2c55cc;
+            --accent3:       #6c8cf8;
+            --accent-soft:   #eef3ff;
+            --bg:            #f5f7fa;
+            --card:          #ffffff;
+            --surface-2:     #f8fafc;
+            --surface-3:     #eff3f8;
+            --text:          #0f172a;
+            --text2:         #566173;
+            --text3:         #8792a4;
+            --border:        #e3e8ef;
+            --border-strong: #cfd7e3;
+            --green:  #12a05c;
+            --yellow: #b3a103;
+            --orange: #ea8010;
+            --red:    #dc2626;
+            --shadow: 0 1px 2px rgba(15,23,42,0.05);
+            --shadow-lg: 0 10px 30px -18px rgba(15,23,42,0.35);
+            --r-sm: 8px;
+            --r: 12px;
+            --r-lg: 16px;
+            --r-pill: 999px;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: 'Rubik', sans-serif;
+            font-family: 'Rubik', -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--bg);
             color: var(--text);
             font-size: 16px;
+            line-height: 1.6;
             min-height: 100vh;
             -webkit-tap-highlight-color: transparent;
+            -webkit-font-smoothing: antialiased;
         }
+        h1, h2, h3 { line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; }
+        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-sm); }
 
         /* Header */
         .m-header {
-            background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 50%, var(--accent3) 100%);
-            color: #fff;
-            padding: 16px 20px;
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: saturate(180%) blur(12px);
+            color: var(--text);
+            padding: 10px 16px;
             position: sticky;
             top: 0;
             z-index: 100;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            border-bottom: 1px solid var(--border);
         }
         .m-header-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
-        }
-        .m-header-brand {
-            display: flex;
-            align-items: center;
             gap: 10px;
         }
-        .m-header-brand .logo { font-size: 1.6em; }
-        .m-header-brand .title { font-size: 1.1em; font-weight: 600; }
-        .m-header-brand .sub { font-size: 0.75em; opacity: 0.85; }
-        .m-user-info { font-size: 0.85em; text-align: left; }
+        .m-header-brand { display: flex; align-items: center; gap: 10px; }
+        .m-header-brand .logo {
+            width: 34px; height: 34px;
+            display: grid; place-items: center;
+            font-size: 1.05rem;
+            background: var(--accent-soft);
+            border-radius: var(--r-sm);
+        }
+        .m-header-brand .title { font-size: 0.95rem; font-weight: 600; line-height: 1.2; }
+        .m-header-brand .sub { font-size: 0.72rem; color: var(--text3); }
+        .m-user-info {
+            font-size: 0.75rem; color: var(--text2); text-align: left;
+            display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+        }
         .m-logout-btn {
-            background: rgba(255,255,255,0.2);
-            border: none;
-            color: #fff;
-            padding: 6px 14px;
-            border-radius: 8px;
-            font-size: 0.85em;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text2);
+            padding: 5px 12px;
+            border-radius: var(--r-pill);
+            font-size: 0.75rem;
+            font-family: inherit;
             cursor: pointer;
-            margin-top: 4px;
         }
         .m-desktop-link {
-            background: rgba(255,255,255,0.15);
-            border: 1px solid rgba(255,255,255,0.3);
-            color: #fff;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text2);
             padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 0.75em;
+            border-radius: var(--r-pill);
+            font-size: 0.72rem;
             cursor: pointer;
             text-decoration: none;
         }
 
         /* Main */
-        .m-main { padding: 16px; max-width: 500px; margin: 0 auto; }
+        .m-main { padding: 16px; max-width: 520px; margin: 0 auto; padding-bottom: 88px; }
 
         /* Cards */
         .m-card {
             background: var(--card);
-            border-radius: 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
             box-shadow: var(--shadow);
-            padding: 20px;
-            margin-bottom: 16px;
+            padding: 18px;
+            margin-bottom: 14px;
         }
         .m-card h2 {
-            font-size: 1.1em;
+            font-size: 1.0625rem;
             margin-bottom: 12px;
             display: flex;
             align-items: center;
@@ -98,212 +133,186 @@
         /* Auth */
         .m-input {
             width: 100%;
-            padding: 14px 16px;
-            font-size: 1em;
-            border-radius: 10px;
-            border: 1.5px solid var(--border);
+            padding: 13px 14px;
+            font-size: 1rem;
+            border-radius: var(--r-sm);
+            border: 1px solid var(--border-strong);
+            background: var(--card);
             margin-bottom: 10px;
             font-family: inherit;
             direction: ltr;
             text-align: right;
+            transition: border-color .15s ease, box-shadow .15s ease;
         }
-        .m-input:focus { outline: none; border-color: var(--accent); }
+        .m-input::placeholder { color: var(--text3); }
+        .m-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,110,246,0.18); }
         .m-btn {
             width: 100%;
             padding: 14px;
-            font-size: 1.05em;
+            font-size: 1rem;
             font-weight: 600;
-            border-radius: 12px;
-            border: none;
+            border-radius: var(--r);
+            border: 1px solid transparent;
             cursor: pointer;
             font-family: inherit;
             margin-bottom: 8px;
-            transition: transform 0.1s;
+            transition: background-color .15s ease, transform .1s ease;
         }
-        .m-btn:active { transform: scale(0.97); }
+        .m-btn:active { transform: scale(0.985); }
         .m-btn-primary { background: var(--accent); color: #fff; }
-        .m-btn-outline { background: #fff; color: var(--accent); border: 1.5px solid var(--accent); }
+        .m-btn-outline { background: var(--card); color: var(--text); border-color: var(--border-strong); }
         .m-btn-green { background: var(--green); color: #fff; }
-        .m-error { color: var(--red); font-size: 0.9em; margin-top: 6px; min-height: 1.2em; }
+        .m-error { color: var(--red); font-size: 0.85rem; margin-top: 6px; min-height: 1.2em; }
 
         /* Welcome */
-        .m-welcome {
-            text-align: center;
-            padding: 30px 16px;
+        .m-welcome { text-align: center; padding: 26px 12px; }
+        .m-welcome .icon {
+            width: 56px; height: 56px; margin: 0 auto 14px;
+            display: grid; place-items: center;
+            font-size: 1.75rem; background: var(--accent-soft); border-radius: var(--r-lg);
         }
-        .m-welcome .icon { font-size: 3em; margin-bottom: 12px; }
-        .m-welcome h1 { font-size: 1.4em; margin-bottom: 8px; }
-        .m-welcome p { color: var(--text2); font-size: 0.95em; }
+        .m-welcome h1 { font-size: 1.35rem; margin-bottom: 8px; }
+        .m-welcome p { color: var(--text2); font-size: 0.9375rem; }
         .m-features {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            gap: 8px;
             margin: 20px 0;
         }
         .m-feature {
-            background: var(--bg);
-            border-radius: 10px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
             padding: 12px;
             text-align: center;
-            font-size: 0.85em;
+            font-size: 0.8125rem;
+            color: var(--text2);
         }
-        .m-feature .icon { font-size: 1.5em; display: block; margin-bottom: 4px; }
+        .m-feature .icon { font-size: 1.35rem; display: block; margin-bottom: 4px; }
 
         /* Recording */
         .m-record-area { text-align: center; }
         .m-record-btn {
-            width: 120px;
-            height: 120px;
+            width: 116px;
+            height: 116px;
             border-radius: 50%;
-            border: 4px solid var(--border);
-            background: #fff;
+            border: 1px solid var(--border-strong);
+            background: var(--card);
             cursor: pointer;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             margin: 16px auto;
-            transition: all 0.2s;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            transition: border-color .2s ease, box-shadow .2s ease;
+            box-shadow: var(--shadow-lg);
         }
         .m-record-btn .dot {
-            width: 40px;
-            height: 40px;
+            width: 38px;
+            height: 38px;
             border-radius: 50%;
             background: var(--red);
-            transition: all 0.3s;
+            transition: all 0.25s ease;
         }
         .m-record-btn.recording {
             border-color: var(--red);
-            box-shadow: 0 0 0 6px rgba(239,68,68,0.2);
-            animation: pulse-ring 1.5s ease-out infinite;
+            animation: pulse-ring 1.6s ease-out infinite;
         }
         .m-record-btn.recording .dot {
-            width: 30px;
-            height: 30px;
+            width: 28px;
+            height: 28px;
             border-radius: 6px;
         }
         @keyframes pulse-ring {
-            0% { box-shadow: 0 0 0 4px rgba(239,68,68,0.3); }
-            100% { box-shadow: 0 0 0 16px rgba(239,68,68,0); }
+            0% { box-shadow: 0 0 0 2px rgba(220,38,38,0.28); }
+            100% { box-shadow: 0 0 0 14px rgba(220,38,38,0); }
         }
         .m-record-label {
-            font-size: 0.95em;
+            font-size: 0.9375rem;
             font-weight: 500;
             margin-top: 8px;
             color: var(--text2);
         }
         .m-timer {
-            font-size: 2em;
+            font-size: 1.75rem;
             font-weight: 700;
-            color: var(--red);
+            color: var(--text);
             font-variant-numeric: tabular-nums;
         }
         .m-status {
-            font-size: 0.9em;
+            font-size: 0.875rem;
             color: var(--text2);
             margin-top: 8px;
             min-height: 1.4em;
         }
         .m-status.error { color: var(--red); }
-        .m-instruction {
-            color: var(--text2);
-            font-size: 0.9em;
-            margin-bottom: 8px;
-        }
+        .m-instruction { color: var(--text2); font-size: 0.875rem; margin-bottom: 8px; }
 
         /* Results */
-        .m-scores-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
+        .m-scores-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .m-score-card {
-            background: var(--bg);
-            border-radius: 12px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
             padding: 14px;
             text-align: center;
         }
-        .m-score-card.full-width {
-            grid-column: 1 / -1;
-        }
-        .m-score-letter {
-            font-size: 1.6em;
-            font-weight: 700;
-        }
-        .m-score-name {
-            font-size: 0.78em;
-            color: var(--text2);
-            margin-bottom: 6px;
-        }
+        .m-score-card.full-width { grid-column: 1 / -1; }
+        .m-score-letter { font-size: 1.5rem; font-weight: 700; }
+        .m-score-name { font-size: 0.75rem; color: var(--text3); margin-bottom: 6px; }
         .m-score-bar {
             height: 6px;
-            background: #e5e7eb;
-            border-radius: 3px;
+            background: var(--surface-3);
+            border-radius: var(--r-pill);
             overflow: hidden;
-            margin-top: 6px;
+            margin-top: 8px;
         }
-        .m-score-fill {
-            height: 100%;
-            border-radius: 3px;
-            transition: width 0.5s;
-        }
-        .m-score-val {
-            font-size: 1.3em;
-            font-weight: 700;
-        }
+        .m-score-fill { height: 100%; border-radius: var(--r-pill); transition: width 0.45s ease; }
+        .m-score-val { font-size: 1.25rem; font-weight: 700; }
         .m-combined-badge {
             text-align: center;
             padding: 16px;
-            border-radius: 14px;
+            border-radius: var(--r);
             margin-bottom: 14px;
+            border: 1px solid transparent;
         }
-        .m-combined-badge .grade { font-size: 2em; font-weight: 700; }
-        .m-combined-badge .label { font-size: 0.95em; margin-top: 4px; }
-        .m-combined-badge.level-0 { background: #dcfce7; color: #166534; }
-        .m-combined-badge.level-1 { background: #fef9c3; color: #854d0e; }
-        .m-combined-badge.level-2 { background: #ffedd5; color: #9a3412; }
-        .m-combined-badge.level-3 { background: #fee2e2; color: #991b1b; }
+        .m-combined-badge .grade { font-size: 1.75rem; font-weight: 700; }
+        .m-combined-badge .label { font-size: 0.9375rem; margin-top: 4px; }
+        .m-combined-badge.level-0 { background: #e9f8f0; color: #0f6b40; border-color: rgba(18,160,92,.2); }
+        .m-combined-badge.level-1 { background: #fdfaea; color: #7a6c05; border-color: rgba(179,161,3,.22); }
+        .m-combined-badge.level-2 { background: #fef5e7; color: #9a4b0d; border-color: rgba(234,128,16,.22); }
+        .m-combined-badge.level-3 { background: #fdeceb; color: #97231f; border-color: rgba(220,38,38,.2); }
 
         /* Recommendations */
         .m-rec-item {
-            background: var(--bg);
-            border-radius: 12px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
             padding: 14px;
             margin-bottom: 10px;
         }
-        .m-rec-item h3 {
-            font-size: 0.95em;
-            margin-bottom: 4px;
-        }
-        .m-rec-item p {
-            font-size: 0.82em;
-            color: var(--text2);
-            margin-bottom: 6px;
-        }
+        .m-rec-item h3 { font-size: 0.9375rem; margin-bottom: 4px; }
+        .m-rec-item p { font-size: 0.8125rem; color: var(--text2); margin-bottom: 6px; }
         .m-rec-link {
             display: inline-block;
-            font-size: 0.82em;
+            font-size: 0.8125rem;
             color: var(--accent);
             text-decoration: none;
             font-weight: 500;
         }
 
         /* Quick stats */
-        .m-stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 8px;
-        }
+        .m-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
         .m-stat {
             text-align: center;
             padding: 10px 4px;
-            background: var(--bg);
-            border-radius: 10px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
         }
-        .m-stat .icon { font-size: 1.2em; }
-        .m-stat .val { font-size: 1.1em; font-weight: 700; }
-        .m-stat .lbl { font-size: 0.7em; color: var(--text2); }
+        .m-stat .icon { font-size: 1.05rem; }
+        .m-stat .val { font-size: 1.0625rem; font-weight: 700; }
+        .m-stat .lbl { font-size: 0.6875rem; color: var(--text3); }
 
         /* History */
         .m-history-item {
@@ -311,14 +320,17 @@
             justify-content: space-between;
             align-items: center;
             padding: 12px;
-            background: var(--bg);
-            border-radius: 10px;
+            background: var(--surface-2);
+            border: 1px solid transparent;
+            border-radius: var(--r);
             margin-bottom: 8px;
             cursor: pointer;
+            transition: border-color .15s ease, background-color .15s ease;
         }
-        .m-history-item .date { font-size: 0.85em; color: var(--text2); }
-        .m-history-item .scores-mini { font-size: 0.8em; font-weight: 600; }
-        .m-empty { text-align: center; color: var(--text2); font-size: 0.9em; padding: 20px 0; }
+        .m-history-item:active { border-color: var(--accent); background: var(--card); }
+        .m-history-item .date { font-size: 0.8125rem; color: var(--text3); }
+        .m-history-item .scores-mini { font-size: 0.8125rem; font-weight: 600; }
+        .m-empty { text-align: center; color: var(--text3); font-size: 0.875rem; padding: 22px 0; }
 
         /* Bottom nav */
         .m-bottom-nav {
@@ -326,7 +338,8 @@
             bottom: 0;
             left: 0;
             right: 0;
-            background: var(--card);
+            background: rgba(255,255,255,0.94);
+            backdrop-filter: saturate(180%) blur(12px);
             border-top: 1px solid var(--border);
             display: flex;
             z-index: 100;
@@ -334,45 +347,43 @@
         }
         .m-nav-item {
             flex: 1;
-            padding: 10px 0 8px;
+            padding: 8px 0 6px;
             text-align: center;
             border: none;
             background: none;
             cursor: pointer;
-            color: var(--text2);
-            font-size: 0.7em;
+            color: var(--text3);
+            font-size: 0.6875rem;
             font-family: inherit;
-            transition: color 0.2s;
+            transition: color 0.2s ease;
         }
-        .m-nav-item .icon { font-size: 1.8em; display: block; margin-bottom: 2px; }
-        .m-nav-item.active { color: var(--accent); }
+        .m-nav-item .icon { font-size: 1.35rem; display: block; margin-bottom: 2px; }
+        .m-nav-item.active { color: var(--accent); font-weight: 600; }
 
         /* Instructions */
         .m-instructions {
-            background: #f0f4ff;
-            border-radius: 10px;
+            background: var(--accent-soft);
+            border: 1px solid rgba(59,110,246,0.16);
+            border-radius: var(--r);
             padding: 12px 14px;
             margin-bottom: 14px;
-            font-size: 0.88em;
+            font-size: 0.875rem;
             line-height: 1.6;
-            color: var(--text);
+            color: var(--text2);
         }
         .m-instructions p { margin-bottom: 6px; }
-        .m-instructions ul, .m-instructions ol {
-            padding-right: 18px;
-            margin: 0;
-        }
+        .m-instructions ul, .m-instructions ol { padding-right: 18px; margin: 0; }
         .m-instructions li { margin-bottom: 3px; }
-        .m-instructions-sm { font-size: 0.82em; }
+        .m-instructions-sm { font-size: 0.8125rem; }
 
         /* Video / Camera */
         .m-video-container {
             position: relative;
             width: 100%;
             aspect-ratio: 4/3;
-            border-radius: 12px;
+            border-radius: var(--r);
             overflow: hidden;
-            background: #000;
+            background: #0f172a;
             margin-bottom: 12px;
         }
         .m-video-container video {
@@ -393,8 +404,9 @@
 
         /* Neck effort widget */
         .m-neck-widget {
-            background: var(--bg);
-            border-radius: 10px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
             padding: 12px;
         }
         .m-neck-row {
@@ -404,79 +416,63 @@
             margin-bottom: 6px;
         }
         .m-neck-badge {
-            background: var(--accent);
-            color: #fff;
+            background: var(--accent-soft);
+            color: var(--accent2);
             padding: 3px 10px;
-            border-radius: 6px;
-            font-size: 0.8em;
+            border-radius: var(--r-pill);
+            font-size: 0.75rem;
             font-weight: 600;
         }
-        .m-neck-score {
-            font-size: 1.6em;
-            font-weight: 700;
-        }
+        .m-neck-score { font-size: 1.5rem; font-weight: 700; }
         .m-neck-score.grade-0 { color: var(--green); }
         .m-neck-score.grade-1 { color: var(--yellow); }
         .m-neck-score.grade-2 { color: var(--orange); }
         .m-neck-score.grade-3 { color: var(--red); }
-        .m-neck-label {
-            font-size: 0.88em;
-            color: var(--text2);
-        }
-        .m-neck-reasons {
-            font-size: 0.8em;
-            color: var(--text2);
-            margin-top: 4px;
-        }
+        .m-neck-label { font-size: 0.875rem; color: var(--text2); }
+        .m-neck-reasons { font-size: 0.8125rem; color: var(--text3); margin-top: 4px; }
 
-        /* Practice Timer */
+        /* Practice timer */
         .m-practice-timer {
-            background: linear-gradient(135deg, #4a7cff 0%, #6c5ce7 100%);
+            background: var(--accent);
             color: #fff;
-            border-radius: 14px;
-            padding: 16px;
-            margin-bottom: 16px;
+            border-radius: var(--r-lg);
+            padding: 18px;
+            margin-bottom: 14px;
             text-align: center;
         }
         .m-practice-timer .pt-time {
-            font-size: 2.8em;
+            font-size: 2.5rem;
             font-weight: 700;
             font-variant-numeric: tabular-nums;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
         }
-        .m-practice-timer .pt-label {
-            font-size: 0.85em;
-            opacity: 0.9;
-            margin-bottom: 8px;
-        }
+        .m-practice-timer .pt-label { font-size: 0.8125rem; opacity: 0.85; margin-bottom: 8px; }
         .m-practice-timer .pt-bar {
             height: 6px;
-            background: rgba(255,255,255,0.25);
-            border-radius: 3px;
+            background: rgba(255,255,255,0.28);
+            border-radius: var(--r-pill);
             overflow: hidden;
             margin: 10px 0 6px;
         }
         .m-practice-timer .pt-fill {
             height: 100%;
             background: #fff;
-            border-radius: 3px;
+            border-radius: var(--r-pill);
             transition: width 1s linear;
         }
         .m-practice-timer .pt-btn {
-            background: rgba(255,255,255,0.2);
-            border: 1px solid rgba(255,255,255,0.4);
+            background: rgba(255,255,255,0.16);
+            border: 1px solid rgba(255,255,255,0.35);
             color: #fff;
-            padding: 8px 20px;
-            border-radius: 8px;
-            font-size: 0.9em;
+            padding: 9px 22px;
+            border-radius: var(--r-sm);
+            font-size: 0.875rem;
             font-weight: 600;
             cursor: pointer;
             font-family: inherit;
             margin-top: 6px;
         }
-        .m-practice-done {
-            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-        }
+        .m-practice-done { background: var(--green); }
 
         /* Reminder settings */
         .m-reminder-card {
@@ -487,20 +483,22 @@
             flex-wrap: wrap;
         }
         .m-reminder-card input[type="time"] {
-            font-size: 1.1em;
-            padding: 8px 12px;
-            border-radius: 8px;
-            border: 1.5px solid var(--border);
+            font-size: 1rem;
+            padding: 9px 12px;
+            border-radius: var(--r-sm);
+            border: 1px solid var(--border-strong);
             font-family: inherit;
+            background: var(--card);
+            color: var(--text);
         }
         .m-reminder-toggle {
             position: relative;
             width: 50px;
             height: 28px;
-            background: #ccc;
-            border-radius: 14px;
+            background: var(--border-strong);
+            border-radius: var(--r-pill);
             cursor: pointer;
-            transition: background 0.3s;
+            transition: background 0.25s ease;
             border: none;
         }
         .m-reminder-toggle.active { background: var(--green); }
@@ -513,7 +511,8 @@
             height: 22px;
             background: #fff;
             border-radius: 50%;
-            transition: transform 0.3s;
+            transition: transform 0.25s ease;
+            box-shadow: 0 1px 3px rgba(15,23,42,.2);
         }
         .m-reminder-toggle.active::after { transform: translateX(-22px); }
 
@@ -521,84 +520,84 @@
         .m-congrats-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.5);
+            background: rgba(15,23,42,0.45);
+            backdrop-filter: blur(2px);
             z-index: 200;
             display: flex;
             align-items: center;
             justify-content: center;
         }
         .m-congrats-box {
-            background: #fff;
+            background: var(--card);
             border-radius: 20px;
-            padding: 32px 24px;
+            padding: 30px 24px;
             text-align: center;
             max-width: 90vw;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            box-shadow: 0 24px 60px -20px rgba(15,23,42,0.4);
         }
-        .m-congrats-box .emoji { font-size: 3em; margin-bottom: 12px; }
-        .m-congrats-box h2 { font-size: 1.3em; margin-bottom: 8px; color: var(--green); }
-        .m-congrats-box p { color: var(--text2); font-size: 0.95em; margin-bottom: 16px; }
+        .m-congrats-box .emoji { font-size: 2.5rem; margin-bottom: 12px; }
+        .m-congrats-box h2 { font-size: 1.25rem; margin-bottom: 8px; color: var(--green); }
+        .m-congrats-box p { color: var(--text2); font-size: 0.9375rem; margin-bottom: 16px; }
 
-        /* Streak & Level bar */
+        /* Streak & level bar */
         .m-streak-bar {
             display: flex;
             align-items: center;
             justify-content: space-between;
             background: var(--card);
-            border-radius: 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--r);
             padding: 10px 14px;
             margin-bottom: 12px;
             box-shadow: var(--shadow);
         }
         .m-streak-item { text-align: center; }
-        .m-streak-item .val { font-size: 1.3em; font-weight: 700; }
-        .m-streak-item .lbl { font-size: 0.68em; color: var(--text2); }
-        .m-streak-fire { font-size: 1.5em; }
+        .m-streak-item .val { font-size: 1.25rem; font-weight: 700; }
+        .m-streak-item .lbl { font-size: 0.6875rem; color: var(--text3); }
+        .m-streak-fire { font-size: 1.35rem; }
         .m-level-bar {
             height: 6px;
-            background: #e5e7eb;
-            border-radius: 3px;
+            background: var(--surface-3);
+            border-radius: var(--r-pill);
             overflow: hidden;
             flex: 1;
             margin: 0 10px;
         }
         .m-level-fill {
             height: 100%;
-            background: linear-gradient(90deg, var(--accent), var(--accent3));
-            border-radius: 3px;
-            transition: width 0.5s;
+            background: var(--accent);
+            border-radius: var(--r-pill);
+            transition: width 0.45s ease;
         }
 
         /* Badges */
-        .m-badges-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-        }
+        .m-badges-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
         .m-badge-item {
             text-align: center;
-            padding: 10px 4px;
-            background: var(--bg);
-            border-radius: 10px;
-            font-size: 0.75em;
+            padding: 12px 4px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            font-size: 0.75rem;
+            color: var(--text2);
         }
-        .m-badge-item.locked { opacity: 0.35; }
-        .m-badge-item .badge-icon { font-size: 1.8em; display: block; margin-bottom: 4px; }
-        .m-badge-item .badge-name { font-weight: 600; }
+        .m-badge-item.locked { opacity: 0.4; }
+        .m-badge-item .badge-icon { font-size: 1.5rem; display: block; margin-bottom: 4px; }
+        .m-badge-item .badge-name { font-weight: 600; color: var(--text); }
 
         /* Encouragement toast */
         .m-toast {
             position: fixed;
-            bottom: 80px;
+            bottom: 88px;
             left: 50%;
             transform: translateX(-50%);
             background: var(--text);
             color: #fff;
             padding: 12px 20px;
-            border-radius: 12px;
-            font-size: 0.9em;
+            border-radius: var(--r);
+            font-size: 0.875rem;
             z-index: 150;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            box-shadow: 0 12px 32px -12px rgba(15,23,42,0.5);
             animation: toast-in 0.3s ease-out;
             max-width: 90vw;
             text-align: center;
@@ -610,10 +609,8 @@
 
         /* Sections */
         .m-section { display: none; }
-        .m-section.active { display: block; }
-
-        /* Bottom spacing for nav */
-        .m-main { padding-bottom: 80px; }
+        .m-section.active { display: block; animation: section-in .18s ease; }
+        @keyframes section-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
         /* Loading spinner */
         .m-loading {
@@ -627,6 +624,10 @@
             margin: 12px auto;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+        }
     </style>
 </head>
 <body>
@@ -732,7 +733,7 @@
 
             <!-- Camera + Neck Effort -->
             <div class="m-card">
-                <h2>📸 מצלמה — ניתוח מאמץ צוואר</h2>
+                <h2>📸 מצלמה — תנוחת ראש וצוואר</h2>
                 <div class="m-instructions">
                     <p><strong>כדי לקבל ניתוח מדויק:</strong></p>
                     <ul>
@@ -747,6 +748,7 @@
                     <video id="m-video" autoplay playsinline muted></video>
                     <canvas id="m-face-canvas"></canvas>
                 </div>
+                <p>ניתוח הצוואר שולח פריימים נבחרים וחיתוכים ל־OpenAI; הציונים מתארים התנהגות נצפית בלבד.</p>
                 <div id="m-neck-widget" class="m-neck-widget">
                     <div class="m-neck-row">
                         <span id="m-neck-mode" class="m-neck-badge">ממתין</span>
@@ -771,6 +773,7 @@
                         <li>לחצו שוב על הכפתור לעצירה</li>
                     </ul>
                 </div>
+                <label for="recording-duration">משך הקלטה: </label><select id="recording-duration"><option value="5">5 שניות</option><option value="10">10 שניות</option><option value="20">20 שניות</option></select>
                 <button id="m-record-btn" class="m-record-btn">
                     <span class="dot"></span>
                 </button>
@@ -820,6 +823,7 @@
                         <div class="grade" id="m-neck-result-score">—</div>
                         <div class="label" id="m-neck-result-label">ממתין לניתוח</div>
                     </div>
+                    <div id="m-neck-v1-results"></div>
                     <div id="m-neck-result-reasons" style="font-size:0.85em;color:var(--text2);margin-top:8px;line-height:1.6;"></div>
                     <div style="font-size:0.72em;color:var(--text2);margin-top:12px;padding-top:8px;border-top:1px solid var(--border);line-height:1.5;">
                         * הערכה משוערת מבוססת ניתוח תמונה. לא מהווה אבחון קליני. לצורך הערכה מקצועית יש לפנות לקלינאי/ת תקשורת.
@@ -885,6 +889,10 @@
     </button>
 </nav>
 
+<script src="neck-analysis-v1.js?v=27"></script>
+    <script src="neck-motion-analysis.js?v=2"></script>
+    <script src="neck-motion.js?v=7"></script>
+    <script src="neck-capture.js?v=7"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
@@ -978,6 +986,7 @@ async function fetchMe() {
 }
 
 function doLogout() {
+    neckSampler?.cancel();
     _token = null;
     _currentUser = null;
     localStorage.removeItem("jwt_token");
@@ -1042,6 +1051,8 @@ let mCamera = null;
 let neckCaptureCanvas = null;
 let neckEffortInterval = null;
 let neckEffortRequestInFlight = false;
+let neckSampler = null;
+let neckMotionSeed = null;
 
 const mVideo = document.getElementById("m-video");
 const mFaceCanvas = document.getElementById("m-face-canvas");
@@ -1071,10 +1082,10 @@ function initFaceMesh() {
         faceMesh = new FaceMesh({
             locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
         });
-        faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+        faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: false, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
         faceMesh.onResults(onFaceResults);
         mCamera = new Camera(mVideo, {
-            onFrame: async () => { await faceMesh.send({ image: mVideo }); },
+            onFrame: async () => { if (!isRecording || neckSampler?.requestMotionReference?.()) await faceMesh.send({ image: mVideo }); },
             width: 480, height: 360,
         });
         mCamera.start();
@@ -1088,8 +1099,13 @@ function onFaceResults(results) {
     mFaceCtx.clearRect(0, 0, mFaceCanvas.width, mFaceCanvas.height);
     if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
         const lm = results.multiFaceLandmarks[0];
+        neckMotionSeed = {at: Date.now(), points: [10,151,168,33,263,1].map(i=>[lm[i].x,lm[i].y])};
+        if (isRecording) neckSampler?.updateMotionReference?.(neckMotionSeed);
         drawConnectors(mFaceCtx, lm, FACEMESH_FACE_OVAL, { color: "rgba(79,140,255,0.5)", lineWidth: 1 });
         drawConnectors(mFaceCtx, lm, FACEMESH_LIPS, { color: "rgba(255,79,94,0.6)", lineWidth: 1 });
+    } else {
+        neckMotionSeed = null;
+        if (isRecording) neckSampler?.updateMotionReference?.(null);
     }
 }
 
@@ -1119,25 +1135,72 @@ async function startNeckEffortRecordingSession() {
     } catch (_) {}
 }
 
-async function stopNeckEffortRecordingSession() {
+async function stopNeckEffortRecordingSession(audioBlob, audioOffsetSeconds = 0) {
+    const sampler=neckSampler,sessionId=neckEffortSessionId;
+    await sampler?.stop();
+    const captureTransport=sampler?.transportDiagnostics?.();
+    const localMotion = await sampler?.localMotionReport?.();
     const headers = getAuthHeaders();
-    if (!headers.Authorization) return null;
+    const container = document.getElementById("m-neck-v1-results");
+    function show(packet) {
+        if (sessionId && sessionId!==neckEffortSessionId) return packet;
+        if(packet.neckAnalysis){packet.neckAnalysis.validation_status ??= 'not_clinically_validated';packet.neckAnalysis.confidence_kind ??= 'uncalibrated_evidence_index';
+            if(captureTransport){packet.neckAnalysis.diagnostics ||= {};packet.neckAnalysis.diagnostics.capture_transport ??= captureTransport;}}
+        document.getElementById("m-results-empty").hidden = true;
+        document.getElementById("m-results-content").hidden = false;
+        document.getElementById("m-neck-result-card").hidden = false;
+        document.getElementById("m-neck-result-badge").hidden = true;
+        updateNeckUI(packet);
+        renderNeckAnalysis(container, packet, {viewer: typeof _currentUser !== "undefined" ? _currentUser : null});
+        document.querySelectorAll(".m-nav-item").forEach(b => b.classList.toggle("active", b.dataset.tab === "results"));
+        document.querySelectorAll(".m-section").forEach(s => s.classList.toggle("active", s.id === "tab-results"));
+        return packet;
+    }
+    if (localMotion) show({model_version:'neck-analysis-v1',neckAnalysis:{version:'neck-analysis-v1',status:'pending',dimensions:{},movement_stability:localMotion}});
+    if (!headers.Authorization) return localMotion ? show({model_version:'neck-analysis-v1',neckAnalysis:{version:'neck-analysis-v1',status:'error',dimensions:{},movement_stability:localMotion}}) : null;
     try {
-        const resp = await fetch("/api/neck-effort/recording/stop", { method: "POST", headers });
-        if (!resp.ok) return null;
-        return await resp.json();
-    } catch (_) {
-        return null;
+        const body = new FormData();
+        if (sessionId) body.append('session_id', sessionId);
+        if (captureTransport) body.append('capture_transport',JSON.stringify(captureTransport));
+        const motionTrace = sampler?.motionTrace?.();
+        if (motionTrace) body.append('motion_trace', JSON.stringify(motionTrace));
+        if (audioBlob) {
+            body.append('audio', audioBlob, 'neck-context.wav');
+            body.append('audio_offset_seconds', String(audioOffsetSeconds));
+        }
+        const resp = await fetch("/api/neck-effort/recording/stop", {
+            method: "POST", headers, body, signal: AbortSignal.timeout(55000)
+        });
+        if (!resp.ok) throw new Error("neck_service_http_" + resp.status);
+        const result = await resp.json();
+        if (!result.neck_effort) throw new Error("neck_result_missing");
+        if (localMotion && !result.neck_effort.neckAnalysis?.movement_stability) {
+            result.neck_effort.neckAnalysis ||= {version:'neck-analysis-v1',status:'error',dimensions:{}};
+            result.neck_effort.neckAnalysis.movement_stability=localMotion;
+        }
+        return show(result.neck_effort);
+    } catch (error) {
+        return show({model_version: "neck-analysis-v1", reasons: [error.name === "TimeoutError" ? "analysis_timeout" : "neck_service_unavailable"],
+            neckAnalysis: {version: "neck-analysis-v1", status: "error", dimensions: {},
+                overall: {continuous_score: null, category: null, confidence: 0},
+                movement_stability: localMotion || {},
+                summary: "ניתוח הצוואר לא הושלם. אפשר לנסות הקלטה חדשה."}});
     }
 }
+
+// How often a camera frame is sent to the neck-effort engine while recording.
+const NECK_FRAME_INTERVAL_MS = 200;
 
 function startNeckEffortMonitoring() {
     if (neckEffortInterval) clearInterval(neckEffortInterval);
     neckCaptureCanvas = document.createElement("canvas");
     neckCaptureCanvas.width = 480;
     neckCaptureCanvas.height = 360;
-    neckEffortInterval = setInterval(captureNeckFrame, 350);
-    captureNeckFrame();
+    // Collect temporal evidence at up to 5fps; scoring starts after recording.
+    neckSampler?.cancel();
+    neckSampler = new NeckCapture({video:mVideo,canvas:neckCaptureCanvas,sessionId:neckEffortSessionId,
+        startedAt:recordingStart,motionSeed:neckMotionSeed,headers:getAuthHeaders,onResult:updateNeckUI});
+    neckSampler.start();
 }
 
 async function captureNeckFrame() {
@@ -1162,7 +1225,16 @@ async function captureNeckFrame() {
             return;
         }
         if (!resp.ok) return;
-        updateNeckUI(await resp.json());
+        const data = await resp.json();
+        // Progress = the engine answered with a real mode; a "running" score
+        // means calibration is done and the recording no longer has to wait.
+        if (data.mode === "calibrating" || data.mode === "running" || data.mode === "no_score") {
+            neckEffortProgressing = true;
+        }
+        if (data.mode === "running") {
+            neckEffortScored = true;
+        }
+        updateNeckUI(data);
     } catch (_) {} finally { neckEffortRequestInFlight = false; }
 }
 
@@ -1200,6 +1272,14 @@ function updateNeckUI(data) {
 
     if (!data) { mode.textContent = "ממתין"; score.textContent = "--"; label.textContent = ""; reasons.textContent = ""; return; }
 
+    if (data.model_version === "neck-analysis-v1") {
+        mode.textContent = data.neckAnalysis?.status === 'pending' ? 'ממתין לתצפיות' : data.mode === "error" || data.neckAnalysis?.status === "error" ? "נכשל" : data.mode === "complete" || data.neckAnalysis ? "הסתיים" : "אוסף ראיות";
+        score.textContent = "—";
+        score.className = "m-neck-score";
+        label.textContent = "תצפיות התנוחה, הצוואר והלסת יוצגו בסיום ההקלטה";
+        reasons.textContent = "שמרו פנים, צוואר וכתפיים בתמונה.";
+        return;
+    }
     if (data.mode === "calibrating") {
         const p = Math.round((data.calibration_progress || 0) * 100);
         mode.textContent = "כיול " + p + "%";
@@ -1247,6 +1327,12 @@ const SCORE_COLORS = ["#22c55e", "#eab308", "#f97316", "#ef4444"];
 let isRecording = false;
 let timerInterval = null;
 let recordingStart = 0;
+// Recording duration is independent of analysis. Never extend for a neck score.
+const MAX_RECORDING_MS = 20000;
+let recordingLimitMs = 5000;
+let neckEffortScored = false;
+let neckEffortProgressing = false;
+let recordingExtended = false;
 
 const recordBtn = document.getElementById("m-record-btn");
 const recordLabel = document.getElementById("m-record-label");
@@ -1270,9 +1356,13 @@ async function startRecording() {
     const source = audioContext.createMediaStreamSource(audioStream);
     const processor = audioContext.createScriptProcessor(4096, 1, 1);
     const pcmChunks = [];
+    recordBtn._neckAudioOffset = 0;
 
     processor.onaudioprocess = (e) => {
-        if (isRecording) pcmChunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+        if (isRecording) {
+            if (!pcmChunks.length) recordBtn._neckAudioOffset = (Date.now() - recordingStart) / 1000 - e.inputBuffer.duration;
+            pcmChunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+        }
     };
     source.connect(processor);
     processor.connect(audioContext.destination);
@@ -1280,15 +1370,26 @@ async function startRecording() {
     await resetNeckEffortSession();
     await startNeckEffortRecordingSession();
     isRecording = true;
-    startNeckEffortMonitoring();
+    neckEffortScored = false;
+    neckEffortProgressing = false;
+    recordingExtended = false;
+    recordingLimitMs = Math.min(MAX_RECORDING_MS, Math.max(5000, Number(document.getElementById("recording-duration").value) * 1000));
     recordingStart = Date.now();
+    startNeckEffortMonitoring();
     recordBtn.classList.add("recording");
     recordLabel.textContent = "לחצו לעצירה";
     timerEl.hidden = false;
-    setStatus("מקליט...");
+    setStatus("מקליט... ההקלטה תיעצר אחרי " + recordingLimitMs / 1000 + " שניות.");
 
     timerInterval = setInterval(() => {
-        timerEl.textContent = ((Date.now() - recordingStart) / 1000).toFixed(1) + "s";
+        const elapsedMs = Date.now() - recordingStart;
+        timerEl.textContent = elapsedMs < recordingLimitMs
+            ? (elapsedMs / 1000).toFixed(1) + "s / " + (recordingLimitMs / 1000) + "s"
+            : (elapsedMs / 1000).toFixed(1) + "s";
+
+        if (!isRecording || elapsedMs < recordingLimitMs) return;
+
+        stopRecording();
     }, 100);
 
     recordBtn._ctx = audioContext;
@@ -1314,8 +1415,14 @@ async function stopRecording() {
     timerEl.hidden = true;
     if (neckEffortInterval) { clearInterval(neckEffortInterval); neckEffortInterval = null; }
     neckEffortRequestInFlight = false;
-    await stopNeckEffortRecordingSession();
-    sendAudio(wavBlob);
+    recordBtn.disabled = true;
+    try {
+        const [neck, voice] = await Promise.all([stopNeckEffortRecordingSession(wavBlob, recordBtn._neckAudioOffset), sendAudio(wavBlob)]);
+        if (voice && neck) { voice.neck_effort = neck; displayResults(voice); }
+        setStatus(neck?.neckAnalysis?.status === "error"
+            ? "ניתוח הצוואר לא הושלם; פרטים מופיעים בתוצאות."
+            : voice ? "הניתוח הושלם." : "תוצאת הצוואר מוצגת; ניתוח הקול לא הושלם.", !voice || neck?.neckAnalysis?.status === "error");
+    } finally { recordBtn.disabled = false; }
 }
 
 function pcmToWav(pcmChunks, sampleRate) {
@@ -1359,6 +1466,7 @@ async function sendAudio(blob) {
     }
     try {
         const resp = await fetch("/api/analyze", {
+            signal: AbortSignal.timeout(20000),
             method: "POST",
             body: formData,
             headers: getAuthHeaders(),
@@ -1376,8 +1484,9 @@ async function sendAudio(blob) {
         document.querySelectorAll(".m-section").forEach(s => s.classList.remove("active"));
         document.querySelector('[data-tab="results"]').classList.add("active");
         document.getElementById("tab-results").classList.add("active");
+        return data;
     } catch (e) {
-        setStatus("שגיאה: " + e.message, true);
+        setStatus(e.name === "TimeoutError" ? "ניתוח הקול עבר את זמן ההמתנה. נסו שוב." : "שגיאה: " + e.message, true);
     }
 }
 
@@ -1434,7 +1543,13 @@ function displayResults(data) {
     // Neck effort card
     const neckCard = document.getElementById("m-neck-result-card");
     const ne = data.neck_effort;
-    if (ne && Number.isInteger(ne.score)) {
+    if (ne && ne.neckAnalysis) {
+        neckCard.hidden = false;
+        document.getElementById("m-neck-result-badge").hidden = true;
+        document.getElementById("m-neck-result-reasons").textContent = "";
+        renderNeckAnalysis(document.getElementById("m-neck-v1-results"), ne, {viewer: _currentUser});
+    } else if (ne && Number.isInteger(ne.score)) {
+        document.getElementById("m-neck-result-badge").hidden = false;
         neckCard.hidden = false;
         const neckLevel = Math.min(ne.score, 3);
         const neckBadge = document.getElementById("m-neck-result-badge");
@@ -1463,8 +1578,6 @@ function displayResults(data) {
         } else {
             reasonsEl.innerHTML = "";
         }
-    } else {
-        neckCard.hidden = true;
     }
 
     // Recommendations — show only top 2 most critical measures
@@ -1574,7 +1687,7 @@ function renderHistory(history) {
         for (const dim of "GRBAS") {
             if (scores[dim] !== undefined) scoreParts.push(dim + ":" + Number(scores[dim]).toFixed(1));
         }
-        if (entry.neck_effort && Number.isInteger(entry.neck_effort.score)) {
+        if (entry.neck_effort && !entry.neck_effort.neckAnalysis && entry.neck_effort.model_version !== "neck-analysis-v1" && Number.isInteger(entry.neck_effort.score)) {
             scoreParts.push("N:" + entry.neck_effort.score);
         }
         item.innerHTML = `
@@ -2021,13 +2134,15 @@ function updateGameUI() {
 // --- Hook into existing events ---
 const _origSendAudio = sendAudio;
 sendAudio = async function(blob) {
-    await _origSendAudio(blob);
+    const result = await _origSendAudio(blob);
+    if (!result) return null;
     // After analysis
     const g = updateStreak();
     addPoints(10, "ניתוח קול");
     const history = JSON.parse(localStorage.getItem(historyKey()) || "[]");
     if (history.length > 0) showEncouragement({ scores: history[0].scores });
     checkBadges();
+    return result;
 };
 
 // Hook practice timer completion

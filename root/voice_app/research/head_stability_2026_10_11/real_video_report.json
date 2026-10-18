@@ -1,0 +1,121 @@
+{
+  "version": "head-movement-stability-v1",
+  "status": "measured",
+  "source": "browser_patch_tracking",
+  "unit": "percent_image_width",
+  "effort_score": null,
+  "windows": [
+    {
+      "start": 0.0,
+      "end": 2.0,
+      "status": "measured",
+      "amplitude_percent_image_width": 0.14637,
+      "dominant_frequency_hz": 3.07,
+      "background_amplitude_percent_image_width": 0.01355,
+      "band_hz": [
+        2,
+        8
+      ],
+      "usable_samples": 56
+    },
+    {
+      "start": 1.0,
+      "end": 3.0,
+      "status": "measured",
+      "amplitude_percent_image_width": 0.19941,
+      "dominant_frequency_hz": 4.6,
+      "background_amplitude_percent_image_width": 0.02896,
+      "band_hz": [
+        2,
+        8
+      ],
+      "usable_samples": 56
+    },
+    {
+      "start": 2.0,
+      "end": 4.0,
+      "status": "measured",
+      "amplitude_percent_image_width": 0.18348,
+      "dominant_frequency_hz": 3.07,
+      "background_amplitude_percent_image_width": 0.02602,
+      "band_hz": [
+        2,
+        8
+      ],
+      "usable_samples": 56
+    },
+    {
+      "start": 3.0,
+      "end": 5.0,
+      "status": "measured",
+      "amplitude_percent_image_width": 0.1476,
+      "dominant_frequency_hz": 4.09,
+      "background_amplitude_percent_image_width": 0.02036,
+      "band_hz": [
+        2,
+        8
+      ],
+      "usable_samples": 56
+    },
+    {
+      "start": 4.0,
+      "end": 6.0,
+      "status": "measured",
+      "amplitude_percent_image_width": 0.2159,
+      "dominant_frequency_hz": 4.6,
+      "background_amplitude_percent_image_width": 0.02483,
+      "band_hz": [
+        2,
+        8
+      ],
+      "usable_samples": 56
+    },
+    {
+      "start": 5.0,
+      "end": 7.0,
+      "status": "measured",
+      "amplitude_percent_image_width": 0.21471,
+      "dominant_frequency_hz": 4.09,
+      "background_amplitude_percent_image_width": 0.01591,
+      "band_hz": [
+        2,
+        8
+      ],
+      "usable_samples": 56
+    },
+    {
+      "start": 6.0,
+      "end": 8.0,
+      "status": "measured",
+      "amplitude_percent_image_width": 0.22239,
+      "dominant_frequency_hz": 3.52,
+      "background_amplitude_percent_image_width": 0.01078,
+      "band_hz": [
+        2,
+        8
+      ],
+      "usable_samples": 57
+    },
+    {
+      "start": 7.0,
+      "end": 9.0,
+      "status": "measured",
+      "amplitude_percent_image_width": 0.2347,
+      "dominant_frequency_hz": 4.02,
+      "background_amplitude_percent_image_width": 0.01208,
+      "band_hz": [
+        2,
+        8
+      ],
+      "usable_samples": 57
+    }
+  ],
+  "sample_count": 257,
+  "limitations": [
+    "Descriptive image oscillation; not muscle tension or a tremor diagnosis",
+    "Translation control does not fully remove camera rotation, rolling shutter or articulation",
+    "Frequency band and tracking gates are engineering choices, not clinically validated"
+  ],
+  "effective_fps": 28.126,
+  "reason": null
+}

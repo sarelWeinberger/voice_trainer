@@ -3,223 +3,298 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>אימון קולי - ניתוח GRBAS</title>
-    <link rel="stylesheet" href="style.css?v=10">
+    <meta name="theme-color" content="#ffffff">
+    <title>אימון קולי — ניתוח GRBAS</title>
+    <link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
-    <!-- Top Nav Bar -->
-    <nav class="top-nav">
-        <div class="top-nav-inner">
-            <div class="nav-brand">
-                <span class="nav-logo">🎤</span>
-                <div>
-                    <div class="nav-title">אימון קולי</div>
-                    <div class="nav-subtitle">ניתוח איכות קול GRBAS</div>
-                </div>
+    <!-- ================= Top bar ================= -->
+    <header class="topbar">
+        <div class="topbar-inner">
+            <div class="brand">
+                <span class="brand-mark">🎤</span>
+                <span class="brand-text">
+                    <span class="brand-title">אימון קולי</span>
+                    <span class="brand-sub">ניתוח איכות קול GRBAS</span>
+                </span>
             </div>
-            <div class="nav-actions">
-                <div id="auth-forms" class="auth-forms-inline">
-                    <input type="text" id="auth-username" placeholder="אימייל" class="auth-input-sm" />
-                    <div class="password-wrapper-sm">
-                        <input type="password" id="auth-password" placeholder="סיסמה" class="auth-input-sm" />
-                        <button type="button" id="toggle-password-btn" class="toggle-password-btn-sm" title="הצג סיסמה">👁</button>
-                    </div>
-                    <input type="text" id="auth-class-code" placeholder="קוד כיתה" class="auth-input-sm auth-input-short" />
-                    <button id="login-btn" class="nav-btn nav-btn-primary">התחברות</button>
-                    <button id="register-btn" class="nav-btn">הרשמה</button>
-                    <span id="auth-error" class="auth-error"></span>
-                </div>
+
+            <div class="topbar-actions">
                 <div id="user-bar" class="user-bar-inline" hidden>
-                    <span id="user-name" class="user-email-nav"></span>
-                    <span id="my-class-code" class="class-badge-nav" hidden></span>
-                    <span id="joined-class-info" class="class-badge-nav" hidden></span>
-                    <a href="/admin" id="admin-link" class="nav-btn" hidden>🛠 ניהול</a>
-                    <button id="logout-btn" class="nav-btn nav-btn-ghost">התנתקות</button>
-                    <button id="switch-to-mobile" class="nav-btn" onclick="localStorage.setItem('preferred_ui','mobile');window.location.href='mobile.html';" title="מעבר לממשק נייד">📱</button>
+                    <span id="my-class-code" class="tag" hidden></span>
+                    <span id="joined-class-info" class="tag" hidden></span>
+                    <span class="user-chip">
+                        <span class="user-chip-avatar" id="user-avatar">•</span>
+                        <span id="user-name" class="user-email-nav"></span>
+                    </span>
+                    <a href="/admin" id="admin-link" class="btn btn-ghost btn-sm" hidden>ניהול</a>
+                    <button id="switch-to-mobile" class="btn btn-ghost btn-sm" title="מעבר לממשק נייד">📱 נייד</button>
+                    <button id="logout-btn" class="btn btn-ghost btn-sm">התנתקות</button>
                 </div>
             </div>
         </div>
-    </nav>
+    </header>
 
     <main>
-        <!-- Interface selection modal -->
-        <div id="interface-select-modal" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.55);z-index:1000;display:flex;align-items:center;justify-content:center;">
-            <div style="background:#fff;padding:32px 24px;border-radius:18px;box-shadow:0 4px 24px rgba(0,0,0,0.13);text-align:center;max-width:90vw;">
-                <div style="font-size:2em;margin-bottom:12px;">בחר ממשק</div>
-                <button id="choose-desktop" style="font-size:1.1em;padding:14px 32px;margin:8px 0 12px 0;border-radius:10px;border:none;background:#4a7cff;color:#fff;">מחשב</button><br>
-                <button id="choose-mobile" style="font-size:1.1em;padding:14px 32px;margin:8px 0 0 0;border-radius:10px;border:none;background:#22c55e;color:#fff;">טלפון נייד</button>
+        <!-- ================= Signed out: auth screen ================= -->
+        <div id="login-required" class="auth-screen">
+            <div class="auth-grid">
+                <section class="auth-card">
+                    <h1 class="auth-heading">התחברות</h1>
+                    <p class="auth-sub">היכנסו כדי להקליט, לקבל ניתוח GRBAS ולעקוב אחרי ההתקדמות.</p>
+
+                    <div id="auth-forms" class="auth-form">
+                        <div class="tabs tabs-sm" id="auth-mode-tabs" role="tablist">
+                            <button type="button" class="tab is-active" data-mode="login" role="tab">כניסה</button>
+                            <button type="button" class="tab" data-mode="register" role="tab">הרשמה</button>
+                        </div>
+
+                        <label class="field">
+                            <span class="field-label">אימייל</span>
+                            <input type="text" id="auth-username" class="input" placeholder="name@example.com" autocomplete="username" />
+                        </label>
+
+                        <label class="field">
+                            <span class="field-label">סיסמה</span>
+                            <span class="input-affix">
+                                <input type="password" id="auth-password" class="input" placeholder="לפחות 8 תווים" autocomplete="current-password" />
+                                <button type="button" id="toggle-password-btn" class="affix-btn" title="הצג סיסמה">👁</button>
+                            </span>
+                        </label>
+
+                        <label class="field" id="class-code-field" hidden>
+                            <span class="field-label">קוד כיתה <span class="field-hint">(לא חובה)</span></span>
+                            <input type="text" id="auth-class-code" class="input" placeholder="למשל ABC123" />
+                        </label>
+
+                        <label class="consent" id="auth-consent-wrap" style="display:none;">
+                            <input type="checkbox" id="auth-consent" />
+                            <span>קראתי ואני מסכים/ה ל<a href="/terms.html" target="_blank">תנאי השימוש</a> ול<a href="/privacy.html" target="_blank">מדיניות הפרטיות</a>, ומבין/ה שזה כלי חינוכי ולא דיאגנוסטי.</span>
+                        </label>
+
+                        <div class="auth-actions">
+                            <button id="login-btn" class="btn btn-primary btn-block">התחברות</button>
+                            <button id="register-btn" class="btn btn-secondary btn-block">יצירת חשבון</button>
+                        </div>
+
+                        <p id="auth-error" class="auth-error" role="alert"></p>
+                    </div>
+                </section>
+
+                <aside class="auth-aside">
+                    <h2 class="aside-heading">מה הכלי עושה</h2>
+                    <ul class="aside-list">
+                        <li>
+                            <span class="aside-icon">🔬</span>
+                            <span><strong>ניתוח אקוסטי</strong>מדדי קול מחושבים מתוך הקלטה של תנועת /א/ ממושכת.</span>
+                        </li>
+                        <li>
+                            <span class="aside-icon">📊</span>
+                            <span><strong>ציוני GRBAS</strong>חמישה ממדים תפיסתיים מקובלים, בסולם 0–3.</span>
+                        </li>
+                        <li>
+                            <span class="aside-icon">💪</span>
+                            <span><strong>מאמץ צוואר</strong>ניטור תנוחה מהמצלמה בזמן ההקלטה.</span>
+                        </li>
+                        <li>
+                            <span class="aside-icon">📈</span>
+                            <span><strong>מעקב לאורך זמן</strong>קו מגמה שמראה שיפור אמיתי, לא רעש של אימון בודד.</span>
+                        </li>
+                    </ul>
+                    <p class="aside-note">
+                        כלי חינוכי וניסיוני בלבד — אינו מהווה אבחנה רפואית. בכל חשד לבעיה קולית יש לפנות לקלינאי תקשורת או לרופא א.א.ג.
+                    </p>
+                </aside>
             </div>
         </div>
-        <!-- Login required message -->
-        <div id="login-required" class="hero-welcome">
-            <div class="welcome-card">
-                <div class="welcome-icon">🎤</div>
-                <h1>ברוכים הבאים לאימון קולי</h1>
-                <p>כלי חכם לניתוח איכות הקול שלך בזמן אמת עם מודל GRBAS</p>
-                <div class="welcome-features">
-                    <div class="welcome-feature">
-                        <span class="wf-icon">🔬</span>
-                        <span>ניתוח אקוסטי מדויק</span>
+
+        <!-- ================= Signed in: app shell ================= -->
+        <div id="app-content" class="app-shell" style="display:none">
+            <div class="app-head">
+                <div class="app-head-text">
+                    <h1 class="app-title">האימון שלי</h1>
+                    <p class="app-sub">הקליטו תנועת /א/ ממושכת. ההקלטה נעצרת לבד לאחר הזמן שנבחר (5–20 שניות).</p>
+                </div>
+                <div id="quick-stats" class="stat-row">
+                    <div class="stat">
+                        <span class="stat-label">ניתוחים</span>
+                        <span id="qs-total" class="stat-value">0</span>
                     </div>
-                    <div class="welcome-feature">
-                        <span class="wf-icon">📊</span>
-                        <span>ציוני GRBAS בזמן אמת</span>
+                    <div class="stat">
+                        <span class="stat-label">אימון אחרון</span>
+                        <span id="qs-last-date" class="stat-value">—</span>
                     </div>
-                    <div class="welcome-feature">
-                        <span class="wf-icon">💪</span>
-                        <span>ניטור מאמץ צוואר</span>
-                    </div>
-                    <div class="welcome-feature">
-                        <span class="wf-icon">📈</span>
-                        <span>מעקב התקדמות</span>
+                    <div class="stat">
+                        <span class="stat-label">ציון G הטוב ביותר</span>
+                        <span id="qs-best-g" class="stat-value">—</span>
                     </div>
                 </div>
-                <p class="welcome-cta">התחברו או הירשמו בסרגל למעלה כדי להתחיל ↑</p>
-            </div>
-        </div>
-
-        <div id="app-content" style="display:none">
-            <!-- Hero: Camera + Recording side by side -->
-            <div id="section-hero" class="hero-section">
-                <section class="camera-card">
-                    <div class="video-container">
-                        <video id="video" autoplay playsinline muted></video>
-                        <canvas id="face-canvas"></canvas>
-                        <div id="neck-effort-widget" class="neck-effort-widget">
-                            <div class="neck-effort-header">
-                                <span>מאמץ צוואר</span>
-                                <span id="neck-effort-mode" class="neck-effort-mode">ממתין</span>
-                            </div>
-                            <div class="neck-effort-main">
-                                <span id="neck-effort-score" class="neck-effort-score">--</span>
-                                <div class="neck-effort-meta">
-                                    <div id="neck-effort-label" class="neck-effort-label">המצלמה לא הופעלה</div>
-                                    <div id="neck-effort-confidence" class="neck-effort-confidence">ביטחון: --</div>
-                                </div>
-                            </div>
-                            <div id="neck-effort-feedback" class="neck-effort-feedback"></div>
-                            <div id="neck-effort-reasons" class="neck-effort-reasons">יישרו את הראש, הצוואר והכתפיים מול המצלמה.</div>
-                        </div>
-                        <div id="face-metrics" class="face-metrics"></div>
-                    </div>
-                </section>
-
-                <section class="recording-card">
-                    <div class="recording-inner">
-                        <h2>הקלטת קול</h2>
-                        <p class="instruction">הקליטו תנועת /א/ ממושכת למשך 3+ שניות</p>
-                        <button id="record-btn" class="record-btn">
-                            <span class="record-icon"></span>
-                            <span class="record-label">התחל הקלטה</span>
-                        </button>
-                        <div id="recording-timer" class="timer" hidden>0.0s</div>
-                        <div id="status" class="status"></div>
-                    </div>
-                    <!-- Quick stats -->
-                    <div id="quick-stats" class="quick-stats">
-                        <div class="qs-item">
-                            <span class="qs-icon">📊</span>
-                            <div>
-                                <div id="qs-total" class="qs-value">0</div>
-                                <div class="qs-label">ניתוחים</div>
-                            </div>
-                        </div>
-                        <div class="qs-item">
-                            <span class="qs-icon">📅</span>
-                            <div>
-                                <div id="qs-last-date" class="qs-value">—</div>
-                                <div class="qs-label">ניתוח אחרון</div>
-                            </div>
-                        </div>
-                        <div class="qs-item">
-                            <span class="qs-icon">⭐</span>
-                            <div>
-                                <div id="qs-best-g" class="qs-value">—</div>
-                                <div class="qs-label">ציון G הטוב ביותר</div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
             </div>
 
-            <!-- Improvement Banner -->
+            <nav class="tabs" id="app-tabs" aria-label="ניווט ראשי">
+                <button class="tab is-active" data-tab="record">הקלטה</button>
+                <button class="tab" data-tab="results">תוצאות</button>
+                <button class="tab" data-tab="tips">המלצות</button>
+                <button class="tab" data-tab="progress">התקדמות</button>
+            </nav>
+
             <div id="improvement-banner" class="improvement-banner" hidden></div>
 
-            <!-- Results Row: GRBAS + Features side by side -->
-            <div id="section-results" class="results-row">
-                <section class="panel results-panel" id="results-panel" hidden>
-                    <h2>ציוני GRBAS</h2>
-                    <div id="combined-summary" class="combined-summary" hidden>
-                        <div class="combined-summary-header">
-                            <div>
-                                <p class="combined-summary-kicker">סיכום משולב</p>
-                                <h3 id="combined-summary-title" class="combined-summary-title">ממתין לניתוח</h3>
+            <!-- ---- Tab: recording ---- -->
+            <section id="section-hero" class="tab-panel is-active" data-tab="record">
+                <div class="record-layout">
+                    <div class="card camera-card">
+                        <div class="video-container">
+                            <video id="video" autoplay playsinline muted></video>
+                            <canvas id="face-canvas"></canvas>
+                            <div id="neck-effort-widget" class="neck-effort-widget">
+                                <div class="neck-effort-header">
+                                    <span>ניתוח צוואר V1</span>
+                                    <span id="neck-effort-mode" class="neck-effort-mode">ממתין</span>
+                                </div>
+                                <div class="neck-effort-main">
+                                    <span id="neck-effort-score" class="neck-effort-score">--</span>
+                                    <div class="neck-effort-meta">
+                                        <div id="neck-effort-label" class="neck-effort-label">המצלמה לא הופעלה</div>
+                                        <div id="neck-effort-confidence" class="neck-effort-confidence">איכות תמונה: --</div>
+                                    </div>
+                                </div>
+                                <p>הניתוח שולח פריימים נבחרים וחיתוכי צוואר ל־OpenAI. אין כאן מדידה של מתח שרירי פנימי או אבחנה רפואית.</p>
+                                <div id="neck-effort-feedback" class="neck-effort-feedback"></div>
+                                <div id="neck-effort-reasons" class="neck-effort-reasons">יישרו את הראש, הצוואר והכתפיים מול המצלמה.</div>
                             </div>
-                            <span id="combined-summary-badge" class="combined-summary-badge">--</span>
+                            <div id="face-metrics" class="face-metrics"></div>
                         </div>
-                        <p id="combined-summary-text" class="combined-summary-text"></p>
-                        <div id="combined-summary-metrics" class="combined-summary-metrics"></div>
                     </div>
-                    <div class="results-grid">
-                        <div class="radar-container">
-                            <canvas id="radar-chart" width="440" height="440"></canvas>
+
+                    <div class="card recording-card">
+                        <div class="recording-inner">
+                            <h2 class="card-title">הקלטת קול</h2>
+                            <ol class="steps">
+                                <li>שבו מול המצלמה, כתפיים רפויות.</li>
+                                <li>קחו נשימה ותנו צליל /א/ יציב ורצוף.</li>
+                                <li>החזיקו עד שההקלטה נעצרת לבד.</li>
+                            </ol>
+                            <label for="recording-duration">משך הקלטה: </label><select id="recording-duration"><option value="5">5 שניות</option><option value="10">10 שניות</option><option value="20">20 שניות</option></select>
+                <button id="record-btn" class="record-btn">
+                                <span class="record-icon"></span>
+                                <span class="record-label">התחל הקלטה</span>
+                            </button>
+                            <div id="recording-timer" class="timer" hidden>0.0s</div>
+                            <div id="status" class="status"></div>
                         </div>
-                        <div class="scores-list" id="scores-list"></div>
                     </div>
-                    <div class="model-badge" id="model-badge"></div>
-                </section>
-
-                <section class="panel features-panel" id="features-panel" hidden>
-                    <h2>מאפיינים אקוסטיים</h2>
-                    <div class="features-grid" id="features-grid"></div>
-                </section>
-            </div>
-
-            <!-- Recommendations -->
-            <div id="section-recommendations"></div>
-            <section class="panel recommendations-panel" id="recommendations-panel" hidden>
-                <h2>המלצות לתרגול</h2>
-                <p class="rec-subtitle">תרגילי YouTube מותאמים לתוצאות GRBAS שלך</p>
-                <div id="recommendations-list" class="recommendations-list"></div>
+                </div>
             </section>
 
-            <!-- Bottom Row: Progress + History side by side -->
-            <div id="section-history" class="bottom-row">
-                <section class="panel progress-panel" id="progress-panel" hidden>
-                    <h2>ההתקדמות שלי</h2>
-                    <p class="progress-subtitle">מגמות ציוני GRBAS לאורך האימונים</p>
-                    <div class="progress-chart-container">
-                        <canvas id="progress-chart" width="800" height="300"></canvas>
-                    </div>
-                    <div id="progress-summary" class="progress-summary"></div>
-                </section>
+            <!-- ---- Tab: results ---- -->
+            <section id="section-results" class="tab-panel" data-tab="results">
+                <div class="empty-card" id="results-empty">
+                    <span class="empty-icon">📊</span>
+                    <h2>עדיין אין תוצאות</h2>
+                    <p>הקליטו תנועת /א/ בלשונית ההקלטה, והציונים יופיעו כאן.</p>
+                    <button class="btn btn-secondary" data-go-tab="record">למסך ההקלטה</button>
+                </div>
 
-                <section class="panel history-panel">
-                    <h2>היסטוריית אימונים</h2>
-                    <div id="history-list" class="history-list">
-                        <p class="empty-state">אין עדיין הקלטות. הקליטו קול למעלה כדי להתחיל.</p>
-                    </div>
-                    <button id="clear-history-btn" class="secondary-btn" hidden>נקה היסטוריה</button>
+                <div class="results-row">
+                    <section class="card results-panel" id="results-panel" hidden>
+                        <h2 class="card-title">ציוני GRBAS</h2>
+                        <div id="combined-summary" class="combined-summary" hidden>
+                            <div class="combined-summary-header">
+                                <div>
+                                    <p class="combined-summary-kicker">סיכום משולב</p>
+                                    <h3 id="combined-summary-title" class="combined-summary-title">ממתין לניתוח</h3>
+                                </div>
+                                <span id="combined-summary-badge" class="combined-summary-badge">--</span>
+                            </div>
+                            <p id="combined-summary-text" class="combined-summary-text"></p>
+                            <div id="combined-summary-metrics" class="combined-summary-metrics"></div>
+                        </div>
+                        <div class="results-grid">
+                            <div class="radar-container">
+                                <canvas id="radar-chart" width="440" height="440"></canvas>
+                            </div>
+                            <div class="scores-list" id="scores-list"></div>
+                        </div>
+                        <div class="model-badge" id="model-badge"></div>
+                    </section>
+
+                    <section class="card features-panel" id="features-panel" hidden>
+                        <h2 class="card-title">מאפיינים אקוסטיים</h2>
+                        <div class="features-grid" id="features-grid"></div>
+                    </section>
+                </div>
+                <section id="neck-analysis-v1-results" dir="rtl" aria-live="polite" class="card" hidden></section>
+            </section>
+
+            <!-- ---- Tab: recommendations ---- -->
+            <section id="section-recommendations" class="tab-panel" data-tab="tips">
+                <div class="empty-card" id="tips-empty">
+                    <span class="empty-icon">💡</span>
+                    <h2>ההמלצות מחכות לניתוח הראשון</h2>
+                    <p>אחרי ההקלטה נבנה כאן מסלול תרגול שמותאם לציונים שלכם.</p>
+                    <button class="btn btn-secondary" data-go-tab="record">למסך ההקלטה</button>
+                </div>
+
+                <section class="card recommendations-panel" id="recommendations-panel" hidden>
+                    <h2 class="card-title">המלצות לתרגול</h2>
+                    <p class="rec-subtitle">תרגילים מותאמים לתוצאות ה‑GRBAS שלכם</p>
+                    <div id="recommendations-list" class="recommendations-list"></div>
                 </section>
-            </div>
+            </section>
+
+            <!-- ---- Tab: progress ---- -->
+            <section id="section-history" class="tab-panel" data-tab="progress">
+                <div class="empty-card" id="progress-empty">
+                    <span class="empty-icon">📈</span>
+                    <h2>המעקב מתחיל אחרי שני אימונים</h2>
+                    <p>אחרי הקלטה שנייה יופיע כאן קו מגמה של כל הפרמטרים.</p>
+                    <button class="btn btn-secondary" data-go-tab="record">למסך ההקלטה</button>
+                </div>
+
+                <div class="bottom-row">
+                    <section class="card progress-panel" id="progress-panel" hidden>
+                        <h2 class="card-title">ההתקדמות שלי</h2>
+                        <p class="progress-subtitle">קו מגמה מוחלק של ציוני GRBAS ומאמץ הצוואר. הנקודות הבהירות הן אימונים בודדים — אימון חריג אחד לא משנה את המגמה. נמוך = טוב יותר.</p>
+                        <div class="progress-chart-container">
+                            <canvas id="progress-chart" width="800" height="336"></canvas>
+                        </div>
+                        <div id="progress-summary" class="progress-summary"></div>
+                    </section>
+
+                    <section class="card history-panel">
+                        <div class="card-head">
+                            <h2 class="card-title">היסטוריית אימונים</h2>
+                            <button id="clear-history-btn" class="btn btn-ghost btn-sm" hidden>נקה</button>
+                        </div>
+                        <div id="history-list" class="history-list">
+                            <p class="empty-state">אין עדיין הקלטות. הקליטו קול בלשונית ההקלטה כדי להתחיל.</p>
+                        </div>
+                    </section>
+                </div>
+            </section>
+    <section id="observable-effort-results" dir="rtl" aria-live="polite"></section>
         </div><!-- /app-content -->
     </main>
 
-    <!-- Scroll-to-top button -->
-    <button id="scroll-top-btn" class="scroll-top-btn" title="חזרה למעלה" aria-label="חזרה למעלה">⬆</button>
+    <footer class="site-footer">
+        <p id="legal-banner" class="legal-note">
+            כלי חינוכי וניסיוני בלבד — אינו מהווה אבחנה רפואית. בכל חשד לבעיה קולית יש לפנות לקלינאי תקשורת או לרופא א.א.ג.
+            <a href="/terms.html" target="_blank">תנאי שימוש</a> ·
+            <a href="/privacy.html" target="_blank">מדיניות פרטיות</a>
+        </p>
+    </footer>
 
-    <!-- Section navigator -->
-    <nav id="section-nav" class="section-nav" aria-label="ניווט מהיר">
-        <button class="snav-dot" data-target="hero" title="הקלטה">🎤</button>
-        <button class="snav-dot" data-target="results" title="תוצאות">📊</button>
-        <button class="snav-dot" data-target="recommendations" title="המלצות">💡</button>
-        <button class="snav-dot" data-target="history" title="היסטוריה">📜</button>
-    </nav>
+    <button id="scroll-top-btn" class="scroll-top-btn" title="חזרה למעלה" aria-label="חזרה למעלה">↑</button>
 
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
-    <script src="auth.js?v=10"></script>
-    <script src="app.js?v=10"></script>
+    <script src="auth.js?v=11"></script>
+    <script src="neck-analysis-v1.js?v=27"></script>
+    <script src="neck-motion-analysis.js?v=2"></script>
+    <script src="neck-motion.js?v=7"></script>
+    <script src="neck-capture.js?v=7"></script>
+    <script src="app.js?v=25"></script>
 </body>
 </html>

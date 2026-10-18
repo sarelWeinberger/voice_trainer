@@ -20,13 +20,64 @@ from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+
+def _resolve_data_dir() -> str:
+    """Directory that holds mutable app state (the SQLite file).
+
+    On Hugging Face Spaces the container filesystem is rebuilt on every deploy,
+    so a DB written next to the code loses every user account and every saved
+    analysis. If a persistent volume is mounted (HF persistent storage mounts it
+    at /data) put the DB there; otherwise fall back to the app directory, which
+    keeps local development unchanged.
+    """
+    override = os.environ.get("APP_DATA_DIR")
+    if override:
+        try:
+            os.makedirs(override, exist_ok=True)
+            if os.access(override, os.W_OK):
+                return override
+        except OSError:
+            pass
+    # Only adopt /data when it is already mounted — creating it ourselves would
+    # look persistent while living inside the disposable container layer.
+    if os.path.isdir("/data") and os.access("/data", os.W_OK):
+        return "/data"
+    return _BASE_DIR
+
+
+DATA_DIR = _resolve_data_dir()
+DB_IS_PERSISTENT = bool(os.environ.get("DATABASE_URL")) or DATA_DIR != _BASE_DIR
+
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    f"sqlite:///{os.path.join(_BASE_DIR, 'app.db')}",
+    f"sqlite:///{os.path.join(DATA_DIR, 'app.db')}",
 )
 # Railway provides postgres:// but SQLAlchemy requires postgresql://
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+
+def _adopt_legacy_sqlite() -> None:
+    """Move an app.db that predates DATA_DIR onto the persistent volume.
+
+    Without this, switching a running deployment to persistent storage would
+    look like every user and every saved analysis had vanished.
+    """
+    if DATA_DIR == _BASE_DIR or not DATABASE_URL.startswith("sqlite:///"):
+        return
+    target = DATABASE_URL[len("sqlite:///"):]
+    legacy = os.path.join(_BASE_DIR, "app.db")
+    if os.path.exists(target) or not os.path.exists(legacy):
+        return
+    import shutil
+
+    try:
+        shutil.copy2(legacy, target)
+    except OSError:
+        pass
+
+
+_adopt_legacy_sqlite()
 
 engine = create_engine(
     DATABASE_URL,
@@ -82,6 +133,44 @@ class Result(Base):
     user = relationship("User", back_populates="results")
 
 
+class AppSetting(Base):
+    """Small key/value store for server-generated settings.
+
+    Holds the JWT signing secret when the deployment does not provide one, so
+    it is stable across restarts (tokens survive) without ever falling back to
+    a value committed to the repo.
+    """
+
+    __tablename__ = "app_settings"
+
+    key = Column(String, primary_key=True)
+    value = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class AllowedEmail(Base):
+    """Emails an admin has invited into the app.
+
+    The allowlist used to be a text file baked into the Docker image, so every
+    email an admin added through the dashboard was silently reverted on the next
+    deploy. Keeping it in the DB means an invite lives exactly as long as the
+    rest of the data does.
+
+    ``class_code`` is the inviting admin's class: an invited user is attached to
+    that class on registration, so their history shows up in that admin's
+    dashboard without anyone typing a class code.
+    """
+
+    __tablename__ = "allowed_emails"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)  # stored lowercase
+    full_name = Column(String, nullable=True)
+    class_code = Column(String, index=True, nullable=True)
+    added_by = Column(String, nullable=True)     # username of the admin who invited
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class NeckRecording(Base):
     """Per-recording neck-effort feature time-series, captured for model training.
 
@@ -110,6 +199,33 @@ class NeckRecording(Base):
 # ---------------------------------------------------------------------------
 # DB initialisation
 # ---------------------------------------------------------------------------
+
+def get_or_create_setting(key: str, factory) -> str:
+    """Return the stored value for ``key``, creating it from ``factory`` once.
+
+    Concurrent workers can race here; the loser of the race re-reads the row the
+    winner committed, so every worker ends up with the same value.
+    """
+    session = SessionLocal()
+    try:
+        row = session.get(AppSetting, key)
+        if row is not None:
+            return row.value
+
+        value = factory()
+        session.add(AppSetting(key=key, value=value))
+        try:
+            session.commit()
+        except Exception:
+            session.rollback()
+            row = session.get(AppSetting, key)
+            if row is None:
+                raise
+            return row.value
+        return value
+    finally:
+        session.close()
+
 
 def init_db() -> None:
     """Create all tables if they do not already exist (idempotent)."""

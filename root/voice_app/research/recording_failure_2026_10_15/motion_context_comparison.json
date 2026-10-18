@@ -1,0 +1,491 @@
+{
+  "source_file": "WIN_20261015_21_04_57_Pro.mp4",
+  "prompt": "neck-rubric-v1.5",
+  "model": "gpt-4.1-2025-04-14",
+  "trials": [
+    {
+      "with_dense_motion": false,
+      "status": "completed",
+      "seconds": 8.786740632000146,
+      "image_fingerprint": "6bf2d7a7940e11fa97dc77c2fa29e4792e50377854556e73ec40bce27307302f",
+      "image_count": 10,
+      "selected_indices": [
+        0,
+        1,
+        7,
+        14,
+        21,
+        28,
+        33,
+        35
+      ],
+      "raw_model": {
+        "dimensions": {
+          "posture_compensation": {
+            "observable": true,
+            "score": 0,
+            "continuous_score": 0.0,
+            "confidence": 0.85,
+            "evidence": [
+              "לא נראית תזוזה חריגה של הראש או שינוי בולט בזווית הראש בין פריימים 0, 1, 7, 14, 21, 28, 33, 35.",
+              "תנועות הראש במסגרת דיבור רגיל, ללא פיצוי יציב או מוגזם."
+            ],
+            "frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "speech_related": true,
+            "independent_local_activity": false,
+            "confounds": [
+              "תנועות ראש רגילות בדיבור",
+              "הפרשי תאורה קלים"
+            ]
+          },
+          "scm_lateral_recruitment": {
+            "observable": true,
+            "score": 0,
+            "continuous_score": 0.0,
+            "confidence": 0.8,
+            "evidence": [
+              "לא נראית בולטות או שינוי מקומי בצידי הצוואר לאורך הפריימים הנבחרים.",
+              "קווי הצוואר הלטראליים נשארים דומים ללא הדגשה חריגה."
+            ],
+            "frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "speech_related": true,
+            "independent_local_activity": false,
+            "confounds": [
+              "מבנה אנטומי קבוע",
+              "הצללות"
+            ]
+          },
+          "anterior_submental_activity": {
+            "observable": true,
+            "score": 0,
+            "continuous_score": 0.0,
+            "confidence": 0.8,
+            "evidence": [
+              "אין שינוי בולט באזור התת-סנטרי או בקדמת הצוואר מעבר למה שמצופה מדיבור רגיל.",
+              "העור והקונטור באזור זה נשארים יציבים."
+            ],
+            "frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "speech_related": true,
+            "independent_local_activity": false,
+            "confounds": [
+              "הצללות באזור הצוואר הקדמי"
+            ]
+          },
+          "shoulder_recruitment": {
+            "observable": true,
+            "score": 0,
+            "continuous_score": 0.0,
+            "confidence": 0.75,
+            "evidence": [
+              "לא נראית הרמה או גיוס חוזר של הכתפיים בפריימים הנבחרים.",
+              "גובה הכתפיים נשאר דומה לאורך הדיבור."
+            ],
+            "frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "speech_related": true,
+            "independent_local_activity": false,
+            "confounds": [
+              "מדידת כתפיים יחסית לראש בלבד"
+            ]
+          },
+          "jaw_compensation": {
+            "observable": true,
+            "score": 0,
+            "continuous_score": 0.0,
+            "confidence": 0.8,
+            "evidence": [
+              "פתיחת הלסת ותנועותיה תואמות דיבור רגיל, ללא פתיחה מוגזמת או תנועה מאומצת.",
+              "אין שינוי פתאומי או קיצוני בתנועת הלסת."
+            ],
+            "frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "speech_related": true,
+            "independent_local_activity": false,
+            "confounds": [
+              "וריאציה רגילה של דיבור"
+            ]
+          }
+        },
+        "summary": "לא נצפתה גיוס צוואר או פיצוי יציב בולט במהלך הדיבור בפריימים שנבדקו.",
+        "limitations": [
+          "הערכת גיוס מבוססת על תצפית חיצונית בלבד, לא על מדידת כוח או מתח פנימי",
+          "הצללות ותאורה עשויות להשפיע על נראות קווי הצוואר",
+          "המדידה אינה מזהה שינויים עדינים או קצרים שאינם נראים בפריימים שנבחרו"
+        ]
+      },
+      "accepted_scores": {
+        "posture_compensation": 0,
+        "scm_lateral_recruitment": 0,
+        "anterior_submental_activity": 0,
+        "shoulder_recruitment": 0,
+        "jaw_compensation": 0
+      },
+      "rejection_reasons": {
+        "posture_compensation": null,
+        "scm_lateral_recruitment": null,
+        "anterior_submental_activity": null,
+        "shoulder_recruitment": null,
+        "jaw_compensation": null
+      },
+      "usage": {
+        "input_tokens": 14952,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 868,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 15820
+      }
+    },
+    {
+      "with_dense_motion": true,
+      "status": "completed",
+      "seconds": 8.298839279996173,
+      "image_fingerprint": "6bf2d7a7940e11fa97dc77c2fa29e4792e50377854556e73ec40bce27307302f",
+      "image_count": 10,
+      "selected_indices": [
+        0,
+        1,
+        7,
+        14,
+        21,
+        28,
+        33,
+        35
+      ],
+      "raw_model": {
+        "dimensions": {
+          "posture_compensation": {
+            "observable": true,
+            "score": 0,
+            "continuous_score": 0.0,
+            "confidence": 0.8,
+            "evidence": [
+              "לא נראית הטיית ראש חריגה או שינוי בולט בזווית הראש בין פריימים 0, 1, 7, 14, 21, 28, 33, 35.",
+              "תנועות הראש במסגרת דיבור רגיל, ללא פיצוי יציב או מוגזם."
+            ],
+            "frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "speech_related": true,
+            "independent_local_activity": false,
+            "confounds": [
+              "תנועות ראש לא סדירות נמדדו אך לא נצפה פיצוי יציב.",
+              "הפרשי תאורה ותנועות מצלמה קלות."
+            ]
+          },
+          "scm_lateral_recruitment": {
+            "observable": true,
+            "score": 0,
+            "continuous_score": 0.0,
+            "confidence": 0.75,
+            "evidence": [
+              "לא נראית בולטות או שינוי מקומי בצידי הצוואר לאורך הפריימים שנבחרו.",
+              "קווי הצוואר הלטראליים נשארים דומים ללא הדגשה חריגה בזמן דיבור."
+            ],
+            "frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "speech_related": true,
+            "independent_local_activity": false,
+            "confounds": [
+              "הצללות קלות באזור הצוואר.",
+              "שונות אנטומית טבעית."
+            ]
+          },
+          "anterior_submental_activity": {
+            "observable": true,
+            "score": 0,
+            "continuous_score": 0.0,
+            "confidence": 0.75,
+            "evidence": [
+              "אין שינוי בולט או דפורמציה חריגה מתחת לסנטר בין הפריימים.",
+              "הצוואר הקדמי והאזור הסובמנטלי נראים יציבים בזמן דיבור."
+            ],
+            "frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "speech_related": true,
+            "independent_local_activity": false,
+            "confounds": [
+              "הצללות ותאורה לא אחידה באזור הסובמנטלי.",
+              "שונות טבעית במבנה הצוואר."
+            ]
+          },
+          "shoulder_recruitment": {
+            "observable": true,
+            "score": 0,
+            "continuous_score": 0.0,
+            "confidence": 0.7,
+            "evidence": [
+              "לא נראית הרמת כתפיים או גיוס חוזר של חגורת הכתפיים בפריימים שנבחרו.",
+              "גובה הכתפיים נשאר דומה לאורך הדיבור."
+            ],
+            "frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "speech_related": true,
+            "independent_local_activity": false,
+            "confounds": [
+              "המדידה אינה יחסית לתנועת פלג גוף עליון.",
+              "הפרשי זוית צילום קלים."
+            ]
+          },
+          "jaw_compensation": {
+            "observable": true,
+            "score": 0,
+            "continuous_score": 0.0,
+            "confidence": 0.8,
+            "evidence": [
+              "תנועות הלסת נראות בתחום הדיבור הרגיל, ללא פתיחה או סגירה מוגזמת.",
+              "אין תנועה חריגה או מאומצת של הלסת בין הפריימים."
+            ],
+            "frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "speech_related": true,
+            "independent_local_activity": false,
+            "confounds": [
+              "הפרשי תאורה קלים על קו הלסת.",
+              "שונות טבעית בתנועת הלסת."
+            ]
+          }
+        },
+        "summary": "לא נצפתה עדות חיצונית לגיוס צווארי, פיצוי תנוחתי או מאמץ חריג בזמן דיבור בפריימים שנבדקו.",
+        "limitations": [
+          "הערכת גיוס מבוססת תנועה חיצונית בלבד, ללא מדידת כוח או מתח פנימי.",
+          "הצללות, תאורה לא אחידה ותנועות מצלמה עשויות להשפיע על הזיהוי.",
+          "המדידה אינה מזהה שינויים פנימיים או מאמץ שאינו נראה לעין."
+        ]
+      },
+      "accepted_scores": {
+        "posture_compensation": 0,
+        "scm_lateral_recruitment": 0,
+        "anterior_submental_activity": 0,
+        "shoulder_recruitment": 0,
+        "jaw_compensation": 0
+      },
+      "rejection_reasons": {
+        "posture_compensation": null,
+        "scm_lateral_recruitment": null,
+        "anterior_submental_activity": null,
+        "shoulder_recruitment": null,
+        "jaw_compensation": null
+      },
+      "usage": {
+        "input_tokens": 16681,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 1065,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 17746
+      }
+    }
+  ],
+  "motion_context": {
+    "version": "neck-head-motion-context-v1",
+    "source": "server_recomputed_browser_trace",
+    "status": "measured",
+    "sample_count": 109,
+    "effective_fps": 15.617,
+    "comparisons": [
+      {
+        "window_seconds": 2,
+        "band_hz": [
+          1.5,
+          5.98
+        ],
+        "measured_windows": 1,
+        "first": {
+          "start": 0.0,
+          "end": 2.0,
+          "motion_rms_percent_image_width": 0.21569,
+          "dominant_frequency_hz": null,
+          "periodicity_status": "not_established",
+          "tracking_coverage": 0.967,
+          "temporal_coverage": 1.0
+        },
+        "last": {
+          "start": 0.0,
+          "end": 2.0,
+          "motion_rms_percent_image_width": 0.21569,
+          "dominant_frequency_hz": null,
+          "periodicity_status": "not_established",
+          "tracking_coverage": 0.967,
+          "temporal_coverage": 1.0
+        },
+        "largest": {
+          "start": 0.0,
+          "end": 2.0,
+          "motion_rms_percent_image_width": 0.21569,
+          "dominant_frequency_hz": null,
+          "periodicity_status": "not_established",
+          "tracking_coverage": 0.967,
+          "temporal_coverage": 1.0
+        }
+      },
+      {
+        "window_seconds": 2,
+        "band_hz": [
+          1.5,
+          5.99
+        ],
+        "measured_windows": 5,
+        "first": {
+          "start": 1.0,
+          "end": 3.0,
+          "motion_rms_percent_image_width": 0.29212,
+          "dominant_frequency_hz": null,
+          "periodicity_status": "not_established",
+          "tracking_coverage": 1.0,
+          "temporal_coverage": 1.0
+        },
+        "last": {
+          "start": 5.0,
+          "end": 7.0,
+          "motion_rms_percent_image_width": 0.39744,
+          "dominant_frequency_hz": null,
+          "periodicity_status": "not_established",
+          "tracking_coverage": 1.0,
+          "temporal_coverage": 1.0
+        },
+        "largest": {
+          "start": 5.0,
+          "end": 7.0,
+          "motion_rms_percent_image_width": 0.39744,
+          "dominant_frequency_hz": null,
+          "periodicity_status": "not_established",
+          "tracking_coverage": 1.0,
+          "temporal_coverage": 1.0
+        }
+      },
+      {
+        "window_seconds": 6,
+        "band_hz": [
+          0.5,
+          1.5
+        ],
+        "measured_windows": 1,
+        "first": {
+          "start": 0.0,
+          "end": 6.0,
+          "motion_rms_percent_image_width": 0.49724,
+          "dominant_frequency_hz": null,
+          "periodicity_status": "not_established",
+          "tracking_coverage": 0.989,
+          "temporal_coverage": 1.0
+        },
+        "last": {
+          "start": 0.0,
+          "end": 6.0,
+          "motion_rms_percent_image_width": 0.49724,
+          "dominant_frequency_hz": null,
+          "periodicity_status": "not_established",
+          "tracking_coverage": 0.989,
+          "temporal_coverage": 1.0
+        },
+        "largest": {
+          "start": 0.0,
+          "end": 6.0,
+          "motion_rms_percent_image_width": 0.49724,
+          "dominant_frequency_hz": null,
+          "periodicity_status": "not_established",
+          "tracking_coverage": 0.989,
+          "temporal_coverage": 1.0
+        }
+      }
+    ],
+    "interpretation": "Image head movement relative to scenery; includes irregular motion and possible tracking error. RMS is after nuisance removal, not a muscle-effort grade. A missing frequency does not mean no movement. Motion magnitude alone cannot establish compensation, speech causation or neck muscle activation."
+  },
+  "limitations": [
+    "One clip, no independent muscle-effort labels; not a clinical accuracy evaluation",
+    "Same images and updated prompt in both arms; only dense derived motion context differs",
+    "No participant-reported effort stage or desired grade supplied",
+    "Single call per arm; ordering and provider nondeterminism can confound differences"
+  ]
+}

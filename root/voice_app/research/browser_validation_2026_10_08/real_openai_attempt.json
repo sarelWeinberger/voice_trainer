@@ -1,0 +1,36 @@
+{
+  "status": 200,
+  "analysis_status": "error",
+  "diagnostics": {
+    "captured_frames": 25,
+    "selected_frames": 8,
+    "feature_available_frames": {
+      "head_pitch_deg": 25,
+      "shoulder_motion": 0,
+      "shoulders_head_relative_motion": 24
+    },
+    "observed_span_seconds": 4.8,
+    "effective_fps": 5,
+    "target_fps": 5,
+    "temporal_quality": 0.768,
+    "speech_status": "unknown",
+    "audio_timing": "unverified",
+    "usable_speech_duration": null,
+    "vad_available": false,
+    "audio_offset_seconds": null,
+    "dimension_quality": {
+      "posture_compensation": 0.5391983147677266,
+      "scm_lateral_recruitment": 0.5346136826083464,
+      "anterior_submental_activity": 0.5300115805441393,
+      "shoulder_recruitment": 0.5290721684057565,
+      "jaw_compensation": 0.5325822462513383
+    },
+    "mean_cv_processing_seconds": 0.0579
+  },
+  "reasons": [
+    "OpenAI authentication failed (HTTP 401)"
+  ],
+  "finalize_seconds": 0.7740999999940396,
+  "rendered": true,
+  "javascript_errors": []
+}

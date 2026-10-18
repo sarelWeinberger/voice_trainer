@@ -1,0 +1,388 @@
+{
+  "source_file": "WIN_20261015_21_04_57_Pro.mp4",
+  "prompt": "neck-rubric-v1.5",
+  "model": "gpt-4.1-2025-04-14",
+  "trials": [
+    {
+      "with_dense_motion": false,
+      "status": "completed",
+      "seconds": 10.742124197997327,
+      "image_fingerprint": "6bf2d7a7940e11fa97dc77c2fa29e4792e50377854556e73ec40bce27307302f",
+      "image_count": 10,
+      "selected_indices": [
+        0,
+        1,
+        7,
+        14,
+        21,
+        28,
+        33,
+        35
+      ],
+      "raw_model": {
+        "dimensions": {
+          "posture_compensation": {
+            "observable": true,
+            "score": 0,
+            "continuous_score": 0.0,
+            "confidence": 0.8,
+            "evidence": [
+              "לא נראית הטיית ראש, הרמת סנטר או שינוי יישור משמעותי בין פריימים 0, 1, 7, 14, 21, 28, 33, 35.",
+              "תנועות הראש קטנות ומתונות, ללא שינוי בולט בקונטור הצוואר או תנוחת הגוף."
+            ],
+            "frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "speech_related": true,
+            "independent_local_activity": false,
+            "confounds": [
+              "תנועות ראש קטנות קיימות אך אינן חורגות מהרגיל לדיבור.",
+              "הפרשי תאורה קלים בין פריימים."
+            ]
+          },
+          "scm_lateral_recruitment": {
+            "observable": true,
+            "score": 0,
+            "continuous_score": 0.0,
+            "confidence": 0.75,
+            "evidence": [
+              "אין בולטות או שינוי ניכר בקווי המתאר הצידיים של הצוואר לאורך הפריימים.",
+              "הצוואר נראה יציב ללא התבלטות מקומית בצדדים."
+            ],
+            "frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "speech_related": true,
+            "independent_local_activity": false,
+            "confounds": [
+              "הצללות קלות באזור הצוואר הצידי.",
+              "הפרשי חדות בין פריימים."
+            ]
+          },
+          "anterior_submental_activity": {
+            "observable": true,
+            "score": 0,
+            "continuous_score": 0.0,
+            "confidence": 0.75,
+            "evidence": [
+              "אין שינוי חריג או התבלטות באזור התת-סנטרי בין הפריימים.",
+              "העור והקונטור הקדמי של הצוואר נראים יציבים."
+            ],
+            "frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "speech_related": true,
+            "independent_local_activity": false,
+            "confounds": [
+              "הצללה טבעית באזור התת-סנטרי.",
+              "שונות קלה בתאורה."
+            ]
+          },
+          "shoulder_recruitment": {
+            "observable": true,
+            "score": 0,
+            "continuous_score": 0.0,
+            "confidence": 0.7,
+            "evidence": [
+              "הכתפיים נשארות בגובה דומה וללא התרוממות או תנועה חוזרת לאורך הפריימים.",
+              "אין סימן לגיוס כתפיים בזמן הדיבור."
+            ],
+            "frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "speech_related": true,
+            "independent_local_activity": false,
+            "confounds": [
+              "הפרשי זוית צילום קלים.",
+              "הכתפיים לא תמיד ממורכזות לחלוטין."
+            ]
+          },
+          "jaw_compensation": {
+            "observable": true,
+            "score": 0,
+            "continuous_score": 0.0,
+            "confidence": 0.8,
+            "evidence": [
+              "פתיחת הלסת ותנועותיה מתונות, ללא פתיחה מוגזמת או תנועה לא פרופורציונלית.",
+              "אין סימן להידוק או קיבוע לסת מעבר למה שמצופה בדיבור רגיל."
+            ],
+            "frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "speech_related": true,
+            "independent_local_activity": false,
+            "confounds": [
+              "שונות טבעית בתנועות דיבור.",
+              "הפרשי זוית ראש קלים."
+            ]
+          }
+        },
+        "summary": "לא נצפתה גיוס צוואר, פיצוי תנוחתי, גיוס כתפיים או תנועת לסת חריגה לאורך הדיבור בפריימים שנבדקו.",
+        "limitations": [
+          "הערכת הגיוס מבוססת על תצפית חיצונית בלבד ואינה מזהה מתח פנימי או הפעלת שרירים עמוקים.",
+          "קיימות השפעות תאורה, זוית צילום ושונות טבעית בתנועות דיבור.",
+          "הקלטת האודיו ותזמון הדיבור משוערים בלבד ואינם מהווים מדד קליני."
+        ]
+      },
+      "accepted_scores": {
+        "posture_compensation": 0,
+        "scm_lateral_recruitment": 0,
+        "anterior_submental_activity": 0,
+        "shoulder_recruitment": 0,
+        "jaw_compensation": 0
+      },
+      "rejection_reasons": {
+        "posture_compensation": null,
+        "scm_lateral_recruitment": null,
+        "anterior_submental_activity": null,
+        "shoulder_recruitment": null,
+        "jaw_compensation": null
+      },
+      "usage": {
+        "input_tokens": 14952,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 1068,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 16020
+      }
+    },
+    {
+      "with_dense_motion": true,
+      "status": "completed",
+      "seconds": 10.420254980999744,
+      "image_fingerprint": "6bf2d7a7940e11fa97dc77c2fa29e4792e50377854556e73ec40bce27307302f",
+      "image_count": 10,
+      "selected_indices": [
+        0,
+        1,
+        7,
+        14,
+        21,
+        28,
+        33,
+        35
+      ],
+      "raw_model": {
+        "dimensions": {
+          "posture_compensation": {
+            "observable": true,
+            "score": 0,
+            "continuous_score": 0.0,
+            "confidence": 0.85,
+            "evidence": [
+              "לא נראית תזוזה חריגה של הראש או שינוי בולט בזווית הראש בין פריימים 0, 1, 7, 14, 21, 28, 33, 35.",
+              "הראש נשאר במנח דומה לאורך כל הדגימה, ללא הטיה או הרמה משמעותית הקשורה לדיבור."
+            ],
+            "frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "speech_related": true,
+            "independent_local_activity": false,
+            "confounds": [
+              "יש תנועה מסוימת של הראש אך אינה חורגת מהרגיל לשיחה.",
+              "הפרשי תאורה קלים בין פריימים."
+            ]
+          },
+          "scm_lateral_recruitment": {
+            "observable": true,
+            "score": 0,
+            "continuous_score": 0.0,
+            "confidence": 0.8,
+            "evidence": [
+              "לא נראית בולטות או שינוי מקומי בצידי הצוואר בין הפריימים שנבחרו.",
+              "קווי המתאר הלטרליים של הצוואר נשארים דומים לאורך כל הדגימה."
+            ],
+            "frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "speech_related": true,
+            "independent_local_activity": false,
+            "confounds": [
+              "הצללות קלות באזור הצוואר עשויות להקשות על הבחנה בשינויים עדינים.",
+              "הבדלים קלים בזווית הראש."
+            ]
+          },
+          "anterior_submental_activity": {
+            "observable": true,
+            "score": 0,
+            "continuous_score": 0.0,
+            "confidence": 0.8,
+            "evidence": [
+              "אין שינוי חריג או בולט באזור הקדמי-תת-סנטרי בין הפריימים.",
+              "העור והקונטור באזור זה נשארים יציבים יחסית לאורך הדגימה."
+            ],
+            "frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "speech_related": true,
+            "independent_local_activity": false,
+            "confounds": [
+              "הצללה טבעית של הצוואר עשויה להסתיר שינויים עדינים.",
+              "הבדלים קלים בזווית התאורה."
+            ]
+          },
+          "shoulder_recruitment": {
+            "observable": true,
+            "score": 0,
+            "continuous_score": 0.0,
+            "confidence": 0.75,
+            "evidence": [
+              "הכתפיים נשארות בגובה ובמנח דומה לאורך כל הפריימים, ללא התרוממות או קיבוע חוזר.",
+              "אין תנועה חריגה של הכתפיים הקשורה לדיבור."
+            ],
+            "frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "speech_related": true,
+            "independent_local_activity": false,
+            "confounds": [
+              "הכתפיים לא תמיד בפריים מלא, אך נראות מספיק להערכה.",
+              "הבדלים קלים בזווית הישיבה."
+            ]
+          },
+          "jaw_compensation": {
+            "observable": true,
+            "score": 0,
+            "continuous_score": 0.0,
+            "confidence": 0.8,
+            "evidence": [
+              "פתיחת הלסת ותנועותיה נראות בתחום הנורמלי לדיבור רגיל, ללא פתיחה מוגזמת או קיבוע.",
+              "אין תנועות לסת חריגות בין הפריימים."
+            ],
+            "frame_indices": [
+              0,
+              1,
+              7,
+              14,
+              21,
+              28,
+              33,
+              35
+            ],
+            "speech_related": true,
+            "independent_local_activity": false,
+            "confounds": [
+              "הבדלים קלים בזווית הראש עשויים להשפיע על הערכת תנועת הלסת.",
+              "הפרשי תאורה קלים."
+            ]
+          }
+        },
+        "summary": "לא נצפתה גיוס צוואר או פיצוי יציבתי חריג במהלך הדיבור בפריימים שנבדקו.",
+        "limitations": [
+          "הערכת תנועה מבוססת על נראות חיצונית בלבד ואינה מזהה מתח פנימי או הפעלת שרירים עמוקים.",
+          "הצללות ותאורה עשויות להסתיר שינויים עדינים באזורי הצוואר.",
+          "קצב דגימה דליל יחסית עשוי להחמיץ תנועות קצרות או חולפות."
+        ]
+      },
+      "accepted_scores": {
+        "posture_compensation": 0,
+        "scm_lateral_recruitment": 0,
+        "anterior_submental_activity": 0,
+        "shoulder_recruitment": 0,
+        "jaw_compensation": 0
+      },
+      "rejection_reasons": {
+        "posture_compensation": null,
+        "scm_lateral_recruitment": null,
+        "anterior_submental_activity": null,
+        "shoulder_recruitment": null,
+        "jaw_compensation": null
+      },
+      "usage": {
+        "input_tokens": 15187,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 1108,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 16295
+      }
+    }
+  ],
+  "motion_context": {
+    "version": "neck-head-motion-context-v1",
+    "source": "server_recomputed_browser_trace",
+    "status": "unavailable",
+    "sample_count": 109,
+    "effective_fps": 15.617,
+    "comparisons": [],
+    "interpretation": "Image head movement relative to scenery; includes irregular motion and possible tracking error. RMS is after nuisance removal, not a muscle-effort grade. A missing frequency does not mean no movement. Motion magnitude alone cannot establish compensation, speech causation or neck muscle activation."
+  },
+  "limitations": [
+    "One clip, no independent muscle-effort labels; not a clinical accuracy evaluation",
+    "Same images and updated prompt in both arms; only dense derived motion context differs",
+    "No participant-reported effort stage or desired grade supplied",
+    "Single call per arm; ordering and provider nondeterminism can confound differences"
+  ]
+}
