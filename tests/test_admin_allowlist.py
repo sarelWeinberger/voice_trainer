@@ -6,10 +6,12 @@ because database.py resolves it at import time.
 
 import json
 import os
+import secrets
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = (Path(__file__).resolve().parents[1] / "root" / "voice_app")
 if str(ROOT) not in sys.path:
@@ -23,8 +25,8 @@ from fastapi.testclient import TestClient  # noqa: E402
 import app as appmod  # noqa: E402
 from database import Result, SessionLocal, User  # noqa: E402
 
-SUPER = ("sarelw1@gmail.com", "admin1234")
-SHARED_PW = "qwertyui"
+SUPER = ("allowlist-owner@example.test", secrets.token_urlsafe(24))
+SHARED_PW = secrets.token_urlsafe(24)
 
 
 def auth(client, username, password):
@@ -55,6 +57,19 @@ def make_admin(client, super_headers, email):
 class AllowlistTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        # Keep credentials confined to this throwaway database and test run.
+        settings = patch.multiple(appmod, SUPER_ADMIN_EMAIL=SUPER[0],
+                                  DEFAULT_USER_PASSWORD=SHARED_PW)
+        settings.start()
+        cls.addClassCleanup(settings.stop)
+        db = SessionLocal()
+        try:
+            db.add(User(username=SUPER[0], full_name="Test owner",
+                        hashed_password=appmod.hash_password(SUPER[1]),
+                        is_admin=True, role=1, class_code=appmod.generate_class_code()))
+            db.commit()
+        finally:
+            db.close()
         cls.client = TestClient(appmod.app)
         cls.client.__enter__()          # fire startup events (seeding, super admin)
         cls.super_headers = auth(cls.client, *SUPER)

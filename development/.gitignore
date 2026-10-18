@@ -7,3 +7,5 @@ voiced_clinician_package.zip
 voiced_clinician_rating.html
 __pycache__/
 *.pyc
+# Deployment checks can contain recording identifiers and operational details.
+research/deployment_*/
