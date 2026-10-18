@@ -1,31 +1,26 @@
-venv/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Local SQLite — production must use DATABASE_URL (Postgres). Shipping a
-# local app.db inside the image would overwrite the persistent DB on first boot.
-*.db
-
-# Local secrets / dev artifacts
-.env
-service-account-key.json
-
-# Bulky scratch data not needed at runtime
-tmp_synth/
-synthetic_audio/
-synthetic_training_features*.csv
-clinical_review_queue.csv
-publication_data_targets.csv
-synthetic_grbas_manifest.csv
-
-# Tests don't need to be in the deployed image
-tests/
-
-# Editor / VCS noise
-.git/
-.gitignore
-.vscode/
-.idea/
-*.bak
+# Default deny: development data, recordings, databases, and secrets stay local.
+**
+!app.py
+!database.py
+!grbas_model.py
+!recommendations.py
+!head_motion.py
+!neck_effort_engine.py
+!neck_v1_cv.py
+!neck_v1_openai.py
+!neck_v1_scoring.py
+!neck_observable_change.py
+!neck_capture_context.py
+!observable_effort.py
+!seed_admin.py
+!grbas_model.joblib
+!requirements.txt
+!Dockerfile
+!.dockerignore
+!README.md
+!static/
+!static/**
+!memories/
+!memories/allowed_emails.txt
+**/*.bak
+**/__pycache__/

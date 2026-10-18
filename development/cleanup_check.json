@@ -1,0 +1,12 @@
+{
+  "runtime_files": 243,
+  "runtime_bytes": 16789012,
+  "pages_passed": 6,
+  "development_data_included": false,
+  "secrets_included": false,
+  "python_tests_passed": 133,
+  "javascript_suites_passed": 5,
+  "local_import_closure_complete": true,
+  "relocations_verified": 34,
+  "scope": "local workspace; no deployment performed"
+}

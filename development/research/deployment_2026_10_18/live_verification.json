@@ -1,0 +1,29 @@
+{
+  "expected_commit": "0d56509a72e6d8be4ef63a0b34a9833aff9dbc17",
+  "runtime_commit": "0d56509a72e6d8be4ef63a0b34a9833aff9dbc17",
+  "stage": "RUNNING",
+  "static_matches": {
+    "/": true,
+    "/mobile.html": true,
+    "/app.js?v=25": true,
+    "/neck-capture.js?v=7": true,
+    "/neck-motion.js?v=7": true,
+    "/neck-analysis-v1.js?v=27": true,
+    "/neck-motion-analysis.js?v=2": true
+  },
+  "form_fields": {
+    "/api/neck-effort/frames": [
+      "batch_id",
+      "frames",
+      "session_id",
+      "timestamps"
+    ],
+    "/api/neck-effort/recording/stop": [
+      "audio",
+      "audio_offset_seconds",
+      "capture_transport",
+      "motion_trace",
+      "session_id"
+    ]
+  }
+}

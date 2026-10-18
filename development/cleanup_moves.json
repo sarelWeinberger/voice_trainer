@@ -1,0 +1,138 @@
+[
+  {
+    "from": "root/voice_app/prepare_clinician_review.py",
+    "to": "development/prepare_clinician_review.py"
+  },
+  {
+    "from": "root/voice_app/generate_synthetic_grbas_data.py",
+    "to": "development/generate_synthetic_grbas_data.py"
+  },
+  {
+    "from": "root/voice_app/build_voiced_clinician_html.py",
+    "to": "development/build_voiced_clinician_html.py"
+  },
+  {
+    "from": "root/voice_app/build_real_training_features.py",
+    "to": "development/build_real_training_features.py"
+  },
+  {
+    "from": "root/voice_app/build_svd_clinician_sheet.py",
+    "to": "development/build_svd_clinician_sheet.py"
+  },
+  {
+    "from": "root/voice_app/train_grbas.py",
+    "to": "development/train_grbas.py"
+  },
+  {
+    "from": "root/voice_app/build_voiced_clinician_web.py",
+    "to": "development/build_voiced_clinician_web.py"
+  },
+  {
+    "from": "root/voice_app/neck_effort_smoketest.py",
+    "to": "development/neck_effort_smoketest.py"
+  },
+  {
+    "from": "root/voice_app/build_voiced_clinician_sheet.py",
+    "to": "development/build_voiced_clinician_sheet.py"
+  },
+  {
+    "from": "root/voice_app/render_synthetic_grbas_audio.py",
+    "to": "development/render_synthetic_grbas_audio.py"
+  },
+  {
+    "from": "root/voice_app/synthetic_audio",
+    "to": "development/synthetic_audio"
+  },
+  {
+    "from": "root/voice_app/synthetic_grbas_manifest.csv",
+    "to": "development/synthetic_grbas_manifest.csv"
+  },
+  {
+    "from": "root/voice_app/synthetic_training_features_sample.csv",
+    "to": "development/synthetic_training_features_sample.csv"
+  },
+  {
+    "from": "root/voice_app/clinical_review_queue.csv",
+    "to": "development/clinical_review_queue.csv"
+  },
+  {
+    "from": "root/voice_app/publication_data_targets.csv",
+    "to": "development/publication_data_targets.csv"
+  },
+  {
+    "from": "root/voice_app/voiced_clinician_audio",
+    "to": "development/voiced_clinician_audio"
+  },
+  {
+    "from": "root/voice_app/voiced_clinician_grbas_sheet.xlsx",
+    "to": "development/voiced_clinician_grbas_sheet.xlsx"
+  },
+  {
+    "from": "root/voice_app/voiced_clinician_rating.html",
+    "to": "development/voiced_clinician_rating.html"
+  },
+  {
+    "from": "root/voice_app/voiced_clinician_link_audio.gs",
+    "to": "development/voiced_clinician_link_audio.gs"
+  },
+  {
+    "from": "root/voice_app/voiced_clinician_package.zip",
+    "to": "development/voiced_clinician_package.zip"
+  },
+  {
+    "from": "root/voice_app/voiced_data",
+    "to": "development/voiced_data"
+  },
+  {
+    "from": "root/voice_app/voiced_database",
+    "to": "development/voiced_database"
+  },
+  {
+    "from": "root/voice_app/tmp_synth",
+    "to": "development/tmp_synth"
+  },
+  {
+    "from": "root/voice_app/research",
+    "to": "development/research"
+  },
+  {
+    "from": "root/voice_app/NECK_ANALYSIS_V1.md",
+    "to": "development/NECK_ANALYSIS_V1.md"
+  },
+  {
+    "from": "root/voice_app/Procfile",
+    "to": "development/Procfile"
+  },
+  {
+    "from": "root/voice_app/nixpacks.toml",
+    "to": "development/nixpacks.toml"
+  },
+  {
+    "from": "root/voice_app/railway.toml",
+    "to": "development/railway.toml"
+  },
+  {
+    "from": "root/voice_app/runtime.txt",
+    "to": "development/runtime.txt"
+  },
+  {
+    "from": "root/voice_app/README.md",
+    "to": "development/README.original.md"
+  },
+  {
+    "from": "root/voice_app/tests",
+    "to": "tests"
+  },
+  {
+    "from": "root/voice_app/auth_middleware.py",
+    "to": "development/obsolete/auth_middleware.py"
+  },
+  {
+    "from": "root/voice_app/static/style.css.bak",
+    "to": "development/obsolete/style.css.bak"
+  },
+  {
+    "from": "root/voice_app/static/observable-effort.js",
+    "to": "development/obsolete/observable-effort.js"
+  }
+]

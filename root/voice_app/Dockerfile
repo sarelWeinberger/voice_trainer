@@ -28,9 +28,11 @@ f = mp.solutions.face_mesh.FaceMesh(static_image_mode=False, max_num_faces=1, re
 print('MediaPipe models pre-downloaded')"
 # Patch webrtcvad.py: it uses pkg_resources only for __version__
 RUN python -c "\
-import glob; \
-[open(f,'w').write(open(f).read().replace('import pkg_resources\n','').replace(\"pkg_resources.get_distribution('webrtcvad').version\",\"'2.0.10'\")) \
-for f in glob.glob('/usr/local/lib/python*/site-packages/webrtcvad.py')]"
+from importlib.util import find_spec; from pathlib import Path; \
+p = Path(find_spec('webrtcvad').origin); source = p.read_text(); \
+p.write_text(source.replace('import pkg_resources\n','').replace(\"pkg_resources.get_distribution('webrtcvad').version\",\"'2.0.10'\"))"
+# Check the patched module itself; importing an accidentally empty file succeeds.
+RUN python -c "import webrtcvad; assert webrtcvad.Vad(2).is_speech(bytes(960), 16000) is False; print('WebRTC VAD ready')"
 
 # Create non-root user required by HF Spaces
 RUN useradd -m -u 1000 user

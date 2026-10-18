@@ -10,7 +10,6 @@ mediapipe==0.10.14
 scikit-learn>=1.0
 joblib>=1.1
 soundfile>=0.10
-edge-tts>=7.2.8
 xgboost>=2.0
 lightgbm>=4.0
 antropy>=0.1.9

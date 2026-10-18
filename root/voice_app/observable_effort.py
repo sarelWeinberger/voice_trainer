@@ -58,7 +58,7 @@ def neck_audio_timing(samples, sample_rate, offset_seconds=0.0):
     try:
         import webrtcvad
         vad = webrtcvad.Vad(2)
-    except ImportError:
+    except (ImportError,AttributeError,OSError,RuntimeError):
         vad = None
     divisor = math.gcd(int(sample_rate), 16000)
     normalized = resample_poly(x, 16000 // divisor, int(sample_rate) // divisor)

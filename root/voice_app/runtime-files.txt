@@ -1,0 +1,24 @@
+# Files needed to run, build, and deploy the application.
+# rsync --files-from accepts these comments and relative paths.
+app.py
+database.py
+grbas_model.py
+recommendations.py
+head_motion.py
+neck_effort_engine.py
+neck_v1_cv.py
+neck_v1_openai.py
+neck_v1_scoring.py
+neck_observable_change.py
+neck_capture_context.py
+observable_effort.py
+seed_admin.py
+requirements.txt
+Dockerfile
+.dockerignore
+.gitignore
+README.md
+runtime-files.txt
+deploy_hf.sh
+memories/allowed_emails.txt
+static/

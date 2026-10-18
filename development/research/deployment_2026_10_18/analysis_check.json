@@ -1,0 +1,28 @@
+{
+  "host": "https://voice-trainer-voice-trainer.hf.space",
+  "source_file": "WIN_20261015_21_04_57_Pro.mp4",
+  "http_status": 200,
+  "batch_http_statuses": [
+    200,
+    200,
+    200,
+    200
+  ],
+  "frames_sent": 36,
+  "frames_accepted": 36,
+  "finalize_seconds": 9.802,
+  "total_seconds": 15.443,
+  "analysis_status": "complete",
+  "reasons": [],
+  "grades": {
+    "posture_compensation": 0,
+    "scm_lateral_recruitment": 0,
+    "anterior_submental_activity": 0,
+    "shoulder_recruitment": 0,
+    "jaw_compensation": 0
+  },
+  "head_motion_status": "measured",
+  "capture_complete": true,
+  "head_motion_context_supplied": true,
+  "runtime_environment": "real Hugging Face server and real OpenAI; no interpretation stub"
+}

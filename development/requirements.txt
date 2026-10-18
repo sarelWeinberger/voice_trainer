@@ -1,0 +1,8 @@
+# Offline training, research, and browser checks; not needed by the server.
+-r ../root/voice_app/requirements.txt
+edge-tts>=7.2.8
+openpyxl>=3.1
+python-dotenv>=1.0
+httpx>=0.24
+imageio-ffmpeg>=0.4
+playwright>=1.48
