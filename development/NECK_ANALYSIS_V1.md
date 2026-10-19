@@ -43,9 +43,9 @@ The current desktop/mobile renderer shows three descriptive observation groups w
 
 ## Backend configuration
 
-Set server-side `OPENAI_API_KEY`. Never put it in HTML, JavaScript, source code or the repository. Optional `NECK_OPENAI_MODEL` defaults to the pinned `gpt-4.1-2025-04-14` snapshot. No new SDK dependency: backend calls the documented HTTPS Responses API using Python's standard library.
+Set server-side `OPENAI_API_KEY`. Never put it in HTML, JavaScript, source code or the repository. Optional `NECK_OPENAI_MODEL` defaults to `gpt-6-luna`. No new SDK dependency: backend calls the documented HTTPS Responses API using Python's standard library.
 
-Model choice is configurable; an alternative must support image input, strict structured output and the request parameters used here. Default uses temperature 0 and `store:false`. The parser rejects incomplete responses, refusals, malformed data, extra fields, invalid ranges and unavailable dimensions carrying scores. It does not parse unconstrained prose. See official [structured output documentation](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses), [image inputs](https://developers.openai.com/api/docs/guides/images-vision) and [default model](https://developers.openai.com/api/docs/models/gpt-4.1).
+Model choice is configurable; an alternative must support image input, strict structured output and the request parameters used here. Default uses temperature 0 and `store:false`. The parser rejects incomplete responses, refusals, malformed data, extra fields, invalid ranges and unavailable dimensions carrying scores. It does not parse unconstrained prose. See official [structured output documentation](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses), [image inputs](https://developers.openai.com/api/docs/guides/images-vision) and the default model, `gpt-6-luna`.
 
 Missing key/provider failure yields an explicit error with null scores. No deterministic fallback invents effort severity. The existing recording-stop route retains its response envelope with `neck_effort.ok=false`; the existing upload route reports HTTP 502 on provider failure. GRBAS may still finish independently; its response includes the neck error object.
 
