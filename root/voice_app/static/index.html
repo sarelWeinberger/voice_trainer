@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#ffffff">
     <title>אימון קולי — ניתוח GRBAS</title>
-    <link rel="stylesheet" href="style.css?v=13">
+    <link rel="stylesheet" href="style.css?v=17">
 </head>
 <body>
     <!-- ================= Top bar ================= -->
@@ -147,41 +147,44 @@
                         <div class="video-container">
                             <video id="video" autoplay playsinline muted></video>
                             <canvas id="face-canvas"></canvas>
-                            <div id="neck-effort-widget" class="neck-effort-widget">
-                                <div class="neck-effort-header">
-                                    <span>ניתוח צוואר V1</span>
-                                    <span id="neck-effort-mode" class="neck-effort-mode">ממתין</span>
-                                </div>
-                                <div class="neck-effort-main">
-                                    <span id="neck-effort-score" class="neck-effort-score">--</span>
-                                    <div class="neck-effort-meta">
-                                        <div id="neck-effort-label" class="neck-effort-label">המצלמה לא הופעלה</div>
-                                        <div id="neck-effort-confidence" class="neck-effort-confidence">איכות תמונה: --</div>
-                                    </div>
-                                </div>
-                                <p>הניתוח שולח פריימים נבחרים וחיתוכי צוואר ל־OpenAI. אין כאן מדידה של מתח שרירי פנימי או אבחנה רפואית.</p>
-                                <div id="neck-effort-feedback" class="neck-effort-feedback"></div>
-                                <div id="neck-effort-reasons" class="neck-effort-reasons">יישרו את הראש, הצוואר והכתפיים מול המצלמה.</div>
-                            </div>
                             <div id="face-metrics" class="face-metrics"></div>
                         </div>
+
                     </div>
 
-                    <div class="card recording-card">
-                        <div class="recording-inner">
-                            <h2 class="card-title">הקלטת קול</h2>
-                            <ol class="steps">
-                                <li>שבו מול המצלמה, כתפיים רפויות.</li>
-                                <li>קחו נשימה ותנו צליל /א/ יציב ורצוף.</li>
-                                <li>החזיקו עד שההקלטה נעצרת לבד.</li>
-                            </ol>
-                            <label for="recording-duration">משך הקלטה: </label><select id="recording-duration"><option value="5">5 שניות</option><option value="10">10 שניות</option><option value="20">20 שניות</option></select>
-                <button id="record-btn" class="record-btn">
-                                <span class="record-icon"></span>
-                                <span class="record-label">התחל הקלטה</span>
-                            </button>
-                            <div id="recording-timer" class="timer" hidden>0.0s</div>
-                            <div id="status" class="status"></div>
+                    <div class="recording-column">
+                        <div class="card recording-card">
+                            <div class="recording-inner">
+                                <h2 class="card-title">הקלטת קול</h2>
+                                <ol class="steps">
+                                    <li>שבו מול המצלמה, כתפיים רפויות.</li>
+                                    <li>קחו נשימה ותנו צליל /א/ יציב ורצוף.</li>
+                                    <li>החזיקו עד שההקלטה נעצרת לבד.</li>
+                                </ol>
+                                <label for="recording-duration">משך הקלטה: </label><select id="recording-duration"><option value="5">5 שניות</option><option value="10">10 שניות</option><option value="20">20 שניות</option></select>
+                    <button id="record-btn" class="record-btn">
+                                    <span class="record-icon"></span>
+                                    <span class="record-label">התחל הקלטה</span>
+                                </button>
+                                <div id="recording-timer" class="timer" hidden>0.0s</div>
+                                <div id="status" class="status"></div>
+                            </div>
+                        </div>
+                        <div id="neck-effort-widget" class="neck-effort-widget">
+                            <div class="neck-effort-header">
+                                <span>ניתוח צוואר V1</span>
+                                <span id="neck-effort-mode" class="neck-effort-mode">ממתין</span>
+                            </div>
+                            <div class="neck-effort-main">
+                                <span id="neck-effort-score" class="neck-effort-score">--</span>
+                                <div class="neck-effort-meta">
+                                    <div id="neck-effort-label" class="neck-effort-label">המצלמה לא הופעלה</div>
+                                    <div id="neck-effort-confidence" class="neck-effort-confidence">איכות תמונה: --</div>
+                                </div>
+                            </div>
+                            <p>הניתוח שולח פריימים נבחרים וחיתוכי צוואר ל־OpenAI. אין כאן מדידה של מתח שרירי פנימי או אבחנה רפואית.</p>
+                            <div id="neck-effort-feedback" class="neck-effort-feedback"></div>
+                            <div id="neck-effort-reasons" class="neck-effort-reasons">יישרו את הראש, הצוואר והכתפיים מול המצלמה.</div>
                         </div>
                     </div>
                 </div>
@@ -254,12 +257,7 @@
 
                 <div class="bottom-row">
                     <section class="card progress-panel" id="progress-panel" hidden>
-                        <h2 class="card-title">ההתקדמות שלי</h2>
-                        <p class="progress-subtitle">קו מגמה מוחלק של ציוני GRBAS ומאמץ הצוואר. הנקודות הבהירות הן אימונים בודדים — אימון חריג אחד לא משנה את המגמה. נמוך = טוב יותר.</p>
-                        <div class="progress-chart-container">
-                            <canvas id="progress-chart" width="800" height="336"></canvas>
-                        </div>
-                        <div id="progress-summary" class="progress-summary"></div>
+                        <div id="history-progress-graph"></div>
                     </section>
 
                     <section class="card history-panel">
@@ -291,10 +289,12 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
     <script src="auth.js?v=11"></script>
-    <script src="neck-analysis-v1.js?v=27"></script>
+    <script src="history-store.js?v=1"></script>
+<script src="history-progress.js?v=3"></script>
+<script src="neck-analysis-v1.js?v=35"></script>
     <script src="neck-motion-analysis.js?v=2"></script>
     <script src="neck-motion.js?v=7"></script>
     <script src="neck-capture.js?v=7"></script>
-    <script src="app.js?v=25"></script>
+    <script src="app.js?v=32"></script>
 </body>
 </html>

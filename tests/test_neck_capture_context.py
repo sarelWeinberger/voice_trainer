@@ -52,7 +52,7 @@ class CaptureContextTests(unittest.TestCase):
         def interpreter(context,images):
             seen.append(context)
             result=prediction((0,0,0,0,0))
-            for item in result.dimensions.__dict__.values():item.frame_indices=context['selected_indices'][:2]
+            for item in result.dimensions.__dict__.values():item.frame_indices=[context['selected_indices'][0], context['selected_indices'][-1]]
             return result
         engine=NeckEffortEngine(processor=FakeProcessor(),interpreter=interpreter)
         try:

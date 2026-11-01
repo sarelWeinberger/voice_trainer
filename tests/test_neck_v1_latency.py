@@ -10,11 +10,37 @@ from test_neck_effort_engine import context, prediction
 
 class LatencyTests(unittest.TestCase):
     def test_reduced_evidence_and_output_budget(self):
-        self.assertEqual(NeckEffortConfig().max_evidence_frames,8)
+        self.assertEqual(NeckEffortConfig().max_evidence_frames,16)
         def transport(payload):
-            self.assertEqual(payload['max_output_tokens'],1600)
+            self.assertEqual(payload['max_output_tokens'],3200 if payload['model'].startswith('gpt-6') else 1600)
             return dict(status='completed',output=[{'content':[{'type':'output_text','text':prediction().model_dump_json()}]}])
         interpret(context(),[],transport)
+
+    def test_sampling_parameter_matches_model_family(self):
+        for model, supports_temperature in [('gpt-6.1-sol',False),('gpt-6-luna',False),('gpt-4.1-2025-04-14',True)]:
+            with self.subTest(model=model), patch.dict('os.environ',{'NECK_OPENAI_MODEL':model}):
+                def transport(payload):
+                    self.assertEqual(payload['model'],model)
+                    self.assertEqual(payload['max_output_tokens'],3200 if model.startswith('gpt-6') else 1600)
+                    self.assertEqual('temperature' in payload,supports_temperature)
+                    if supports_temperature:self.assertEqual(payload['temperature'],0)
+                    return dict(status='completed',output=[{'content':[{'type':'output_text','text':prediction().model_dump_json()}]}])
+                interpret(context(),[],transport)
+
+    def test_output_limit_is_explicit_and_never_accepts_partial_scores(self):
+        for text in ('{"dimensions":', prediction().model_dump_json()):
+            response=dict(status='incomplete',incomplete_details={'reason':'max_output_tokens'},
+                          output=[{'content':[{'type':'output_text','text':text}]}])
+            with patch('neck_v1_openai.ModelOutput.model_validate_json') as validate:
+                with self.assertRaisesRegex(NeckProviderError,r'\[max_output_tokens\]'):
+                    interpret(context(),[],lambda payload:response)
+                validate.assert_not_called()
+
+    def test_other_incomplete_responses_are_not_misreported_as_token_limits(self):
+        response=dict(status='incomplete',incomplete_details={'reason':'content_filter'},output=[])
+        with self.assertRaisesRegex(NeckProviderError,'did not complete') as raised:
+            interpret(context(),[],lambda payload:response)
+        self.assertNotIn('max_output_tokens',str(raised.exception))
 
     def test_http_errors_are_actionable_without_leaking_body(self):
         for code in (401,403,429,500):

@@ -1322,6 +1322,12 @@ def calculate_grbas(audio_path):
             n_voiced += 1
     voiced_fraction = n_voiced / max(n_frames, 1)
 
+    # Undefined pulse measurements are missing evidence, not extreme pathology.
+    # Do not generate GRBAS grades for silence/noise without usable phonation.
+    if (voiced_fraction < .2 or n_voiced < 5 or
+            not np.isfinite(jitter_local) or not np.isfinite(shimmer_local) or f0_mean <= 0):
+        raise ValueError("לא ניתן להעריך את הקול: אין די קול מחזורי למדידה. הקליטו שוב צליל /א/ רצוף בסביבה שקטה.")
+
     # --- Intensity statistics over VOICED frames only ---
     # Computing intensity over the entire signal (including silence) inflates
     # the standard deviation. We extract intensity values frame-by-frame and
@@ -1378,10 +1384,10 @@ def calculate_grbas(audio_path):
 
     # Shimmer can push roughness up by 1 level if also abnormal
     # Shimmer thresholds: Normal < 3.81%, Moderate > 6%, Severe > 10%
-    if shimmer_local > 4.50 and r_score < 3:
-        r_score += 1
-    elif shimmer_local > 8.0 and r_score < 3:
+    if shimmer_local > 8.0 and r_score < 3:
         r_score = min(r_score + 2, 3)
+    elif shimmer_local > 4.50 and r_score < 3:
+        r_score += 1
 
     # === B (Breathiness) ==============================================
     # Primary indicator: HNR (low HNR = more noise = more breathy)
@@ -1440,20 +1446,8 @@ def calculate_grbas(audio_path):
     elif f0_cv > 1.5:
         s_score = 1
 
-    # Elevated F0 suggests laryngeal hyperfunction
-    # Use ABSOLUTE thresholds (above normal max range) instead of relative
-    # Normal male F0 range: 85-180 Hz, female: 165-280 Hz
-    if f0_mean > 0:
-        if f0_mean < 165:  # likely male
-            if f0_mean > 220:
-                s_score = max(s_score, 2)
-            elif f0_mean > 190:
-                s_score = max(s_score, 1)
-        else:  # likely female
-            if f0_mean > 320:
-                s_score = max(s_score, 2)
-            elif f0_mean > 280:
-                s_score = max(s_score, 1)
+    # Absolute pitch alone cannot distinguish strain from a naturally high voice.
+    # No speaker baseline is available here; do not assign strain from F0 height.
 
     # High jitter+shimmer combo without breathiness = pressed/strained
     if jitter_local > 1.0 and shimmer_local > 4.0 and hnr > 15:
@@ -1645,7 +1639,7 @@ class GRBASClassifier:
     def predict(self, features):
         """Predict GRBAS scores from a feature dict.
 
-        Returns dict with keys G,R,B,A,S mapped to int scores 1–5.
+        Returns dict with keys G,R,B,A,S mapped to int scores 0–3.
         Falls back to heuristic scoring if not trained.
         """
         if not self.is_trained:

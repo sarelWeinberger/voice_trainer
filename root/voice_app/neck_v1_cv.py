@@ -89,7 +89,7 @@ def select_frames(rows, limit=24):
         return []
     count = min(limit, len(rows))
     if count==1:return [0]
-    coverage_count=max(2,count-2)
+    coverage_count=max(2, int(np.ceil(count * .625)), count-6)
     targets=np.linspace(rows[0]['t'],rows[-1]['t'],coverage_count)
     chosen={min(range(len(rows)),key=lambda i:(abs(rows[i]['t']-target),i)) for target in targets}
     keys = ('anterior_motion', 'lateral_motion', 'jaw_opening', 'head_motion', 'shoulder_motion',
@@ -98,11 +98,41 @@ def select_frames(rows, limit=24):
         rank = sorted(range(len(rows)), key=lambda i: (-rows[i]['features'].get(key, 0), i))
         if len(chosen) < count and rows[rank[0]]['features'].get(key, 0) > 0:
             chosen.add(rank[0])
-    for index in range(len(rows)):
-        if len(chosen) >= count:
-            break
+    # Fill unused slots by greatest temporal distance from existing evidence.
+    # Early-index filling repeatedly sampled the first second on stable clips.
+    while len(chosen) < count:
+        candidates = (i for i in range(len(rows)) if i not in chosen)
+        index = max(candidates, key=lambda i: (min(abs(rows[i]['t']-rows[j]['t']) for j in chosen), -i))
         chosen.add(index)
     return sorted(chosen)[:count]
+
+
+def select_crop_frames(rows, selected, limit=5):
+    """Compare local appearance at start/middle/end plus anterior/lateral peaks."""
+    if not selected or limit <= 0:
+        return []
+    ordered = sorted(set(selected), key=lambda i: rows[i]['t'])
+    middle = (rows[ordered[0]]['t'] + rows[ordered[-1]]['t']) / 2
+    candidates = [ordered[0], min(ordered, key=lambda i: abs(rows[i]['t']-middle)), ordered[-1]]
+    for key in ('anterior_motion', 'lateral_motion'):
+        candidates.append(max(ordered, key=lambda i: (rows[i]['features'].get(key, 0), -i)))
+    return sorted(list(dict.fromkeys(candidates))[:limit])
+
+
+def neck_context_box(rois, width, height):
+    """Include under-chin and jaw context, not just a padded anterior ROI."""
+    valid = {name: rois[name] for name in ('anterior', 'submental', 'left_lateral', 'right_lateral', 'jaw')
+             if name in rois and len(rois[name]) == 4 and
+             rois[name][2] > rois[name][0] and rois[name][3] > rois[name][1]}
+    boxes = list(valid.values())
+    if not any(name in valid for name in ('anterior', 'submental')):
+        return None
+    x1 = min(box[0] for box in boxes); y1 = min(box[1] for box in boxes)
+    x2 = max(box[2] for box in boxes); y2 = max(box[3] for box in boxes)
+    padding = max(2, round(.1 * max(x2-x1, y2-y1)))
+    box = [max(0, int(x1)-padding), max(0, int(y1)-padding),
+           min(width, int(x2)+padding), min(height, int(y2)+padding)]
+    return box if box[2] > box[0] and box[3] > box[1] else None
 
 
 class CVProcessor:

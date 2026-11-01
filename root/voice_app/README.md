@@ -53,3 +53,15 @@ See `development/README.md` in the source repository.
 
 Neck grades describe experimental external observations, not direct muscle
 tension or a diagnosis. Their clinical accuracy has not been validated.
+
+History keeps the latest ten displayed results per account. Desktop and mobile cache
+these results in browser localStorage and merge them with `/api/history`; an empty
+server response after a rebuild does not erase the browser copy. Local progress charts
+load from this cache even while the server is unavailable. The server retains older
+records; the ten-result limit does not delete database rows.
+
+Browser storage survives app restarts on the same origin/browser, but clearing site
+data, private browsing, or switching devices removes that fallback. Durable account
+and cross-device history across Space rebuilds still require persistent `/data` or
+an external database configured through `DATABASE_URL`; code cannot make an ephemeral
+container filesystem persistent.

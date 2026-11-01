@@ -628,7 +628,37 @@
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
         }
-    </style>
+
+.neck-analysis-notices { margin: 18px 0; padding: 14px 18px; border: 1px solid #c9d4e4; border-radius: 10px; background: #f3f6fa; color: #23334a; text-align: start; }
+.neck-analysis-notices h3 { margin: 0 0 10px; font-size: 1rem; }
+.neck-analysis-notices p { margin: 8px 0; line-height: 1.6; }
+.neck-change-table td { vertical-align: top; line-height: 1.6; padding: 12px; }
+.neck-change-table summary, .neck-audio-details summary { cursor: pointer; line-height: 1.6; }
+
+@media (max-width: 700px) {
+  .neck-group-table { display: block; overflow: visible; }
+  .neck-group-table tbody { display: block; }
+  .neck-group-table tr:first-child { display: none; }
+  .neck-group-table tr:not(:first-child) { display: flex; flex-direction: column; margin: 14px 0; padding: 14px; border: 1px solid #c9d4e4; border-radius: 12px; }
+  .neck-group-table td { display: block; width: auto; padding: 6px 0; border: 0; text-align: start; }
+  .neck-group-table td:first-child { font-weight: 700; font-size: 1.05rem; order: -2; }
+  .neck-group-table td:last-child { order: -1; }
+  .neck-group-table .neck-group-score { min-width: 0; width: 100%; }
+}
+
+.neck-numeric-scores { display: grid; gap: 8px; margin: 16px 0; }
+.neck-numeric-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-radius: 10px; background: var(--surface-2, #f3f6fa); border: 1px solid #c9d4e4; }
+.neck-numeric-row strong { font-size: 1.5rem; white-space: nowrap; }
+.neck-user-feedback p { line-height: 1.7; margin: 12px 0; }
+.neck-positive-feedback { padding: 16px; margin: 16px 0; border: 1px solid #86bca1; border-radius: 10px; background: #edf8f1; color: #174b31; line-height: 1.7; }
+.neck-full-report { margin-top: 32px; border-top: 1px solid #c9d4e4; padding-top: 14px; font-size: .875rem; }
+.neck-full-report > summary { cursor: pointer; color: #5e6b7a; }
+
+.history-progress-controls, .history-progress-legend { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+.history-progress-controls button { padding: 8px 16px; border: 1px solid #94a3b8; border-radius: 8px; cursor: pointer; background: transparent; color: inherit; }
+.history-progress-controls button[aria-pressed="true"] { background: #dbeafe; color: #1e3a8a; }
+.history-progress-legend { font-size: .875rem; }
+</style>
 </head>
 <body>
 
@@ -849,6 +879,7 @@
         <div id="tab-history" class="m-section">
             <div class="m-card">
                 <h2>📜 היסטוריה</h2>
+                <div id="m-history-progress"></div>
                 <div id="m-history-list">
                     <div class="m-empty">אין עדיין הקלטות</div>
                 </div>
@@ -889,7 +920,9 @@
     </button>
 </nav>
 
-<script src="neck-analysis-v1.js?v=27"></script>
+<script src="history-store.js?v=1"></script>
+<script src="history-progress.js?v=3"></script>
+<script src="neck-analysis-v1.js?v=35"></script>
     <script src="neck-motion-analysis.js?v=2"></script>
     <script src="neck-motion.js?v=7"></script>
     <script src="neck-capture.js?v=7"></script>
@@ -1071,7 +1104,10 @@ async function initCameraAndMic() {
         console.warn("Camera failed:", e);
     }
     try {
-        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioStream = await navigator.mediaDevices.getUserMedia({ audio: {
+            echoCancellation: false, noiseSuppression: false, autoGainControl: false,
+            channelCount: 1
+        } });
     } catch (e) {
         setStatus("לא ניתן לגשת למיקרופון: " + e.message, true);
     }
@@ -1178,6 +1214,7 @@ async function stopNeckEffortRecordingSession(audioBlob, audioOffsetSeconds = 0)
             result.neck_effort.neckAnalysis ||= {version:'neck-analysis-v1',status:'error',dimensions:{}};
             result.neck_effort.neckAnalysis.movement_stability=localMotion;
         }
+        result.neck_effort.history_saved = result.history_saved;
         return show(result.neck_effort);
     } catch (error) {
         return show({model_version: "neck-analysis-v1", reasons: [error.name === "TimeoutError" ? "analysis_timeout" : "neck_service_unavailable"],
@@ -1417,8 +1454,17 @@ async function stopRecording() {
     neckEffortRequestInFlight = false;
     recordBtn.disabled = true;
     try {
+        const previousNeck = JSON.parse(localStorage.getItem(historyKey()) || '[]')[0]?.neck_effort || null;
         const [neck, voice] = await Promise.all([stopNeckEffortRecordingSession(wavBlob, recordBtn._neckAudioOffset), sendAudio(wavBlob)]);
-        if (voice && neck) { voice.neck_effort = neck; displayResults(voice); }
+        if (voice) {
+            if (neck) voice.neck_effort = neck;
+            voice.neck_previous = previousNeck;
+            displayResults(voice);
+            saveToHistory(voice);
+        } else if (neck) {
+            saveToHistory({scores:{}, neck_effort:neck, session_id:neckEffortSessionId});
+        }
+
         setStatus(neck?.neckAnalysis?.status === "error"
             ? "ניתוח הצוואר לא הושלם; פרטים מופיעים בתוצאות."
             : voice ? "הניתוח הושלם." : "תוצאת הצוואר מוצגת; ניתוח הקול לא הושלם.", !voice || neck?.neckAnalysis?.status === "error");
@@ -1475,7 +1521,6 @@ async function sendAudio(blob) {
         if (!resp.ok) { setStatus("שגיאה: " + (data.detail || "ניתוח נכשל"), true); return; }
 
         displayResults(data);
-        saveToHistory(data);
         updateQuickStats();
         setStatus("הניתוח הושלם!");
 
@@ -1494,6 +1539,18 @@ function displayResults(data) {
     document.getElementById("m-results-empty").hidden = true;
     document.getElementById("m-results-content").hidden = false;
 
+    // Neck-only saved results must not fabricate GRBAS values or use an old voice grade.
+    if (!Number.isFinite(data.scores?.G)) {
+        document.getElementById("m-grade").textContent = '—';
+        document.getElementById("m-grade-label").textContent = 'אין תוצאת קול בהקלטה הזו';
+        document.getElementById("m-combined-badge").className = 'm-combined-badge';
+        document.getElementById("m-scores-grid").replaceChildren();
+        document.getElementById("m-recs-list").replaceChildren();
+        document.getElementById("m-neck-result-card").hidden=false;
+        document.getElementById("m-neck-result-badge").hidden=true;
+        renderNeckAnalysis(document.getElementById("m-neck-v1-results"), data.neck_effort, {viewer:_currentUser, previous:data.neck_previous});
+        return;
+    }
     // Combined badge
     const gScore = data.scores.G;
     const level = Math.round(gScore);
@@ -1520,26 +1577,6 @@ function displayResults(data) {
         grid.appendChild(card);
     }
 
-    // Clinician referral warning (mirrors desktop behavior)
-    const grbasMax = Math.max(...Array.from("GRBAS").map(d => data.scores[d] ?? 0));
-    let warningBox = document.getElementById("m-grbas-clinician-warning");
-    if (grbasMax >= 2) {
-        if (!warningBox) {
-            warningBox = document.createElement("div");
-            warningBox.id = "m-grbas-clinician-warning";
-            warningBox.style.cssText = "background:#fff0f0;border-right:4px solid #d9534f;color:#842029;padding:12px 14px;border-radius:8px;margin-top:14px;font-size:0.92em;line-height:1.55;";
-            grid.parentElement.insertBefore(warningBox, grid.nextSibling);
-        }
-        warningBox.innerHTML = `
-            <strong>שימו לב:</strong> אחד מציוני GRBAS שלך גבוה (2 או 3).
-            <strong>מומלץ לפנות לקלינאי תקשורת או רופא א.א.ג</strong> לבדיקה.
-            <br><span style="font-size:0.88em;">המלצה בלבד — לא אבחנה.</span>
-        `;
-        warningBox.style.display = "";
-    } else if (warningBox) {
-        warningBox.style.display = "none";
-    }
-
     // Neck effort card
     const neckCard = document.getElementById("m-neck-result-card");
     const ne = data.neck_effort;
@@ -1547,7 +1584,7 @@ function displayResults(data) {
         neckCard.hidden = false;
         document.getElementById("m-neck-result-badge").hidden = true;
         document.getElementById("m-neck-result-reasons").textContent = "";
-        renderNeckAnalysis(document.getElementById("m-neck-v1-results"), ne, {viewer: _currentUser});
+        renderNeckAnalysis(document.getElementById("m-neck-v1-results"), ne, {viewer: _currentUser, previous: data.neck_previous});
     } else if (ne && Number.isInteger(ne.score)) {
         document.getElementById("m-neck-result-badge").hidden = false;
         neckCard.hidden = false;
@@ -1620,63 +1657,47 @@ function historyKey() {
 
 function saveToHistory(data) {
     const key = historyKey();
-    const history = JSON.parse(localStorage.getItem(key) || "[]");
+    const history = VoiceHistory.read(key);
     history.unshift({
         date: new Date().toISOString(),
         scores: data.scores,
         neck_effort: data.neck_effort || null,
+        session_id: data.session_id || null,
         recommendations: data.recommendations || [],
         title: data.title || "",
     });
-    if (history.length > 50) history.pop();
-    localStorage.setItem(key, JSON.stringify(history));
-    renderHistory(history);
+    const saved = VoiceHistory.save(key, history);
+    renderHistory(saved);
 }
 
 function loadHistory() {
-    const history = JSON.parse(localStorage.getItem(historyKey()) || "[]");
+    const history = VoiceHistory.save(historyKey(), VoiceHistory.read(historyKey()));
     renderHistory(history);
     // Also load from cloud
     loadCloudHistory();
 }
 
 async function loadCloudHistory() {
+    const key = historyKey();
     try {
         const resp = await fetch("/api/history", { headers: getAuthHeaders() });
-        if (!resp.ok) return;
+        if (!resp.ok || key !== historyKey()) return;
         const payload = await resp.json();
-        const cloudResults = payload.history || [];
-        if (!cloudResults.length) return;
-        const key = historyKey();
-        const local = JSON.parse(localStorage.getItem(key) || "[]");
-        // Merge cloud into local (avoid duplicates by date)
-        const localDates = new Set(local.map(h => h.date));
-        for (const cr of cloudResults) {
-            const d = cr.timestamp || cr.created_at || cr.date;
-            if (!localDates.has(d)) {
-                local.push({
-                    date: d,
-                    scores: cr.scores || {},
-                    neck_effort: cr.neck_effort || null,
-                    recommendations: cr.recommendations || [],
-                    title: cr.title || "",
-                });
-            }
-        }
-        local.sort((a, b) => new Date(b.date) - new Date(a.date));
-        localStorage.setItem(key, JSON.stringify(local));
-        renderHistory(local);
+        if (key !== historyKey()) return;
+        const history = VoiceHistory.save(key, VoiceHistory.merge(VoiceHistory.read(key), payload.history));
+        renderHistory(history);
     } catch (_) {}
 }
 
 function renderHistory(history) {
+    renderHistoryProgress(document.getElementById('m-history-progress'), history);
     const list = document.getElementById("m-history-list");
     if (!history.length) {
         list.innerHTML = '<div class="m-empty">אין עדיין הקלטות</div>';
         return;
     }
     list.innerHTML = "";
-    for (const entry of history.slice(0, 20)) {
+    for (const entry of history.slice(0, 10)) {
         const item = document.createElement("div");
         item.className = "m-history-item";
         const d = new Date(entry.date);
@@ -1690,6 +1711,9 @@ function renderHistory(history) {
         if (entry.neck_effort && !entry.neck_effort.neckAnalysis && entry.neck_effort.model_version !== "neck-analysis-v1" && Number.isInteger(entry.neck_effort.score)) {
             scoreParts.push("N:" + entry.neck_effort.score);
         }
+        for (const group of neckGroupResults(entry.neck_effort)) {
+            if (group.score!==null) scoreParts.push(group.title + ':' + group.score);
+        }
         item.innerHTML = `
             <div>
                 <div class="date">${dateStr} ${timeStr}</div>
@@ -1701,6 +1725,7 @@ function renderHistory(history) {
             displayResults({
                 scores: scores,
                 neck_effort: entry.neck_effort || null,
+                neck_previous: history[history.indexOf(entry)+1]?.neck_effort || null,
                 recommendations: entry.recommendations || [],
             });
             document.querySelectorAll(".m-nav-item").forEach(b => b.classList.remove("active"));
@@ -1714,7 +1739,7 @@ function renderHistory(history) {
 }
 
 function updateQuickStats() {
-    const history = JSON.parse(localStorage.getItem(historyKey()) || "[]");
+    const history = VoiceHistory.read(historyKey());
     document.getElementById("m-qs-total").textContent = history.length;
     if (history.length) {
         const last = new Date(history[0].date);
@@ -1981,7 +2006,7 @@ const ALL_BADGES = [
 
 function checkBadges() {
     const g = gameData();
-    const history = JSON.parse(localStorage.getItem(historyKey()) || "[]");
+    const history = VoiceHistory.read(historyKey());
     const timerDays = parseInt(localStorage.getItem("timer_completed_days") || "0");
     let newBadge = null;
 
@@ -2033,7 +2058,7 @@ function renderBadges() {
 
 // --- Encouragement messages ---
 function showEncouragement(data) {
-    const history = JSON.parse(localStorage.getItem(historyKey()) || "[]");
+    const history = VoiceHistory.read(historyKey());
     const g = gameData();
 
     if (history.length === 1) {
@@ -2090,7 +2115,7 @@ function updateWeeklySummary() {
         return;
     }
 
-    const history = JSON.parse(localStorage.getItem(historyKey()) || "[]");
+    const history = VoiceHistory.read(historyKey());
     const weekHistory = history.filter(h => new Date(h.date) >= weekAgo);
     let summaryHtml = `<div style="font-size:0.92em; line-height:1.8;">`;
     summaryHtml += `<div>📅 <strong>${daysThisWeek}</strong> ימי תרגול השבוע</div>`;
@@ -2139,7 +2164,7 @@ sendAudio = async function(blob) {
     // After analysis
     const g = updateStreak();
     addPoints(10, "ניתוח קול");
-    const history = JSON.parse(localStorage.getItem(historyKey()) || "[]");
+    const history = VoiceHistory.read(historyKey());
     if (history.length > 0) showEncouragement({ scores: history[0].scores });
     checkBadges();
     return result;

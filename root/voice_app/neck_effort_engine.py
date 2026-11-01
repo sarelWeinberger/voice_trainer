@@ -8,7 +8,7 @@ import threading
 import time
 import cv2
 import numpy as np
-from neck_v1_cv import CVProcessor, jaw_residualization, select_frames
+from neck_v1_cv import CVProcessor, jaw_residualization, select_frames, select_crop_frames, neck_context_box
 from neck_v1_scoring import NeckEffortConfig, VERSION, DIMENSIONS, NeckAnalysis, aggregate, unavailable
 from neck_v1_openai import interpret, NeckProviderError, PROMPT_VERSION, DEFAULT_MODEL
 from neck_observable_change import compare_observable_windows
@@ -97,7 +97,7 @@ def evidence_context(rows, selected, cfg, audio=None, timing='unverified',moveme
         window['neck_activity']=float(np.mean(window.pop('values')))
     diagnostics = dict(captured_frames=len(rows), selected_frames=len(selected),
                        selected_frame_indices=list(selected),selected_frame_times=[round(rows[i]['t'],3) for i in selected],
-                       frame_selection='temporal_coverage_then_extrema_v2',
+                       frame_selection='temporal_coverage_then_extrema_v4',
                        feature_available_frames={key:sum(key in row['features'] for row in rows)
                            for key in ('head_pitch_deg','shoulder_motion','shoulders_head_relative_motion')},
                        observed_span_seconds=round(duration, 3), effective_fps=round(rate, 3),
@@ -126,9 +126,9 @@ def evidence_context(rows, selected, cfg, audio=None, timing='unverified',moveme
                 limitations=['ROIs approximate image-space regions, not isolated muscles',
                              'Flow and jaw regression are motion evidence, not force or causality',
                              'WebRTC VAD speech timing is provisional, not ground truth or diagnosis'],
-                versions=dict(analyzer=VERSION,preprocessing='neck-cv-v1.1',prompt=PROMPT_VERSION,
-                              weights='neck-weights-v1.0',scoring='neck-scoring-v1.1',
-                              observable_change='neck-observable-change-v1',selection='temporal-coverage-v2',
+                versions=dict(analyzer=VERSION,preprocessing='neck-cv-v1.2',prompt=PROMPT_VERSION,
+                              weights='neck-weights-v1.0',scoring='neck-scoring-v1.2',
+                              observable_change='neck-observable-change-v1',selection='temporal-coverage-v4',
                               model=os.environ.get('NECK_OPENAI_MODEL',DEFAULT_MODEL)))
     if head_movement is not None:context['head_movement']=head_movement
     return context
@@ -261,19 +261,20 @@ class NeckEffortEngine:
                                   limitations=context['limitations'],versions=context['versions'])
                 else:
                     images=[]
-                    crop_indices=set(selected[:1]+sorted(selected,key=lambda i: -self.rows[i]['features'].get('anterior_motion',0))[:1])
+                    crop_indices=set(select_crop_frames(self.rows, selected))
                     for i in selected:
                         encoded=self.images[i]
                         images.append(dict(index=i,t=self.rows[i]['t'],kind='full_frame',url='data:image/jpeg;base64,'+base64.b64encode(encoded).decode()))
-                        box=self.rows[i]['rois'].get('anterior')
-                        if box and i in crop_indices:
+                        if i in crop_indices:
                             frame=cv2.imdecode(np.frombuffer(encoded,np.uint8),cv2.IMREAD_COLOR)
-                            h,w=frame.shape[:2];x1,y1,x2,y2=box
-                            # Context crop includes lateral neck, chin and clavicles.
-                            margin=max(1,x2-x1)
-                            crop=frame[max(0,y1-margin//2):min(h,y2+margin//2),max(0,x1-margin):min(w,x2+margin)]
+                            h,w=frame.shape[:2]
+                            box=neck_context_box(self.rows[i]['rois'], w, h)
+                            if box is None:
+                                continue
+                            x1,y1,x2,y2=box
+                            crop=frame[y1:y2,x1:x2]
                             if crop.size:
-                                ok,jpeg=cv2.imencode('.jpg',crop)
+                                ok,jpeg=cv2.imencode('.jpg',crop,[cv2.IMWRITE_JPEG_QUALITY,95])
                                 if ok: images.append(dict(index=i,t=self.rows[i]['t'],kind='neck_context_crop',url='data:image/jpeg;base64,'+base64.b64encode(jpeg).decode()))
                     output=self.interpreter(context,images)
                     analysis=aggregate(output,context,self.cfg)

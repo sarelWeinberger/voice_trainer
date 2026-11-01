@@ -9,11 +9,14 @@
         jaw_compensation: 'תנועת לסת'
     };
     const reasonsHe = {
+        'Insufficient temporal evidence for absence of visible activity': 'אין מספיק תמונות לאורך ההקלטה כדי לקבוע שלא נצפתה פעילות',
+        'Inconsistent ordinal and continuous scores': 'המודל החזיר דירוגים סותרים; הציון לא פורסם',
         'Analysis failed': 'הניתוח לא הושלם',
         'Region not sufficiently observable': 'אין די ראיות נצפות; הדוח הישן אינו מבחין בין סיבות הפסילה',
         'Tracking quality below threshold': 'איכות זיהוי האזור נמוכה מהסף',
         'Model found insufficient observable evidence': 'המודל לא מצא די ראיות נצפות באזור',
         'Insufficient evidence confidence': 'הביטחון לאחר שקלול ראיות, איכות צילום ותזמון דיבור נמוך מהסף',
+        'Insufficient supported speech context': 'אין די ראיות לדיבור בקטע שנבדק',
         'Insufficient evidence relating observed behavior to speech': 'לא נמצא קשר מספיק בין התנועה לדיבור',
         'Local activity not distinguishable from jaw/head mechanics': 'לא ניתן להפריד פעילות מקומית בצוואר מתנועות הראש והלסת',
         'Activity explained by a confound': 'התנועה מוסברת בגורם אחר, כגון תנועת מצלמה, בליעה או תנועות דיבור רגילות',
@@ -21,6 +24,53 @@
         'Insufficient visibility': 'האזור אינו נראה מספיק בבירור',
         'No usable speech/phonation evidence in aligned audio': 'לא זוהתה פעילות דיבור שימושית באודיו החופף לצילום'
     };
+    const groupDefinitions = [
+        {key:'posture', title:'תנוחה ותנועה', keys:['posture_compensation','shoulder_recruitment']},
+        {key:'neck', title:'מראה הצוואר', keys:['scm_lateral_recruitment','anterior_submental_activity']},
+        {key:'jaw', title:'תנועת לסת', keys:['jaw_compensation']}
+    ];
+    function neckGroupResults(packet) {
+        const analysis = packet?.neckAnalysis || packet || {};
+        return groupDefinitions.map(group => {
+            const rated = analysis.status === 'error' || analysis.status === 'pending' ? [] :
+                group.keys.filter(key => Number.isInteger(analysis.dimensions?.[key]?.score) &&
+                    analysis.dimensions[key].score >= 0 && analysis.dimensions[key].score <= 3);
+            const winner = rated.reduce((best,key) => best === null || analysis.dimensions[key].score > analysis.dimensions[best].score ? key : best,null);
+            const item = winner ? analysis.dimensions[winner] : null;
+            return {...group, rated, score:item?.score ?? null, evidence:item?.evidence || [],
+                partial:rated.length > 0 && rated.length < group.keys.length};
+        });
+    }
+    function compareNeckResults(current, previous) {
+        const now=current?.neckAnalysis, before=previous?.neckAnalysis;
+        if (!now || !before || now.status!=='complete' || before.status!=='complete') return [];
+        // Same rubric/model/preprocessing, complete groups, and accepted evidence only.
+        const versions=Object.keys(now.versions || {}).sort();
+        if (!versions.length || versions.join()!==Object.keys(before.versions || {}).sort().join() ||
+            versions.some(key=>now.versions[key]!==before.versions[key])) return [];
+        const hasMissingFrames = analysis => {
+            const transport=analysis.diagnostics?.capture_transport;
+            return transport && ((transport.missing_frames ?? transport.unconfirmed_frames ?? 0)>0 || transport.encoding_failed_frames>0);
+        };
+        if (hasMissingFrames(now) || hasMissingFrames(before)) return [];
+        const oldGroups=neckGroupResults(previous);
+        return neckGroupResults(current).flatMap((group,index) => {
+            const old=oldGroups[index];
+            if (group.score===null || old.score===null || group.partial || old.partial || group.score>=old.score) return [];
+            if (group.keys.some(key=>![now,before].every(a=>Number.isFinite(a.dimensions[key].confidence) && a.dimensions[key].confidence>=.15))) return [];
+            return [{key:group.key,title:group.title,from:old.score,to:group.score}];
+        });
+    }
+    function neckObservationText(group) {
+        if (group.score===null) return 'אין ציון זמין לקבוצה הזאת בהקלטה הזו.';
+        // Quote the actual observation; never manufacture a posture direction from a grade.
+        const observation=group.evidence.filter(text=>!reasonsHe[text]).join(' ')
+            .replace(/(?:בין )?(?:בפריימים|בפריים|פריימים|פריים)\s*[\d\s,–\-]+/g,'')
+            .replace(/\s+/g,' ').replace(/\s+([.,;])/g,'$1').trim();
+        const labels=['לא בלט שינוי חיצוני','שינוי חיצוני קל','שינוי חיצוני בינוני','שינוי חיצוני בולט'];
+        return `${group.title} — ${group.score} מתוך 3: ${observation || labels[group.score] + ' באזור שניתן היה להעריך.'}`;
+    }
+
     function renderNeckAnalysis(container, packet, options = {}) {
         if (!container) return;
         container.replaceChildren();
@@ -34,6 +84,25 @@
         if (!analysis) {
             paragraph('ניתוח הצוואר יופיע בסיום ההקלטה.');
             return;
+        }
+        const report = document.createElement('details');
+        report.className = 'neck-full-report';
+        const reportTitle = document.createElement('summary');
+        reportTitle.textContent = 'דוח מפורט ומצב הניתוח';
+        report.appendChild(reportTitle);
+        const notices = document.createElement('section');
+        notices.className = 'neck-analysis-notices';
+        notices.setAttribute('aria-label', 'מצב הניתוח והודעות מערכת');
+        const noticeHeading = document.createElement('h3');
+        noticeHeading.textContent = 'מצב הניתוח והודעות מערכת';
+        notices.appendChild(noticeHeading);
+        function notice(text) {
+            const p = document.createElement('p'); p.textContent = text; notices.appendChild(p);
+        }
+        function finish() {
+            if (notices.children.length > 1) report.appendChild(notices);
+            if (debug) report.appendChild(debug);
+            container.appendChild(report);
         }
         const debug = showDebug ? document.createElement('details') : null;
         if (debug) {
@@ -93,27 +162,35 @@
         }
         target = container;
         paragraph('התנהגות חיצונית נצפית · גרסת מחקר');
-        if (analysis.status === 'error') paragraph('שירות הניתוח לא השלים את ההערכה; הציונים אינם זמינים.');
+        if (packet.history_saved === false) notice('שמירת תוצאת הצוואר בשרת נכשלה. התוצאה מוצגת כעת; בדקו שההקלטה מופיעה בהיסטוריה לפני סגירת הדף.');
+        if (analysis.status === 'error') notice('שירות הניתוח לא השלים את ההערכה; הציונים אינם זמינים.');
         const transport=analysis.diagnostics?.capture_transport;
         if(transport && ((transport.missing_frames ?? transport.unconfirmed_frames)>0 || transport.encoding_failed_frames>0))
-            paragraph('הניתוח חלקי: חלק מהתמונות לא התקבלו או לא הוכנו לשליחה. הממצאים מתייחסים לתמונות הזמינות בלבד.');
+            notice('הניתוח חלקי: חלק מהתמונות לא התקבלו או לא הוכנו לשליחה. הממצאים מתייחסים לתמונות הזמינות בלבד.');
         target = debug || container;
         if(showDebug && transport)paragraph(`העברת תמונות: הוכנו ${transport.captured_frames}; אושרו בדפדפן ${transport.acknowledged_frames}; התקבלו בשרת ${transport.server_received_frames ?? 'לא ידוע'}; ניסיונות חוזרים ${transport.retry_count}; לא אושרו ${transport.unconfirmed_frames}.`);
         if (showDebug) paragraph('דירוג לכל קבוצה: 0 — מזערי / לא נצפה, 1 — קל, 2 — בינוני, 3 — גבוה. הדירוג הוא הגבוה מבין הערכות האזורים שניתן להעריך בקבוצה; תנועות קשורות אינן מחוברות. זהו כלל מחקר לתיאור התנהגות חיצונית, ולא מדידה מאומתת של מתח שרירי.');
         target = container;
         const movement = analysis.movement_stability;
+        let movementPanel = null;
         if (['head-movement-stability-v1','head-movement-stability-v2','head-movement-stability-v3'].includes(movement?.version)) {
-            paragraph('יציבות ותנודתיות בתנועת הראש');
+            movementPanel = document.createElement('details');
+            movementPanel.className = 'neck-movement-details';
+            movementPanel.setAttribute('open', '');
+            const movementTitle = document.createElement('summary');
+            movementTitle.textContent = 'יציבות ותנודתיות בתנועת הראש — מדידה נפרדת';
+            movementPanel.appendChild(movementTitle);
+            target = movementPanel;
             if (movement.status === 'measured') {
                 const hasMotionRms=(movement.windows || []).some(w=>w.status==='measured'&&Number.isFinite(w.motion_rms_percent_image_width));
                 paragraph('גודל ותדירות של תנועת הראש ביחס לרקע, להשוואת קטעים באותה הקלטה. זהו מדד תנועה בתמונה.');
                 if(hasMotionRms)paragraph('פיזור התנועה מציג גם תנועה שאינה מחזורית, לאחר הסרת מגמה איטית. אפשר להשוות חלונות באותו טווח תדרים; זהו גודל תנועה ולא ציון מאמץ.');
                 if(movement.version==='head-movement-stability-v3')
                     paragraph('תדירות מוצגת רק כשנמצאה מחזוריות עקבית. הקלטה של 10–20 שניות מאפשרת גם בדיקת תנודות איטיות; הטווח העליון מוגבל לפי התמונות שהתקבלו. היעדר תדירות אינו ציון אפס במאמץ.');
-                if(movement.source==='browser_local')paragraph('מדידת התנועה חושבה בדפדפן; היא זמינה גם כשהשרת אינו משיב.');
+                if(movement.source==='browser_local')notice('מדידת התנועה חושבה בדפדפן; היא זמינה גם כשהשרת אינו משיב.');
                 const measuredCount=(movement.windows || []).filter(w=>w.status==='measured').length;
                 if (measuredCount < (movement.windows || []).length)
-                    paragraph(`המדידה חלקית: ${measuredCount} מתוך ${movement.windows.length} חלונות ניתנים למדידה. בחלונות החסרים היו מגבלות מעקב או רציפות צילום.`);
+                    notice(`המדידה חלקית: ${measuredCount} מתוך ${movement.windows.length} חלונות ניתנים למדידה. בחלונות החסרים היו מגבלות מעקב או רציפות צילום.`);
                 const motionTable = document.createElement('table');
                 motionTable.className = 'neck-change-table neck-motion-table';
                 const header = motionTable.insertRow();
@@ -136,8 +213,9 @@
                     if(movement.version==='head-movement-stability-v3')cells.splice(1,0,window.band_hz?.join('–') || 'לא זמין');
                     cells.forEach(text=>{row.insertCell().textContent=text;});
                 });
-                container.appendChild(motionTable);
+                movementPanel.appendChild(motionTable);
             } else {
+                target = notices;
                 paragraph('לא התקבלה מדידת תנודתיות בהקלטה הזאת.');
                 const captureMessages={
                     face_reference_unavailable:'המעקב לא התחיל: לא היה זיהוי פנים עדכני בתחילת ההקלטה. המתינו שהפנים יזוהו בתצוגה המקדימה ואז התחילו הקלטה.',
@@ -172,6 +250,7 @@
                     tracking_reinitialized:'המעקב התחבר מחדש. חלון הכולל חיבור בין רצפים אינו משמש לחישוב תנודות.'};
                 failures.forEach(reason=>{if(failureMessages[reason])paragraph(failureMessages[reason]);});
             }
+            target = container;
             if (showDebug) {
                 target=debug;
                 paragraph(`מעקב תנועה צפוף: ${movement.sample_count} דגימות; קצב חציוני ${movement.effective_fps ?? 'לא זמין'} דגימות/שנייה. טווח התדרים הוא כלל מחקר, ללא סף אבחנתי או ציון 0–3.`);
@@ -184,14 +263,62 @@
                 target=container;
             }
         }
+        target = container;
         if(analysis.status==='pending'){
-            paragraph('מדידת התנועה מוכנה. ניתוח התצפיות עדיין מתבצע; ציוני הקבוצות יוצגו כאשר יתקבלו.');
-            if(debug)container.appendChild(debug);
+            if (movementPanel) container.appendChild(movementPanel);
+            notice('ניתוח התצפיות עדיין מתבצע; ציוני הקבוצות יוצגו כאשר יתקבלו.');
+            finish();
             return;
         }
+        const resultsHeading = document.createElement('h3');
+        resultsHeading.textContent = 'ציוני התצפית על המאמץ';
+        container.appendChild(resultsHeading);
+        const groupsForUser = neckGroupResults(packet);
+        const numeric = document.createElement('section');
+        numeric.className = 'neck-numeric-scores';
+        numeric.setAttribute('aria-label','ציוני צוואר לפי קבוצה');
+        groupsForUser.forEach(group => {
+            const row=document.createElement('div'); row.className='neck-numeric-row';
+            const title=document.createElement('span'); title.textContent=group.title;
+            const score=document.createElement('strong'); score.setAttribute('dir','ltr');
+            score.textContent=group.score===null?'—':`${group.score} / 3`;
+            score.className=group.score===null?'neck-score-unavailable':`grade-${group.score}`;
+            row.appendChild(title); row.appendChild(score); numeric.appendChild(row);
+        });
+        container.appendChild(numeric);
+        const scale=document.createElement('p');
+        scale.className='neck-score-scale';
+        scale.textContent='איך לקרוא את הציון? 0 — לא נצפו סימנים חיצוניים בתמונות שנבדקו; אין בכך הוכחה שהצוואר רפוי. 1 — קל, 2 — בינוני, 3 — גבוה: סימנים חיצוניים בולטים יותר. נמוך יותר הוא כיוון השיפור; 3 אינו תוצאה רצויה.';
+        container.appendChild(scale);
+        const improved=compareNeckResults(packet,options.previous);
+        if (improved.length) {
+            const feedback=document.createElement('section'); feedback.className='neck-positive-feedback';
+            const title=document.createElement('strong'); title.textContent='כל הכבוד — הדירוג השתפר!'; feedback.appendChild(title);
+            improved.forEach(item=>{
+                const p=document.createElement('p');
+                p.textContent=`${item.title}: ירידה מ־${item.from} ל־${item.to} לעומת ההקלטה הקודמת.`;
+                feedback.appendChild(p);
+            });
+            const context=document.createElement('p');
+            context.textContent='בהקלטה הזו נראו פחות סימנים חיצוניים בקבוצות האלה.';
+            feedback.appendChild(context);
+            container.appendChild(feedback);
+        }
+        const observations=document.createElement('section'); observations.className='neck-user-feedback';
+        const observationTitle=document.createElement('h3'); observationTitle.textContent='מה נצפה אצלך?'; observations.appendChild(observationTitle);
+        groupsForUser.forEach(group=>{
+            const p=document.createElement('p'); p.textContent=neckObservationText(group);
+            observations.appendChild(p);
+            if(group.partial){const note=document.createElement('small');note.textContent='ציון חלקי — חלק מהאזורים בקבוצה לא הוערכו.';observations.appendChild(note);}
+        });
+        container.appendChild(observations);
+        paragraph('דירוגי תצפית ניסיוניים של סימנים חיצוניים, בסולם 0–3.');
+
+        target=report;
         paragraph('דירוגי הקבוצות הם דירוגי תצפית ניסיוניים; הדיוק שלהם טרם אומת קלינית.');
+        target=container;
         const groupTable = document.createElement('table');
-        groupTable.className = 'neck-change-table';
+        groupTable.className = 'neck-change-table neck-group-table';
         const groupHead = groupTable.insertRow();
         ['קבוצת תצפיות', 'ממצאים והקשר', 'מה אפשר ללמוד', 'דירוג התנהגות נצפית'].forEach(text => {
             const th = document.createElement('th'); th.textContent = text; groupHead.appendChild(th);
@@ -217,13 +344,15 @@
                 const serviceFailed = analysis.status === 'error';
                 const p = document.createElement('p');
                 p.textContent = names[key] + ': ' + (serviceFailed
-                    ? 'שירות הניתוח לא השלים את ההערכה; אין מסקנה על איכות הראיות באזור.'
+                    ? 'טרם התקבל ממצא באזור.'
                     : coupled
                     ? 'שינוי במראה הצוואר יחד עם תנועות ראש או לסת; מקור השינוי אינו ניתן להפרדה ואין ציון עצמאי. ' +
                       (observation?.evidence || diagnostic.model_evidence || []).join(' ')
                     : Number.isInteger(item.score)
                     ? (item.score === 0 ? key==='posture_compensation'&&movement?.status==='measured' ? 'בתמונות שנבחרו לא דורג פיצוי בתנוחה. ' : 'לא זוהתה התנהגות חריגה באזור הנצפה. ' : 'תואר שינוי נראה באזור. ') + evidence
-                    : 'הערכת האזור אינה זמינה: ' + (evidence || 'לא התקבלה הערכה שימושית.'));
+                    : 'הערכת האזור אינה זמינה.');
+                if (!serviceFailed && !Number.isInteger(item.score) && !coupled)
+                    notice(names[key] + ': ' + (evidence || 'לא התקבלה הערכה שימושית.'));
                 cell.appendChild(p);
                 if (showDebug && !serviceFailed && Number.isInteger(item.score)) {
                     const confidence = document.createElement('p');
@@ -244,13 +373,18 @@
                 p.textContent = 'התיאור מציין היכן נראה השינוי ובאילו תמונות הוא הופיע, כשמידע זה זמין. אפשר להיעזר בו להשוואת קטעים ולסקירה של הסרטון.';
                 cell.appendChild(p);
             }
-            row.insertCell().textContent = explanation;
+            const help = document.createElement('details');
+            const helpTitle = document.createElement('summary');
+            helpTitle.textContent = 'איך לקרוא את התוצאה?';
+            help.appendChild(helpTitle);
+            const helpText = document.createElement('p'); helpText.textContent = explanation; help.appendChild(helpText);
+            row.insertCell().appendChild(help);
             const rated = keys.filter(key => Number.isInteger(analysis.dimensions?.[key]?.score));
             const scoreCell = row.insertCell();
             if (analysis.status === 'error') {
-                scoreCell.textContent = 'הניתוח לא הושלם — כשל שירות';
+                scoreCell.textContent = 'ציון אינו זמין';
             } else if (!rated.length) {
-                scoreCell.textContent = 'לא ניתן להעריך — הסיבה מפורטת בממצאים';
+                scoreCell.textContent = 'לא ניתן להעריך';
             } else {
                 const winner = rated.reduce((best,key) => analysis.dimensions[key].score > analysis.dimensions[best].score ? key : best);
                 const item = analysis.dimensions[winner];
@@ -260,6 +394,7 @@
                 scoreRow.className = 'score-row neck-group-score';
                 const value = document.createElement('span');
                 value.className = `score-value grade-${item.score}`;
+                value.setAttribute('dir', 'ltr');
                 value.textContent = `${item.score} / 3`;
                 scoreRow.appendChild(value);
                 const label = document.createElement('span');
@@ -295,12 +430,44 @@
                 scoreCell.appendChild(note);
             }
         });
-        container.appendChild(groupTable);
+        report.appendChild(groupTable);
+        if (movementPanel) container.appendChild(movementPanel);
         target = debug || container;
         if (showDebug) paragraph('פירוש התיאורים: ״נראה שינוי״ מציין שינוי חיצוני שתואר, ולא מאמץ שרירי מוכח. ״לא זוהתה התנהגות חריגה״ מתייחס למה שנראה בלבד ואינו מוכיח שאין מאמץ. ״מקור השינוי אינו ניתן להפרדה״ מציין שינוי שאפשר לראות אך לא לייחס בנפרד לאזור או לשריר. ״אין די ראיות״ מציין מגבלת הערכה ולא ציון אפס.');
         if (showDebug) paragraph('אחוזי הביטחון מתייחסים לראיות בתיאור האזור ומשקללים איכות צילום ותזמון. הם כללי הנדסה שלא כוילו לדיוק רפואי; אין אחוז ביטחון מאוחד לקבוצה.');
         if (showDebug && (analysis.quality || {}).warnings?.some(warning => warning !== 'analysis_failed')) paragraph('קיימות מגבלות איכות צילום או תזמון; הן נלקחו בחשבון בביטחון.');
         const diag = analysis.diagnostics || {};
+        const capture = document.createElement('section');
+        capture.className = 'neck-capture-quality';
+        const captureTitle = document.createElement('h3');
+        captureTitle.textContent = 'איכות וקצב התמונות שהתקבלו לניתוח הצוואר';
+        capture.appendChild(captureTitle);
+        const captureLine = document.createElement('p');
+        const numberOrMissing = value => Number.isFinite(value) ? String(value) : 'לא נרשם בדוח';
+        captureLine.textContent = `תמונות שהתקבלו: ${numberOrMissing(diag.captured_frames)}; משך הרצף: ${numberOrMissing(diag.observed_span_seconds)} שניות; קצב בפועל: ${numberOrMissing(diag.effective_fps)} תמונות/שנייה; קצב יעד: ${numberOrMissing(diag.target_fps)}.`;
+        capture.appendChild(captureLine);
+        const qualityTable = document.createElement('table');
+        qualityTable.className = 'neck-change-table neck-capture-quality-table';
+        const qualityHead = qualityTable.insertRow();
+        ['אזור', 'איכות זיהוי ומעקב', 'תקרת ביטחון אפשרית', 'סף נדרש', 'סיבת אי־מתן ציון'].forEach(title=>{
+            const th=document.createElement('th'); th.textContent=title; qualityHead.appendChild(th);
+        });
+        const qualityPercent = value => Number.isFinite(value) ? `${(value*100).toFixed(1)}%` : 'לא נרשם בדוח';
+        Object.entries(names).forEach(([key,title])=>{
+            const decision=diag.dimensions?.[key] || {};
+            const quality=decision.tracking_quality ?? diag.dimension_quality?.[key];
+            const row=qualityTable.insertRow();
+            [title, qualityPercent(quality), qualityPercent(decision.maximum_possible_confidence),
+             qualityPercent(decision.required_confidence),
+             decision.rejection_reason ? reasonsHe[decision.rejection_reason] || decision.rejection_reason :
+                Number.isInteger(analysis.dimensions?.[key]?.score) ? 'ניתן ציון' : 'לא נרשמה סיבה מפורטת בדוח']
+                .forEach(text=>{row.insertCell().textContent=text;});
+        });
+        capture.appendChild(qualityTable);
+        const qualityNote=document.createElement('p');
+        qualityNote.textContent='איכות הזיהוי מתארת את המעקב בתמונות; היא אינה ציון מאמץ. הנתונים כאן מתייחסים לתמונות ניתוח הצוואר, בנפרד ממעקב תנועת הראש.';
+        capture.appendChild(qualityNote);
+        report.appendChild(capture);
         const warnings = (analysis.quality || {}).warnings || [];
         if (showDebug && warnings.includes('head_pose_unreliable')) paragraph('בחלק מהתמונות אומדן זווית הראש לא היה יציב ונפסל; תמונות אלו אינן מספקות מדידת זווית.');
         if (showDebug && warnings.includes('shoulder_motion_not_torso_referenced')) paragraph('האגן אינו זמין למעקב: תנועת הכתפיים נמדדה ביחס לראש בלבד, ואינה מפרידה באופן מלא בין תנועת גוף לתנועת כתפיים.');
@@ -331,11 +498,11 @@
                     (item.model_evidence || []).join(' '));
             });
         }
-        if (debug) container.appendChild(debug);
-        target = container;
+        target = notices;
         if (analysis.status === 'error' && packet.reasons?.length) {
             const reasons = packet.reasons.join(' ');
             paragraph(/OPENAI_API_KEY/.test(reasons) ? 'שירות הניתוח טרם הוגדר בשרת.'
+                : /max_output_tokens/.test(reasons) ? 'הניתוח נעצר בגלל מגבלת אורך התשובה; לא הופקו ציונים. זהו כשל שירות ולא מחסור במידע בצילום.'
                 : /timeout|timed out/i.test(reasons) ? 'שירות הניתוח עבר את זמן ההמתנה. נסו שוב.'
                 : /401|403/.test(reasons) ? 'OpenAI דחה את האימות או ההרשאה של השרת; הניתוח לא הושלם. יש לבדוק את מפתח OPENAI_API_KEY הפעיל בשרת. זהו כשל שירות, ולא מחסור במידע בתמונות.'
                 : /credit_balance_exhausted/.test(reasons) ? 'יתרת הקרדיטים ב־OpenAI נגמרה. הוסיפו קרדיטים בחשבון שאליו שייך המפתח.'
@@ -347,7 +514,10 @@
                 : /429/.test(reasons) ? 'OpenAI החזיר שגיאת 429 ללא סיבה מפורטת זמינה. בדקו יתרה ומגבלות שימוש בחשבון.'
                 : 'לא ניתן להשלים את הניתוח כרגע.');
         }
+        finish();
     }
     root.renderNeckAnalysis = renderNeckAnalysis;
-    if (typeof module !== 'undefined') module.exports = {renderNeckAnalysis};
+    root.neckGroupResults = neckGroupResults;
+    root.compareNeckResults = compareNeckResults;
+    if (typeof module !== 'undefined') module.exports = {renderNeckAnalysis, neckGroupResults, compareNeckResults, neckObservationText};
 })(typeof window !== 'undefined' ? window : globalThis);

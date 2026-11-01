@@ -5,8 +5,8 @@ import urllib.request
 import urllib.error
 from neck_v1_scoring import ModelOutput, RUBRIC
 
-PROMPT_VERSION = 'neck-rubric-v1.5'
-DEFAULT_MODEL = 'gpt-6-luna'
+PROMPT_VERSION = 'neck-rubric-v1.8'
+DEFAULT_MODEL = 'gpt-6.1-sol'
 # A real ten-image response took 22s; the previous 15s socket timeout
 # discarded valid responses. Keep one attempt, with a matching larger UI bound.
 PROVIDER_TIMEOUT_SECONDS = 45
@@ -24,10 +24,13 @@ def interpret(context, images, transport=None):
     for item in images:
         content.extend([{'type':'input_text','text':f"Frame {item['index']} at {item['t']:.3f}s, {item['kind']}"},
                         {'type':'input_image','image_url':item['url'],'detail':'high'}])
-    payload = dict(model=model, store=False, temperature=0,
+    payload = dict(model=model, store=False,
                    input=[{'role':'system','content':RUBRIC}, {'role':'user','content':content}],
                    text={'format':{'type':'json_schema','name':'neck_dimensions_v1','strict':True,
-                                   'schema':ModelOutput.model_json_schema()}}, max_output_tokens=1600)
+                                   'schema':ModelOutput.model_json_schema()}}, max_output_tokens=3200 if model.startswith('gpt-6') else 1600)
+    # GPT-6's default reasoning mode rejects the legacy sampling parameter.
+    if not model.startswith('gpt-6'):
+        payload['temperature'] = 0
     try:
         if transport is not None:
             response = transport(payload)
@@ -37,6 +40,10 @@ def interpret(context, images, transport=None):
                     headers={'Authorization':'Bearer '+key,'Content-Type':'application/json'})
             with urllib.request.urlopen(request,timeout=PROVIDER_TIMEOUT_SECONDS) as raw:
                 response=json.load(raw)
+        if (response.get('status') == 'incomplete'
+                and (response.get('incomplete_details') or {}).get('reason') == 'max_output_tokens'):
+            # Never validate or score a truncated (even apparently valid) payload.
+            raise NeckProviderError('OpenAI analysis reached output token limit [max_output_tokens]')
         if response.get('status') != 'completed':
             raise NeckProviderError('Neck analysis provider did not complete')
         texts=[]

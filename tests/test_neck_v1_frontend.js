@@ -14,7 +14,7 @@ const renderNeckAnalysis = (container,packet) => renderRaw(container,packet,{vie
 const nodes = node => [node,...node.children.flatMap(nodes)];
 const dimensions = ['posture_compensation','scm_lateral_recruitment','anterior_submental_activity','shoulder_recruitment','jaw_compensation'];
 const container = new Element('div');
-const groupedTable = () => container.children.filter(child=>child.tag==='table').at(-1);
+const groupedTable = () => nodes(container).find(child=>child.className==='neck-change-table neck-group-table');
 const allText = node => node.textContent + node.children.map(allText).join(' ');
 renderNeckAnalysis(container,{neckAnalysis:{status:'complete',dimensions:{scm_lateral_recruitment:{
     score:null,continuous_score:null,evidence:['Local activity not distinguishable from jaw/head mechanics']}},
@@ -46,19 +46,19 @@ const table = groupedTable();
 assert.equal(table.children.length,4);
 assert(allText(table.children[1].children[1]).includes('הערכת האזור אינה זמינה'));
 assert(!allText(container).includes('1.25 / 3.0'));
-assert.equal(container.children.find(child=>child.tag==='table').children.length,4);
+assert.equal(groupedTable().children.length,4);
 assert(allText(container).includes('1 / 3'));
 assert(allText(container).includes('מה אפשר ללמוד'));
 assert(allText(container).includes('הערכת האזור אינה זמינה'));
 assert(allText(container).includes('לא זוהתה התנהגות חריגה'));
-assert.equal(table.children[2].children[2].textContent.includes('לתעד את הממצא המשולב'),true);
+assert.equal(allText(table.children[2].children[2]).includes('לתעד את הממצא המשולב'),true);
 assert(!allText(container).includes('70%'));
 assert(allText(container).includes('80%'));
 assert(allText(table.children[1].children[1]).includes('ראיה <script>alert(1)</script>'));
 renderNeckAnalysis(container,{neckAnalysis:{status:'error',dimensions:{},overall:{},quality:{}}});
 assert.equal(groupedTable().children.length,4);
 assert(!allText(container).includes('0 / 3'));
-assert(allText(container).includes('כשל שירות'));
+assert(allText(container).includes('שירות הניתוח לא השלים'));
 assert(!allText(groupedTable()).includes('אין די ראיות'));
 console.log('Three explained groups, no five-score option, null and safe text PASS');
 renderNeckAnalysis(container,{neckAnalysis:{status:'error',dimensions:{},overall:{},quality:{},observable_change:{
@@ -66,14 +66,14 @@ renderNeckAnalysis(container,{neckAnalysis:{status:'error',dimensions:{},overall
     windows:[{start:5,end:7,measurements:{jaw_opening:{value:.3,delta_from_reference:.2,valid_frames:10,coverage:1},
         lateral_motion:{value:null,delta_from_reference:null,reason:'reference_not_assessable'}}}]
 }}});
-const changeTables=[...container.children.find(child=>child.tag==='details').children.filter(child=>child.tag==='table'),groupedTable()];
+const changeTables=[...nodes(container).find(child=>child.className==='neck-admin-debug').children.filter(child=>child.tag==='table'),groupedTable()];
 assert.equal(changeTables.length,3);
 assert.equal(changeTables[0].children[3].children[1].textContent,'0.1');
 assert.equal(changeTables[1].children[3].children[3].textContent,'+0.2');
 assert.equal(changeTables[1].children[6].children[3].textContent,'לא ניתן להשוות');
 assert(nodes(container).some(child=>child.textContent.includes('ההשוואה המקומית זמינה')));
 assert(!allText(container).includes('0 / 3'));
-assert(allText(container).includes('כשל שירות'));
+assert(allText(container).includes('שירות הניתוח לא השלים'));
 assert(!allText(groupedTable()).includes('אין די ראיות'));
 console.log('Reference values, later deltas, missing comparisons and local results on provider failure PASS');
 for (const [reason, expected] of [
@@ -206,7 +206,7 @@ renderNeckAnalysis(container,groupedPacket);
 assert(allText(groupedTable().children[2].children[3]).startsWith('לא ניתן להעריך'));
 groupedPacket.neckAnalysis.status='error';
 renderNeckAnalysis(container,groupedPacket);
-assert(groupedTable().children.slice(1).every(row=>row.children[3].textContent.includes('כשל שירות')));
+assert(groupedTable().children.slice(1).every(row=>row.children[3].textContent.includes('ציון אינו זמין')));
 assert(!allText(groupedTable()).includes('אין די ראיות'));
 assert(!allText(groupedTable()).includes(' / 3'));
 console.log('Max group grade, partial coverage, unavailable group, and service failure distinguished PASS');
@@ -216,14 +216,14 @@ for (const viewer of [null,{role:3,is_admin:false},{role:2},{role:1},{is_admin:t
  groupedPacket.neckAnalysis.observable_change={reference:{start:0,end:5,measurements:{}},windows:[]};
  renderRaw(container,groupedPacket,{viewer});
  const admin=viewer?.is_admin===true||viewer?.role===1||viewer?.role===2;
- assert.equal(container.children.some(child=>child.tag==='details'),admin);
+ assert.equal(nodes(container).some(child=>child.className==='neck-admin-debug'),admin);
  assert.equal(allText(container).includes('ערך ייחוס חציוני'),admin);
  assert.equal(allText(container).includes('הדירוג הוא הגבוה'),admin);
  assert(allText(groupedTable()).includes('2 / 3'));
  if (!admin) assert(!allText(container).includes('פירוש התיאורים:'));
 }
 renderRaw(container,groupedPacket);
-assert(!container.children.some(child=>child.tag==='details'));
+assert(!container.children.some(child=>child.className==='neck-admin-debug'));
 console.log('Regular/default viewers get grades only; admin roles get collapsed diagnostics PASS');
 
 groupedPacket.neckAnalysis.movement_stability={version:'head-movement-stability-v1',status:'measured',sample_count:150,effective_fps:30,
@@ -236,7 +236,7 @@ assert(allText(container).includes('0.250'));
 assert(allText(container).includes('4.50'));
 assert(allText(container).includes('לא ניתן למדוד'));
 assert(!allText(container).includes('רקע 0–2:'));
-assert(!container.children.some(child=>child.tag==='details'));
+assert(!container.children.some(child=>child.className==='neck-admin-debug'));
 console.log('Movement measurements survive provider failure, missing windows stay null, admin diagnostics hidden PASS');
 groupedPacket.neckAnalysis.movement_stability.version='head-movement-stability-v2';
 groupedPacket.neckAnalysis.movement_stability.windows[0].temporal_coverage=.9;
@@ -291,3 +291,55 @@ groupedPacket.neckAnalysis.diagnostics.capture_transport.server_received_frames=
 groupedPacket.neckAnalysis.diagnostics.capture_transport.missing_frames=0;
 renderRaw(container,groupedPacket,{viewer:{role:3}});
 assert(!allText(container).includes('הניתוח חלקי: חלק מהתמונות'));
+
+renderNeckAnalysis(container,{neckAnalysis:{status:'error',dimensions:{},overall:{},quality:{},diagnostics:{}},
+    reasons:['OpenAI analysis reached output token limit [max_output_tokens]']});
+assert(allText(container).includes('מגבלת אורך התשובה'));
+assert(!allText(container).includes('נסו שוב'));
+assert(!allText(container).includes('0 / 3'));
+
+for (const viewer of [{role:3},{role:1}]) {
+    renderRaw(container,{neckAnalysis:{status:'error',dimensions:{},quality:{}},
+        reasons:['OpenAI analysis timed out']},{viewer});
+    const notices=nodes(container).find(node=>node.className==='neck-analysis-notices');
+    assert(notices);
+    assert(allText(notices).includes('זמן ההמתנה'));
+    assert(!allText(groupedTable()).includes('זמן ההמתנה'));
+    assert(!allText(groupedTable()).includes('שירות הניתוח'));
+    assert(!allText(groupedTable()).includes('0 / 3'));
+}
+renderRaw(container,{neckAnalysis:{status:'complete',dimensions:{jaw_compensation:{score:null,
+    evidence:['Insufficient supported speech context']}},quality:{}}},{viewer:{role:3}});
+assert(allText(nodes(container).find(node=>node.className==='neck-analysis-notices')).includes('אין די ראיות לדיבור'));
+assert(!allText(groupedTable()).includes('אין די ראיות לדיבור'));
+console.log('Service failures and assessment limitations are separate from user findings for all roles PASS');
+
+renderRaw(container,{neckAnalysis:{status:'insufficient_quality',dimensions:{},quality:{},diagnostics:{
+    captured_frames:12,observed_span_seconds:10,effective_fps:1.1,target_fps:5,
+    dimension_quality:{jaw_compensation:.6},dimensions:{posture_compensation:{tracking_quality:.7,
+    maximum_possible_confidence:.07,required_confidence:.15,rejection_reason:'Insufficient temporal sampling confidence'}}}}},{viewer:{role:3}});
+const captureQuality=nodes(container).find(node=>node.className==='neck-capture-quality');
+assert(captureQuality);
+assert(allText(captureQuality).includes('תמונות שהתקבלו: 12'));
+assert(allText(captureQuality).includes('קצב בפועל: 1.1'));
+assert(allText(captureQuality).includes('70.0%'));
+assert(allText(captureQuality).includes('60.0%'));
+assert(allText(captureQuality).includes('7.0%'));
+assert(allText(captureQuality).includes('לא נרשם בדוח'));
+assert(nodes(container).find(node=>node.className==='neck-full-report').children.includes(captureQuality));
+console.log('Regular users can inspect capture counts, actual rate and regional quality inside the detailed report PASS');
+
+renderRaw(container,{neckAnalysis:{status:'complete',dimensions:{jaw_compensation:{score:3,evidence:[]}},quality:{}}},{viewer:{role:3}});
+assert(allText(container).includes('0 — לא נצפו סימנים חיצוניים'));
+assert(allText(container).includes('אין בכך הוכחה שהצוואר רפוי'));
+assert(allText(container).includes('3 אינו תוצאה רצויה'));
+assert(allText(container).includes('3 / 3'));
+
+for (const status of ['complete','pending','error']) {
+    renderRaw(container,{neckAnalysis:{status,dimensions:{},quality:{},movement_stability:{
+        version:'head-movement-stability-v3',status:'measured',windows:[]}}},{viewer:{role:3}});
+    const movementPanel=container.children.find(node=>node.className==='neck-movement-details');
+    assert(movementPanel,'Movement metric must be outside the collapsed report');
+    assert.equal(movementPanel.attributes.open,'');
+}
+console.log('Head movement metric is visible outside the detailed report by default for all analysis states PASS');

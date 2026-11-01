@@ -18,7 +18,7 @@ from neck_v1_openai import interpret, NeckProviderError
 def prediction(scores=(1,1,1,1,1), independent=True):
     return ModelOutput.model_validate(dict(dimensions={key:dict(observable=True,score=score,
         continuous_score=float(score),confidence=.95,evidence=['נצפה שינוי בפריימים'],
-        frame_indices=[0,1],speech_related=True,independent_local_activity=independent,confounds=[])
+        frame_indices=[0,1],speech_context_supported=True,movement_speech_association=score>0,independent_local_activity=independent,confounds=[])
         for key,score in zip(DIMENSIONS,scores)},summary='תיאור התנהגות נצפית',limitations=[]))
 
 

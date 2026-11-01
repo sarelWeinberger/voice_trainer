@@ -70,6 +70,78 @@ class APITests(unittest.TestCase):
         appmod.NeckEffortOut(**packet)
         self.assertIn('/api/neck-effort',appmod.app.openapi()['paths'])
 
+    def test_history_recovers_final_neck_result_when_audio_saved_first(self):
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import Session
+        from database import Base, Result, NeckRecording
+        database=create_engine('sqlite:///:memory:')
+        Base.metadata.create_all(database)
+        with Session(database) as db:
+            db.add(Result(user_id=self.user.id, title='Joined analysis',session_id='joined',
+                          raw_scores=json.dumps({'scores':{'G':1},'neck_effort':None})))
+            db.add(NeckRecording(user_id=self.user.id,session_id='joined',feature_series='[]',
+                                 summary=json.dumps({'neckAnalysis':{'status':'complete'}})))
+            db.add(NeckRecording(user_id=self.user.id+1,session_id='joined',feature_series='[]',
+                                 summary=json.dumps({'private':'other-user'})))
+            db.commit()
+            history=appmod.get_history(db,self.user)['history']
+            self.assertEqual(len(history),1)
+            self.assertEqual(history[0]['session_id'],'joined')
+            self.assertEqual(history[0]['neck_effort'],{'neckAnalysis':{'status':'complete'}})
+            self.assertEqual(history[0]['scores'],{'G':1})
+        database.dispose()
+
+    def test_history_returns_ten_latest_results_without_deleting_older_results(self):
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import Session
+        from database import Base, Result
+        from datetime import datetime, timedelta
+        database=create_engine('sqlite:///:memory:');Base.metadata.create_all(database)
+        with Session(database) as db:
+            for i in range(12):
+                db.add(Result(user_id=self.user.id,title='Saved analysis',
+                    created_at=datetime(2026,1,1)+timedelta(seconds=i),
+                    raw_scores=json.dumps({'scores':{'G':i}})))
+            db.add(Result(user_id=self.user.id+1,title='Another account',raw_scores='{}'))
+            db.commit()
+            history=appmod.get_history(db,self.user)['history']
+            self.assertEqual(len(history),10)
+            self.assertEqual([entry['scores']['G'] for entry in history],list(range(11,1,-1)))
+            self.assertEqual(db.query(Result).filter(Result.user_id==self.user.id).count(),12)
+        database.dispose()
+
+    def test_neck_only_history_survives_engine_restart_and_stays_user_scoped(self):
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import Session
+        from database import Base, NeckRecording, Result
+        database=create_engine('sqlite:///:memory:');Base.metadata.create_all(database)
+        self.engine.start_recording_session('neck-without-audio')
+        for i in range(30):self.engine.process_frame(np.ones((100,100,3),np.uint8)*100,timestamp=i/5)
+        with Session(database) as db:
+            stopped=appmod.stop_neck_effort_recording(self.user,db,session_id='neck-without-audio')
+            self.assertTrue(stopped['history_saved'])
+            self.assertEqual(db.query(Result).count(),0)
+            db.add(NeckRecording(user_id=self.user.id+1,session_id='private-other-account',
+                                feature_series='[]',summary='{"private":true}'))
+            db.commit()
+        # New DB session, and no in-memory recording engine available.
+        with Session(database) as db, patch.dict(appmod.neck_effort_engines,{},clear=True):
+            history=appmod.get_history(db,self.user)['history']
+            self.assertEqual(len(history),1)
+            self.assertEqual(history[0]['session_id'],'neck-without-audio')
+            self.assertEqual(history[0]['scores'],{})
+            self.assertEqual(history[0]['neck_effort'],stopped['neck_effort'])
+            self.assertEqual(history[0]['model_type'],'neck_only')
+        database.dispose()
+
+    def test_neck_storage_failure_is_reported_without_discarding_analysis(self):
+        self.engine.start_recording_session('storage-error')
+        for i in range(30):self.engine.process_frame(np.ones((100,100,3),np.uint8)*100,timestamp=i/5)
+        with patch.object(self.db,'commit',side_effect=RuntimeError('database unavailable')):
+            result=appmod.stop_neck_effort_recording(self.user,self.db,session_id='storage-error')
+        self.assertFalse(result['history_saved'])
+        self.assertEqual(result['neck_effort']['neckAnalysis']['status'],'complete')
+
     def test_provider_failure_remains_structured_and_null(self):
         from neck_v1_openai import NeckProviderError
         def fail(*args):raise NeckProviderError('provider failed')

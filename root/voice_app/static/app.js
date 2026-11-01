@@ -111,7 +111,10 @@ async function init() {
         video.srcObject = mediaStream;
 
         // Request mic separately
-        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioStream = await navigator.mediaDevices.getUserMedia({ audio: {
+            echoCancellation: false, noiseSuppression: false, autoGainControl: false,
+            channelCount: 1
+        } });
 
         initFaceMesh();
         await resetNeckEffortSession();
@@ -311,6 +314,7 @@ async function stopNeckEffortRecordingSession(audioBlob, audioOffsetSeconds = 0)
             result.neck_effort.neckAnalysis ||= {version:'neck-analysis-v1',status:'error',dimensions:{}};
             result.neck_effort.neckAnalysis.movement_stability=localMotion;
         }
+        result.neck_effort.history_saved = result.history_saved;
         return show(result.neck_effort);
     } catch (error) {
         return show({model_version: "neck-analysis-v1", reasons: [error.name === "TimeoutError" ? "analysis_timeout" : "neck_service_unavailable"],
@@ -692,8 +696,17 @@ async function stopRecording() {
     stopNeckEffortMonitoring(false);
     recordBtn.disabled = true;
     try {
+        const previousNeck = JSON.parse(localStorage.getItem(_historyKey()) || '[]')[0]?.neck_effort || null;
         const [neck, voice] = await Promise.all([stopNeckEffortRecordingSession(wavBlob, recordBtn._neckAudioOffset), sendAudio(wavBlob)]);
-        if (voice && neck) { voice.neck_effort = neck; displayResults(voice); }
+        if (voice) {
+            if (neck) voice.neck_effort = neck;
+            voice.neck_previous = previousNeck;
+            displayResults(voice);
+            saveToHistory(voice);
+        } else if (neck) {
+            saveToHistory({scores:{}, neck_effort:neck, session_id:neckEffortSessionId});
+        }
+
         setStatus(neck?.neckAnalysis?.status === "error"
             ? "ניתוח הצוואר לא הושלם; פרטים מופיעים בתוצאות."
             : voice ? "הניתוח הושלם." : "תוצאת הצוואר מוצגת; ניתוח הקול לא הושלם.", !voice || neck?.neckAnalysis?.status === "error");
@@ -769,7 +782,6 @@ async function sendAudio(blob) {
 
         showImprovementBanner(data);
         displayResults(data);
-        saveToHistory(data);
         loadCloudHistory();
         // Take the user straight to what they just earned, and flag the tabs
         // that quietly gained content while they were on the results tab.
@@ -786,7 +798,18 @@ async function sendAudio(blob) {
 // ---- Display Results ----
 function displayResults(data) {
     resultsPanel.hidden = false;
-    featuresPanel.hidden = false;
+    featuresPanel.hidden = !Number.isFinite(data.scores?.G);
+    if (combinedSummary) combinedSummary.hidden = !Number.isFinite(data.scores?.G);
+    if (radarCanvas) radarCanvas.hidden = !Number.isFinite(data.scores?.G);
+    if (!Number.isFinite(data.scores?.G)) {
+        scoresList.replaceChildren();
+        const info=document.createElement('p'); info.textContent='אין תוצאת קול בהקלטה הזו; תוצאת הצוואר נשמרה בנפרד.'; scoresList.appendChild(info);
+        const neck=document.getElementById('neck-analysis-v1-results');
+        if(neck){neck.hidden=false;renderNeckAnalysis(neck,data.neck_effort,{viewer:typeof _currentUser!=='undefined'?_currentUser:null,previous:data.neck_previous});}
+        document.getElementById('observable-effort-results')?.replaceChildren();
+        displayRecommendations([]);
+        return;
+    }
     renderCombinedSummary(data);
 
     // Scores list
@@ -803,7 +826,15 @@ function displayResults(data) {
         if (report) {
             const intro = document.createElement("p");
             intro.textContent = "מדדים נצפים לאורך זמן — גרסת מחקר. אין ציון מאמץ מאומת; עוצמת ההקלטה מושפעת גם מהמיקרופון והמרחק. הסנכרון בהקלטה החיה אינו מאומת.";
-            effortPanel.appendChild(intro);
+            const title = document.createElement('h3');
+            title.textContent = 'מדדי הקול לאורך ההקלטה';
+            effortPanel.appendChild(title);
+            const details = document.createElement('details');
+            details.className = 'neck-audio-details';
+            const summary = document.createElement('summary');
+            summary.textContent = 'הצגת המדידות והסבר';
+            details.appendChild(summary);
+            details.appendChild(intro);
             const table = document.createElement("table");
             const heading = table.insertRow();
             ["זמן (שניות)", "עוצמה (dBFS)", "יחס אנרגיה מעל 1kHz", "איכות"].forEach(label => { const cell = document.createElement("th"); cell.textContent = label; heading.appendChild(cell); });
@@ -811,13 +842,14 @@ function displayResults(data) {
                 const tr = table.insertRow();
                 [row.t.toFixed(1), row.rms_dbfs, row.high_frequency_energy_ratio === null ? "—" : row.high_frequency_energy_ratio.toFixed(3), row.usable ? "ניתן למדידה" : "שקט / רוויה"].forEach(value => { tr.insertCell().textContent = value; });
             });
-            effortPanel.appendChild(table);
+            details.appendChild(table);
+            effortPanel.appendChild(details);
         }
     }
     const neckSection = document.getElementById("neck-analysis-v1-results");
     if (neckSection) {
         if (data.neck_effort) neckSection.hidden = false;
-        if (data.neck_effort) renderNeckAnalysis(neckSection, data.neck_effort, {viewer: typeof _currentUser !== "undefined" ? _currentUser : null});
+        if (data.neck_effort) renderNeckAnalysis(neckSection, data.neck_effort, {viewer: typeof _currentUser !== "undefined" ? _currentUser : null, previous: data.neck_previous});
     }
     const neckScore = data.neck_effort && !data.neck_effort.neckAnalysis && data.neck_effort.model_version !== "neck-analysis-v1" && Number.isInteger(data.neck_effort.score)
         ? data.neck_effort.score
@@ -827,30 +859,6 @@ function displayResults(data) {
     }
 
     modelBadge.textContent = `מודל: ${data.model_type}`;
-
-    // Clinician referral: if any GRBAS dimension scores 2-3 (moderate/severe),
-    // surface a clear "see a clinician" notice. This is both clinically right
-    // (high scores warrant professional review) and a legal safety net — it
-    // prevents users treating high scores as a green light to self-manage.
-    const grbasMax = Math.max(...Array.from("GRBAS").map(d => data.scores[d] ?? 0));
-    let warningBox = document.getElementById("grbas-clinician-warning");
-    if (grbasMax >= 2) {
-        if (!warningBox) {
-            warningBox = document.createElement("div");
-            warningBox.id = "grbas-clinician-warning";
-            warningBox.className = "grbas-clinician-warning";
-            scoresList.parentElement.insertBefore(warningBox, scoresList.nextSibling);
-        }
-        warningBox.innerHTML = `
-            <strong>שימו לב:</strong> אחד או יותר מציוני GRBAS שלך גבוה (2 או 3).
-            ציון זה מאפיין קולות שלעיתים יש להם אתגרים שדורשים בדיקה מקצועית.
-            <strong>מומלץ לפנות לקלינאי תקשורת מוסמך או לרופא א.א.ג</strong> לבדיקה מעמיקה.
-            <br>זוהי המלצה, לא אבחנה — הכלי הזה הוא חינוכי בלבד.
-        `;
-        warningBox.style.display = "";
-    } else if (warningBox) {
-        warningBox.style.display = "none";
-    }
 
     // Radar chart
     drawRadarChart(data.scores);
@@ -1144,7 +1152,7 @@ function showImprovementBanner(data) {
 
     // Get previous history to compare
     const key = _historyKey();
-    const history = JSON.parse(localStorage.getItem(key) || "[]");
+    const history = VoiceHistory.read(key);
     if (history.length === 0) return;
 
     const prev = history[0]; // most recent previous entry
@@ -1194,23 +1202,24 @@ function _historyKey() {
 
 function saveToHistory(data) {
     const key = _historyKey();
-    const history = JSON.parse(localStorage.getItem(key) || "[]");
+    const history = VoiceHistory.read(key);
     history.unshift({
         timestamp: new Date().toISOString(),
         scores: data.scores,
         features: data.features,
         neck_effort: data.neck_effort || null,
+        session_id: data.session_id || null,
         observable_effort: data.observable_effort || null,
     });
-    // Keep last 50 entries
-    if (history.length > 50) history.length = 50;
-    localStorage.setItem(key, JSON.stringify(history));
+    VoiceHistory.save(key, history);
     loadHistory();
 }
 
 function loadHistory() {
     const key = _historyKey();
-    const history = JSON.parse(localStorage.getItem(key) || "[]");
+    const history = VoiceHistory.save(key, VoiceHistory.read(key));
+    renderProgressChart(history);
+    updateQuickStats(history);
 
     if (history.length === 0) {
         historyList.innerHTML =
@@ -1232,19 +1241,23 @@ function loadHistory() {
         let scoresHtml = "";
         for (const dim of "GRBAS") {
             const s = entry.scores[dim];
+            if (!Number.isFinite(s)) continue;
             scoresHtml += `<span class="history-score grade-${s}">${dim}:${s}</span>`;
         }
         if (entry.neck_effort && !entry.neck_effort.neckAnalysis && entry.neck_effort.model_version !== "neck-analysis-v1" && Number.isInteger(entry.neck_effort.score)) {
             scoresHtml += `<span class="history-score grade-${entry.neck_effort.score}">N:${entry.neck_effort.score}</span>`;
         }
 
+        for (const group of neckGroupResults(entry.neck_effort)) {
+            if (group.score!==null) scoresHtml += `<span class="history-score grade-${group.score}">${group.title}:${group.score}</span>`;
+        }
         item.innerHTML = `
             <span class="history-time">${timeStr}</span>
             <div class="history-scores">${scoresHtml}</div>
             <span class="history-view-btn" title="צפה בהמלצות">&#x25B6;</span>
         `;
         item.className = "history-item history-item-clickable";
-        item.addEventListener("click", () => loadHistoryEntry(entry));
+        item.addEventListener("click", () => loadHistoryEntry({...entry, neck_previous: history[history.indexOf(entry)+1]?.neck_effort || null}));
         historyList.appendChild(item);
     }
 }
@@ -1265,19 +1278,19 @@ async function loadCloudHistory() {
     if (typeof getAuthHeaders !== "function") return;
     const headers = getAuthHeaders();
     if (!headers.Authorization) return;
-
+    const key = _historyKey();
     try {
         const resp = await fetch("/api/history", { headers });
-        if (!resp.ok) return;
+        if (!resp.ok || key !== _historyKey()) return;
         const data = await resp.json();
-
-        if (data.history && data.history.length > 0) {
-            renderHistory(data.history);
-            renderProgressChart(data.history);
-            updateQuickStats(data.history);
-            syncTabEmptyStates();
-        }
+        if (key !== _historyKey()) return;
+        const history = VoiceHistory.save(key, VoiceHistory.merge(VoiceHistory.read(key), data.history));
+        renderHistory(history);
+        renderProgressChart(history);
+        updateQuickStats(history);
+        syncTabEmptyStates();
     } catch (err) {
+        // The local history and graph already remain visible while offline.
         console.warn("Cloud history load failed:", err);
     }
 }
@@ -1329,19 +1342,23 @@ function renderHistory(entries) {
         let scoresHtml = "";
         for (const dim of "GRBAS") {
             const s = entry.scores[dim];
+            if (!Number.isFinite(s)) continue;
             scoresHtml += `<span class="history-score grade-${s}">${dim}:${s}</span>`;
         }
         if (entry.neck_effort && !entry.neck_effort.neckAnalysis && entry.neck_effort.model_version !== "neck-analysis-v1" && Number.isInteger(entry.neck_effort.score)) {
             scoresHtml += `<span class="history-score grade-${entry.neck_effort.score}">N:${entry.neck_effort.score}</span>`;
         }
 
+        for (const group of neckGroupResults(entry.neck_effort)) {
+            if (group.score!==null) scoresHtml += `<span class="history-score grade-${group.score}">${group.title}:${group.score}</span>`;
+        }
         item.innerHTML = `
             <span class="history-time">${timeStr}</span>
             <div class="history-scores">${scoresHtml}</div>
             <span class="history-view-btn" title="צפה בהמלצות">&#x25B6;</span>
         `;
         item.className = "history-item history-item-clickable";
-        item.addEventListener("click", () => loadHistoryEntry(entry));
+        item.addEventListener("click", () => loadHistoryEntry({...entry, neck_previous: entries[entries.indexOf(entry)+1]?.neck_effort || null}));
         historyList.appendChild(item);
     }
 }
@@ -1357,6 +1374,12 @@ let progressLegendHits = [];
 let progressLegendBound = false;
 
 function renderProgressChart(entries) {
+    const graph = document.getElementById('history-progress-graph');
+    if (graph) {
+        if (progressPanel) progressPanel.hidden = !entries?.length;
+        renderHistoryProgress(graph, entries);
+        return;
+    }
     if (!progressPanel || !progressChart || !entries || entries.length < 2) {
         if (progressPanel) progressPanel.hidden = true;
         return;
@@ -1414,6 +1437,8 @@ function _bindProgressLegend() {
  * audio-only session has no neck score) so it can be skipped, not read as 0.
  */
 function _progressDimValue(entry, key) {
+    const groupIndex = {NP:0, NN:1, NJ:2}[key];
+    if (groupIndex !== undefined) return neckGroupResults(entry.neck_effort)[groupIndex].score;
     if (key === "N") {
         const score = entry.neck_effort && !entry.neck_effort.neckAnalysis && entry.neck_effort.model_version !== "neck-analysis-v1" ? entry.neck_effort.score : null;
         return Number.isFinite(score) ? score : null;
@@ -1477,7 +1502,10 @@ function _drawProgressChart(entries) {
         { key: "B", name: "נשיפות", color: "#a855f7" },
         { key: "A", name: "חולשה", color: "#f59e0b" },
         { key: "S", name: "מאמץ", color: "#ef4444" },
-        { key: "N", name: "מאמץ צוואר", color: "#14b8a6" },
+        { key: "N", name: "מאמץ צוואר ישן", color: "#14b8a6" },
+        { key: "NP", name: "תנוחה ותנועה", color: "#0d9488" },
+        { key: "NN", name: "מראה הצוואר", color: "#64748b" },
+        { key: "NJ", name: "תנועת לסת", color: "#c026d3" },
     ];
 
     for (const dim of dims) {
@@ -1693,6 +1721,7 @@ async function loadHistoryEntry(entry) {
         model_type: entry.model_type || "unknown",
         neck_effort: entry.neck_effort || null,
         observable_effort: entry.observable_effort || null,
+        neck_previous: entry.neck_previous || null,
         recommendations: entry.recommendations || null,
     };
 
@@ -1726,6 +1755,7 @@ async function loadHistoryEntry(entry) {
                     scores: entry.scores,
                     neck_effort: entry.neck_effort || null,
         observable_effort: entry.observable_effort || null,
+        neck_previous: entry.neck_previous || null,
                 }),
             });
             if (resp.ok) {

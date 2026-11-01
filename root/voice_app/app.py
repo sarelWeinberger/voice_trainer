@@ -610,7 +610,7 @@ async def analyze(
     try:
         tmp_path = _ensure_wav(tmp_path, audio_data)
         features = await run_in_threadpool(extract_features, tmp_path)
-        scores = classifier.predict(features)
+        scores = await run_in_threadpool(classifier.predict, features)
 
         key_features = {
             "f0_mean": round(features.get("f0_mean", 0), 1),
@@ -638,6 +638,7 @@ async def analyze(
         recommendations = flatten_recommendations(recs)
 
         response_data = {
+            "session_id": session_id,
             "scores": scores,
             "features": key_features,
             "model_type": "trained" if classifier.is_trained else "heuristic",
@@ -671,6 +672,8 @@ async def analyze(
 
         return response_data
 
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
@@ -770,12 +773,13 @@ def stop_neck_effort_recording(
         summary = engine.finalize(audio=audio_context,
             timing='browser_estimated_offset' if audio_context is not None else 'unverified',
             movement=motion_analysis,capture_transport=transport_analysis)
-    session_id = engine.state.recording_session_id
-    series = engine.export_recording()
+        session_id = engine.state.recording_session_id
+        series = engine.export_recording()
 
     # Persist the anonymous neck-effort feature series for model training. This is
     # best-effort: a storage failure must never break the user's recording flow.
-    if session_id and series:
+    history_saved = False
+    if session_id and summary:
         try:
             db.add(
                 NeckRecording(
@@ -788,6 +792,7 @@ def stop_neck_effort_recording(
                 )
             )
             db.commit()
+            history_saved = True
         except Exception:
             db.rollback()
 
@@ -805,6 +810,7 @@ def stop_neck_effort_recording(
     return {
         "status": "ok",
         "session_id": session_id,
+        "history_saved": history_saved,
         "neck_effort": summary,
     }
 
@@ -945,7 +951,7 @@ def get_history(
         db.query(Result)
         .filter(Result.user_id == current_user.id)
         .order_by(Result.created_at.desc())
-        .limit(50)
+        .limit(10)
         .all()
     )
 
@@ -959,20 +965,51 @@ def get_history(
                     recs = json.loads(row.recommendation)
                 except (json.JSONDecodeError, TypeError):
                     pass
+            neck_result = data.get("neck_effort")
+            if neck_result is None and row.session_id:
+                recording = (db.query(NeckRecording)
+                    .filter(NeckRecording.user_id == current_user.id,
+                            NeckRecording.session_id == row.session_id)
+                    .order_by(NeckRecording.id.desc()).first())
+                if recording and recording.summary:
+                    try:
+                        neck_result = json.loads(recording.summary)
+                    except (json.JSONDecodeError, TypeError):
+                        pass
             history.append({
                 "id": row.id,
+                "session_id": row.session_id,
                 "timestamp": row.created_at.isoformat(),
                 "scores": data.get("scores", {}),
                 "features": data.get("features", {}),
                 "model_type": data.get("model_type", "unknown"),
-                "neck_effort": data.get("neck_effort"),
+                "neck_effort": neck_result,
                 "observable_effort": data.get("observable_effort"),
                 "recommendations": recs,
             })
         except (json.JSONDecodeError, AttributeError):
             pass
 
-    return {"history": history}
+    # Neck analysis is an independent result even when audio failed or timed out.
+    sessions = {entry["session_id"] for entry in history if entry.get("session_id")}
+    recordings = (db.query(NeckRecording).filter(NeckRecording.user_id == current_user.id)
+                  .order_by(NeckRecording.created_at.desc()).limit(10).all())
+    for recording in recordings:
+        if recording.session_id in sessions or not recording.summary:
+            continue
+        try:
+            summary = json.loads(recording.summary)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        if not isinstance(summary, dict):
+            continue
+        history.append(dict(id=None, session_id=recording.session_id,
+            timestamp=recording.created_at.isoformat(), scores={}, features={},
+            model_type="neck_only", neck_effort=summary, observable_effort=None,
+            recommendations=None))
+        sessions.add(recording.session_id)
+    history.sort(key=lambda entry: entry["timestamp"], reverse=True)
+    return {"history": history[:10]}
 
 
 # =========================

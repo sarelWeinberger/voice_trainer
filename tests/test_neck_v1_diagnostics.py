@@ -6,7 +6,7 @@ class DiagnosticsTests(unittest.TestCase):
     def test_zero_jaw_is_not_a_focus_and_confounded_neck_remains_unavailable(self):
         output=prediction((1,1,1,1,0),independent=False)
         output.dimensions.posture_compensation.continuous_score=1.1
-        output.dimensions.shoulder_recruitment.speech_related=False
+        output.dimensions.shoulder_recruitment.movement_speech_association=False
         result=aggregate(output,context())
         self.assertEqual(result['overall']['continuous_score'],.4714)
         self.assertEqual(result['overall']['category'],0)
@@ -46,9 +46,29 @@ class DiagnosticsTests(unittest.TestCase):
         self.assertFalse(result['diagnostics']['aggregation']['partial'])
         self.assertEqual(result['diagnostics']['aggregation']['original_weight_coverage'],1.0)
         output=prediction((0,0,0,0,0),independent=False)
-        output.dimensions.scm_lateral_recruitment.speech_related=False
+        output.dimensions.scm_lateral_recruitment.speech_context_supported=False
         result=aggregate(output,context())
         self.assertIsNone(result['dimensions']['scm_lateral_recruitment']['score'])
+
+    def test_speech_context_and_positive_movement_association_are_separate(self):
+        for score, speech, association, accepted in (
+                (0,True,False,True), (0,False,False,False),
+                (1,True,False,False), (1,False,True,False), (1,True,True,True)):
+            with self.subTest(score=score,speech=speech,association=association):
+                output=prediction((score,)*5)
+                for name in DIMENSIONS:
+                    item=getattr(output.dimensions,name)
+                    item.speech_context_supported=speech
+                    item.movement_speech_association=association
+                result=aggregate(output,context())
+                for name in DIMENSIONS:
+                    self.assertEqual(result['dimensions'][name]['score'],score if accepted else None)
+                    decision=result['diagnostics']['dimensions'][name]
+                    self.assertEqual(decision['model_speech_context_supported'],speech)
+                    self.assertEqual(decision['model_movement_speech_association'],association)
+                silent=context();silent['speech_status']='silent'
+                result=aggregate(output,silent)
+                self.assertTrue(all(item['score'] is None for item in result['dimensions'].values()))
 
     def test_sparse_sampling_alone_can_preclude_every_score(self):
         ctx=context();ctx['temporal_quality']=.0952
