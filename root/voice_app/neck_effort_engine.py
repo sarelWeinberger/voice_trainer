@@ -9,7 +9,7 @@ import time
 import cv2
 import numpy as np
 from neck_v1_cv import CVProcessor, jaw_residualization, select_frames, select_crop_frames, neck_context_box
-from neck_v1_scoring import NeckEffortConfig, VERSION, DIMENSIONS, NeckAnalysis, aggregate, unavailable
+from neck_v1_scoring import NeckEffortConfig, VERSION, DIMENSIONS, APPEARANCE_CONSTRUCT, NeckAnalysis, aggregate, unavailable
 from neck_v1_openai import interpret, NeckProviderError, PROMPT_VERSION, DEFAULT_MODEL
 from neck_observable_change import compare_observable_windows
 from neck_capture_context import movement_evidence, transport_evidence
@@ -127,7 +127,7 @@ def evidence_context(rows, selected, cfg, audio=None, timing='unverified',moveme
                              'Flow and jaw regression are motion evidence, not force or causality',
                              'WebRTC VAD speech timing is provisional, not ground truth or diagnosis'],
                 versions=dict(analyzer=VERSION,preprocessing='neck-cv-v1.2',prompt=PROMPT_VERSION,
-                              weights='neck-weights-v1.0',scoring='neck-scoring-v1.2',
+                              weights='neck-weights-v1.0',scoring='neck-scoring-v1.3',appearance=APPEARANCE_CONSTRUCT,
                               observable_change='neck-observable-change-v1',selection='temporal-coverage-v4',
                               model=os.environ.get('NECK_OPENAI_MODEL',DEFAULT_MODEL)))
     if head_movement is not None:context['head_movement']=head_movement

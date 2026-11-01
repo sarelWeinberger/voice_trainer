@@ -65,3 +65,12 @@ data, private browsing, or switching devices removes that fallback. Durable acco
 and cross-device history across Space rebuilds still require persistent `/data` or
 an external database configured through `DATABASE_URL`; code cannot make an ephemeral
 container filesystem persistent.
+
+Neck appearance uses the versioned `visible-neck-appearance-v1` construct with
+GPT-6.1 Sol. Its lateral/anterior grades describe visible contour morphology,
+including a held under-chin configuration; they do not assert independent muscle
+recruitment. Visibility, evidence confidence, phonation context and confound
+checks still apply. Legacy recruitment results retain their original gates.
+Incomplete groups with only zero-valued assessed regions display as unavailable;
+an unassessed region is not evidence of a group zero. Existing saved results keep
+their original versions and are not automatically regraded.

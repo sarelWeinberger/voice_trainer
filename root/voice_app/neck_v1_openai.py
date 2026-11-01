@@ -5,7 +5,7 @@ import urllib.request
 import urllib.error
 from neck_v1_scoring import ModelOutput, RUBRIC
 
-PROMPT_VERSION = 'neck-rubric-v1.8'
+PROMPT_VERSION = 'neck-rubric-v1.9'
 DEFAULT_MODEL = 'gpt-6.1-sol'
 # A real ten-image response took 22s; the previous 15s socket timeout
 # discarded valid responses. Keep one attempt, with a matching larger UI bound.

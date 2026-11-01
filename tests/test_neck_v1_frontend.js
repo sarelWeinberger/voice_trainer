@@ -343,3 +343,19 @@ for (const status of ['complete','pending','error']) {
     assert.equal(movementPanel.attributes.open,'');
 }
 console.log('Head movement metric is visible outside the detailed report by default for all analysis states PASS');
+
+const appearancePacket={neckAnalysis:{status:'complete',versions:{appearance:'visible-neck-appearance-v1'},quality:{},dimensions:{
+ posture_compensation:{score:1,evidence:[]},shoulder_recruitment:{score:null,evidence:[]},
+ scm_lateral_recruitment:{score:0,evidence:[]},anterior_submental_activity:{score:2,evidence:['מישור תת־סנטרי מוחזק ומתוח למראה']},
+ jaw_compensation:{score:0,evidence:[]}}}};
+renderRaw(container,appearancePacket,{viewer:{role:3}});
+assert(allText(container).includes('ציוני מראה ותנועה'));
+assert(allText(container).includes('אינו ציון של פעילות שרירית עצמאית'));
+const visibleScores=nodes(container).find(node=>node.className==='neck-numeric-scores');
+assert.equal(visibleScores.children[1].children[1].textContent,'2 / 3');
+appearancePacket.neckAnalysis.dimensions.anterior_submental_activity.score=null;
+renderRaw(container,appearancePacket,{viewer:{role:3}});
+const incompleteScores=nodes(container).find(node=>node.className==='neck-numeric-scores');
+assert.equal(incompleteScores.children[1].children[1].textContent,'—');
+assert(allText(groupedTable().children[2].children[3]).includes('לא ניתן להעריך'));
+console.log('New appearance construct is visible; incomplete group zeros are withheld in both score views PASS');

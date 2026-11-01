@@ -54,3 +54,16 @@ assert.equal(compareNeckResults(current,current).length,0);
  }
  console.log('Group scores, grounded explanations, guarded positive feedback and joined-history persistence PASS');
 })().catch(error=>{console.error(error);process.exitCode=1;});
+
+// An unassessed under-chin region must not become a reassuring group zero.
+const incompleteZero=packet(0);
+incompleteZero.neckAnalysis.dimensions.anterior_submental_activity.score=null;
+const incompleteNeck=neckGroupResults(incompleteZero).find(g=>g.key==='neck');
+assert.equal(incompleteNeck.score,null);
+assert.equal(incompleteNeck.partial,true);
+const appearance=packet(0);
+appearance.neckAnalysis.versions.appearance='visible-neck-appearance-v1';
+appearance.neckAnalysis.dimensions.anterior_submental_activity.score=2;
+assert.equal(neckGroupResults(appearance).find(g=>g.key==='neck').score,2);
+assert.equal(compareNeckResults(appearance,older).length,0);
+console.log('Visible neck appearance grade preserved, incomplete zero withheld, old construct comparison blocked PASS');

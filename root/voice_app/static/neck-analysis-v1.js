@@ -11,6 +11,7 @@
     const reasonsHe = {
         'Insufficient temporal evidence for absence of visible activity': 'אין מספיק תמונות לאורך ההקלטה כדי לקבוע שלא נצפתה פעילות',
         'Inconsistent ordinal and continuous scores': 'המודל החזיר דירוגים סותרים; הציון לא פורסם',
+        'Insufficient temporal evidence for sustained appearance': 'אין מספיק תמונות לאורך ההקלטה כדי לדרג מראה מתמשך',
         'Analysis failed': 'הניתוח לא הושלם',
         'Region not sufficiently observable': 'אין די ראיות נצפות; הדוח הישן אינו מבחין בין סיבות הפסילה',
         'Tracking quality below threshold': 'איכות זיהוי האזור נמוכה מהסף',
@@ -37,8 +38,11 @@
                     analysis.dimensions[key].score >= 0 && analysis.dimensions[key].score <= 3);
             const winner = rated.reduce((best,key) => best === null || analysis.dimensions[key].score > analysis.dimensions[best].score ? key : best,null);
             const item = winner ? analysis.dimensions[winner] : null;
-            return {...group, rated, score:item?.score ?? null, evidence:item?.evidence || [],
-                partial:rated.length > 0 && rated.length < group.keys.length};
+            const partial = rated.length > 0 && rated.length < group.keys.length;
+            // A zero in one region cannot rule out signs in an unassessed region.
+            const incompleteZero = partial && item?.score === 0;
+            return {...group, rated, score:incompleteZero ? null : item?.score ?? null, evidence:item?.evidence || [],
+                partial};
         });
     }
     function compareNeckResults(current, previous) {
@@ -271,8 +275,10 @@
             return;
         }
         const resultsHeading = document.createElement('h3');
-        resultsHeading.textContent = 'ציוני התצפית על המאמץ';
+        resultsHeading.textContent = analysis.versions?.appearance === 'visible-neck-appearance-v1' ? 'ציוני מראה ותנועה' : 'ציוני התצפית על המאמץ';
         container.appendChild(resultsHeading);
+        if (analysis.versions?.appearance === 'visible-neck-appearance-v1')
+            paragraph('מראה הצוואר מדורג לפי קווי המתאר והמראה החיצוני בתמונה. זה אינו ציון של פעילות שרירית עצמאית או מדידה של מתח שרירי.');
         const groupsForUser = neckGroupResults(packet);
         const numeric = document.createElement('section');
         numeric.className = 'neck-numeric-scores';
@@ -385,6 +391,8 @@
                 scoreCell.textContent = 'ציון אינו זמין';
             } else if (!rated.length) {
                 scoreCell.textContent = 'לא ניתן להעריך';
+            } else if (rated.length < keys.length && rated.every(key => analysis.dimensions[key].score === 0)) {
+                scoreCell.textContent = 'לא ניתן להעריך את הקבוצה במלואה — דירוג חלקי; האזורים החסרים אינם ציון אפס.';
             } else {
                 const winner = rated.reduce((best,key) => analysis.dimensions[key].score > analysis.dimensions[best].score ? key : best);
                 const item = analysis.dimensions[winner];
