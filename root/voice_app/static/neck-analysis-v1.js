@@ -42,7 +42,9 @@
             // A zero in one region cannot rule out signs in an unassessed region.
             const incompleteZero = partial && item?.score === 0;
             return {...group, rated, score:incompleteZero ? null : item?.score ?? null, evidence:item?.evidence || [],
-                partial};
+                partial, unavailableReasons:[...new Set(group.keys.flatMap(key =>
+                    analysis.dimensions?.[key]?.score == null ?
+                        (analysis.dimensions?.[key]?.evidence || []).filter(reason => reasonsHe[reason]).map(reason => reasonsHe[reason]) : []))]};
         });
     }
     function compareNeckResults(current, previous) {
@@ -66,7 +68,11 @@
         });
     }
     function neckObservationText(group) {
-        if (group.score===null) return 'אין ציון זמין לקבוצה הזאת בהקלטה הזו.';
+        if (group.score===null) {
+            const explanation = group.partial ? 'חלק מהאזורים בקבוצה לא הוערכו; אפס באזור אחר אינו מספיק לציון כולל.' :
+                (group.unavailableReasons || []).join('; ');
+            return 'אין ציון זמין לקבוצה הזאת בהקלטה הזו.' + (explanation ? ' ' + explanation : '');
+        }
         // Quote the actual observation; never manufacture a posture direction from a grade.
         const observation=group.evidence.filter(text=>!reasonsHe[text]).join(' ')
             .replace(/(?:בין )?(?:בפריימים|בפריים|פריימים|פריים)\s*[\d\s,–\-]+/g,'')
@@ -104,7 +110,12 @@
             const p = document.createElement('p'); p.textContent = text; notices.appendChild(p);
         }
         function finish() {
-            if (notices.children.length > 1) report.appendChild(notices);
+            // A missing result and its cause must stay visible without opening a report.
+            if (notices.children.length > 1) {
+                if (analysis.status !== 'complete' || neckGroupResults(packet).some(group => group.score === null))
+                    container.appendChild(notices);
+                else report.appendChild(notices);
+            }
             if (debug) report.appendChild(debug);
             container.appendChild(report);
         }

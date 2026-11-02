@@ -359,3 +359,23 @@ const incompleteScores=nodes(container).find(node=>node.className==='neck-numeri
 assert.equal(incompleteScores.children[1].children[1].textContent,'—');
 assert(allText(groupedTable().children[2].children[3]).includes('לא ניתן להעריך'));
 console.log('New appearance construct is visible; incomplete group zeros are withheld in both score views PASS');
+
+// Missing scores and provider failures must explain themselves outside closed details.
+for (const [status,reason,expected] of [
+    ['error','OpenAI analysis reached output token limit [max_output_tokens]','מגבלת אורך התשובה'],
+    ['error','OpenAI analysis timed out','זמן ההמתנה'],
+    ['pending',null,'עדיין מתבצע'],
+]) {
+    renderRaw(container,{reasons:reason?[reason]:[],neckAnalysis:{status,dimensions:{},quality:{}}},{viewer:{role:3}});
+    const visibleNotices=container.children.find(node=>node.className==='neck-analysis-notices');
+    assert(visibleNotices,'Failure/pending status must be visible without opening details');
+    assert(allText(visibleNotices).includes(expected));
+}
+renderRaw(container,{neckAnalysis:{status:'complete',dimensions:{
+    jaw_compensation:{score:null,evidence:['Insufficient evidence confidence']}
+},quality:{}}},{viewer:{role:3}});
+const visibleFeedback=container.children.find(node=>node.className==='neck-user-feedback');
+assert(allText(visibleFeedback).includes('נמוך מהסף'));
+renderRaw(container,appearancePacket,{viewer:{role:3}});
+assert(allText(container.children.find(node=>node.className==='neck-user-feedback')).includes('אפס באזור אחר אינו מספיק'));
+console.log('Unavailable scores have visible reasons; service failures and pending status stay outside collapsed reports PASS');
